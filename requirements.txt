@@ -1,0 +1,13 @@
+
+fastapi
+uvicorn[standard]
+pypdf
+python-multipart
+networkx
+numpy
+pandas
+scikit-learn
+sentence-transformers
+joblib
+pytest
+httpx
