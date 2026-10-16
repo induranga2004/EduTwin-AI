@@ -5,10 +5,13 @@ from uuid import uuid4
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from pypdf import PdfReader
 
+from app.services.concept_extractor import extract_concepts
+
+
 app = FastAPI(
     title="EduTwin-AI C1 Backend",
     description="General-purpose lecture analysis and knowledge graph system",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 UPLOAD_DIR = Path("data/uploads")
@@ -62,14 +65,17 @@ async def upload_lecture(file: UploadFile = File(...)):
         reader = PdfReader(str(saved_path))
 
         if reader.is_encrypted:
+            saved_path.unlink(missing_ok=True)
             raise HTTPException(
                 status_code=400,
                 detail="Password-protected PDFs are not supported yet.",
             )
 
         pages = []
+
         for page_number, page in enumerate(reader.pages, start=1):
             text = page.extract_text() or ""
+
             pages.append(
                 {
                     "page": page_number,
@@ -82,6 +88,7 @@ async def upload_lecture(file: UploadFile = File(...)):
         )
 
         if not full_text.strip():
+            saved_path.unlink(missing_ok=True)
             raise HTTPException(
                 status_code=422,
                 detail=(
@@ -90,21 +97,33 @@ async def upload_lecture(file: UploadFile = File(...)):
                 ),
             )
 
+        # Identify candidate concepts using our current baseline.
+        concepts = extract_concepts(full_text)
+
         return {
             "lecture_id": lecture_id,
             "filename": file.filename,
             "page_count": len(reader.pages),
             "extracted_character_count": len(full_text),
+            "concept_count": len(concepts),
+            "concepts": concepts,
             "pages": pages,
-            "message": "PDF uploaded and text extracted successfully.",
+            "message": (
+                "PDF uploaded, text extracted, "
+                "and candidate concepts identified."
+            ),
         }
 
     except HTTPException:
         raise
+
     except Exception as exc:
+        saved_path.unlink(missing_ok=True)
+
         raise HTTPException(
             status_code=400,
             detail="Could not process this PDF.",
         ) from exc
+
     finally:
         await file.close()
