@@ -2,27 +2,56 @@
 from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
+import logging
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from pypdf import PdfReader
 
 from app.services.concept_extractor import extract_concepts
 from app.services.knowledge_graph import build_knowledge_graph
+from app.services.transcription import LectureTranscriber
 
 
 app = FastAPI(
     title="EduTwin-AI C1 Backend",
     description=(
-        "General-purpose lecture processing, concept extraction, "
-        "knowledge graph generation, and curriculum coverage research."
+        "Lecture PDF processing, candidate knowledge graph generation, "
+        "recording transcription, and curriculum coverage research."
     ),
-    version="0.3.1",
+    version="0.4.0",
 )
 
-UPLOAD_DIR = Path("data/uploads")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+UPLOAD_DIR = PROJECT_ROOT / "data" / "uploads"
+RECORDING_DIR = PROJECT_ROOT / "data" / "recordings"
+TRANSCRIPT_DIR = PROJECT_ROOT / "data" / "processed"
+
+for directory in (UPLOAD_DIR, RECORDING_DIR, TRANSCRIPT_DIR):
+    directory.mkdir(parents=True, exist_ok=True)
 
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
+MAX_RECORDING_SIZE = 200 * 1024 * 1024  # 200 MB
+
+ALLOWED_RECORDING_EXTENSIONS = {
+    ".mp3",
+    ".mp4",
+    ".m4a",
+    ".wav",
+    ".webm",
+    ".mpeg",
+    ".mpga",
+    ".ogg",
+    ".flac",
+}
+
+logger = logging.getLogger(__name__)
+
+# Load the speech model lazily when the first transcription is requested.
+transcriber = LectureTranscriber(
+    model_size="base",
+    device="cpu",
+    compute_type="int8",
+)
 
 
 def extract_pdf_pages(reader: PdfReader) -> list[dict]:
@@ -75,6 +104,7 @@ def home():
         "project": "EduTwin-AI",
         "component": "C1",
         "status": "running",
+        "version": app.version,
     }
 
 
@@ -146,7 +176,7 @@ async def upload_lecture(file: UploadFile = File(...)):
     except HTTPException:
         raise
     except Exception as exc:
-        print(f"PDF upload error: {exc!r}")
+        logger.exception("PDF upload failed")
         raise HTTPException(
             status_code=400,
             detail="Could not process this PDF.",
@@ -162,7 +192,6 @@ async def generate_lecture_graph(file: UploadFile = File(...)):
         content = await file.read(MAX_FILE_SIZE + 1)
         validate_pdf_upload(file, content)
 
-        # PdfReader needs a file-like object for in-memory PDF bytes.
         reader = PdfReader(BytesIO(content))
 
         if reader.is_encrypted:
@@ -201,11 +230,109 @@ async def generate_lecture_graph(file: UploadFile = File(...)):
     except HTTPException:
         raise
     except Exception as exc:
-        # Details appear in the VS Code server terminal for debugging.
-        print(f"Knowledge graph generation error: {exc!r}")
+        logger.exception("Knowledge graph generation failed")
         raise HTTPException(
             status_code=500,
             detail="Could not generate the knowledge graph from this PDF.",
+        ) from exc
+    finally:
+        await file.close()
+
+
+@app.post("/api/lectures/transcribe")
+async def transcribe_lecture(
+    file: UploadFile = File(...),
+    language: str = "en",
+):
+    """
+    Upload an audio/video recording and generate timestamped speech.
+
+    The returned transcript is automatically generated. A separate
+    transcript file is not required.
+    """
+    saved_path = None
+
+    try:
+        if not file.filename:
+            raise HTTPException(
+                status_code=400,
+                detail="The recording must have a filename.",
+            )
+
+        extension = Path(file.filename).suffix.lower()
+
+        if extension not in ALLOWED_RECORDING_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Unsupported recording format. Use MP4, MP3, WAV, "
+                    "M4A, WEBM, OGG, FLAC, or a supported audio format."
+                ),
+            )
+
+        content = await file.read(MAX_RECORDING_SIZE + 1)
+
+        if not content:
+            raise HTTPException(
+                status_code=400,
+                detail="The uploaded recording is empty.",
+            )
+
+        if len(content) > MAX_RECORDING_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail="Recording exceeds the 200 MB limit.",
+            )
+
+        recording_id = str(uuid4())
+        saved_path = RECORDING_DIR / f"{recording_id}{extension}"
+        saved_path.write_bytes(content)
+
+        # Transcription is CPU-intensive, so run it in a worker thread.
+        from starlette.concurrency import run_in_threadpool
+
+        transcript_data = await run_in_threadpool(
+            transcriber.transcribe,
+            saved_path,
+            language,
+        )
+
+        transcript_data["recording_id"] = recording_id
+
+        transcript_path = (
+            TRANSCRIPT_DIR / f"{recording_id}_transcript.json"
+        )
+
+        await run_in_threadpool(
+            transcriber.save_transcript,
+            transcript_data,
+            transcript_path,
+        )
+
+        return {
+            "recording_id": recording_id,
+            "filename": file.filename,
+            "transcript_path": str(transcript_path),
+            "language": transcript_data["language"],
+            "segment_count": transcript_data["segment_count"],
+            "transcript": transcript_data["transcript"],
+            "segments": transcript_data["segments"],
+            "message": (
+                "Recording transcribed successfully. "
+                "Timestamped segments and transcript JSON were generated."
+            ),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Recording transcription failed")
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Could not transcribe the recording. "
+                "Check the server terminal for the underlying error."
+            ),
         ) from exc
     finally:
         await file.close()
