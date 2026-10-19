@@ -1,0 +1,19 @@
+# Low-memory profile (target: a PC with ~6 GB RAM, Docker/WSL2 given ~3.5-4 GB).
+# BigBlueButton idles at ~3.2 GB; this trims it by skipping services you do not need to develop the
+# EduSync components and by shrinking the JVM/Postgres footprint. Enable with `scripts\dev.ps1 setup -Lite`
+# (adds this file to COMPOSE_FILE) and recreate with `docker compose up -d`.
+#
+# NOT AVAILABLE in lite mode: audio/video/screenshare (FreeSWITCH, WebRTC SFU, LiveKit, TURN), shared notes,
+# recording, annotation export. Chat, polls, whiteboard, slides and the EduSync API keep working.
+# Needs Docker Compose >= 2.24 (`!override`).
+services:
+  bbb:
+    # Media UDP ports are pointless without the media services.
+    ports: !override
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/bbb/lite/service-skip.conf:/etc/systemd/system/service.d/90-edusync-lite.conf:ro
+      - ./docker/bbb/lite/skip:/etc/edusync/lite-skip:ro
+      - ./docker/bbb/lite/bbb-web.env:/etc/bigbluebutton/bbb-web.env:ro
+      - ./docker/bbb/lite/postgres-lite.conf:/etc/postgresql/16/main/conf.d/99-edusync-lite.conf:ro

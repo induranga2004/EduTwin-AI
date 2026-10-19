@@ -100,6 +100,49 @@ docker compose -f docker-compose.yml -f docker-compose.sidecar.yml up
 Enable only after the spike passes (`dev.ps1 setup` enables it for BBB mode). Without it, `.env.example` points at `host.docker.internal`, which only
 works if BBB's services are reachable on the host (they bind 127.0.0.1 inside BBB, so expect this not to work).
 
+## Low-memory mode (about 6 GB RAM)
+
+BigBlueButton idles at about 3.2 GB (measured with `docker stats`), which does not leave room on a 6 GB PC once
+Windows and Docker's VM are counted. `docker-compose.lite.yml` trims it to about **1.6 GB** (measured with a
+meeting open; EduSync adds about 60 MB).
+
+| What lite mode does | How |
+|---|---|
+| Skips 13 services: FreeSWITCH, akka-fsesl, WebRTC SFU, LiveKit, coturn, WebRTC recorder, annotation export, shared notes, recording (3 rap units), avahi, wpa_supplicant | A systemd drop-in (`docker/bbb/lite/service-skip.conf`) skips any unit that has a marker file in `docker/bbb/lite/skip/`. Units are skipped, not failed. |
+| Shrinks bbb-web's JVM heap (384m -> 128m/256m) | `docker/bbb/lite/bbb-web.env` |
+| Shrinks Postgres memory | `docker/bbb/lite/postgres-lite.conf` |
+| Publishes only ports 80 and 443 | `ports: !override` in `docker-compose.lite.yml` |
+
+**What you lose:** audio, video, screenshare, shared notes, recording and annotation export. Chat, polls,
+whiteboard, slides, the HTML5 client, the BBB API and the EduSync API keep working. Verified in lite mode:
+`https://bbb.test` and `/html5client/` return 200, a meeting can be created through the API, Hasura and Redis
+answer, and `https://bbb.test/edusync/health` reports `ok`. Not verified: joining a meeting in the browser
+without audio (the audio dialog will likely fail or need to be skipped).
+
+Enable (PowerShell, repo root):
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\scripts\dev.ps1 setup -Lite -Yes     # adds docker-compose.lite.yml to COMPOSE_FILE in .env
+.\scripts\dev.ps1 first-run            # or: docker compose up -d   (recreates the bbb container)
+```
+
+Switch back to the full stack with `.\scripts\dev.ps1 setup -Yes` (no `-Lite`) followed by
+`docker compose up -d`.
+
+Give Docker about 3.5 GB on a 6 GB PC in `C:\Users\<name>\.wslconfig`, then `wsl --shutdown` and restart
+Docker Desktop (the script prints this when `-Lite` is used):
+
+```
+[wsl2]
+memory=3584MB
+swap=4GB
+```
+
+Swap makes spikes survivable but slow; keep Docker Desktop's disk image on a drive with free space. Running
+the Whisper transcriber (`--extra ml`) on top adds several hundred MB while it works. Needs Docker Compose
+>= 2.24 for `!override`.
+
 ## Phase-0 spike checklist
 
 Record results here (edit this table in a PR). On Windows run the steps via `scripts\dev.ps1` (`setup`, `first-run`, `status`, `html5`).
