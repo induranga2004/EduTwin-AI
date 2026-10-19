@@ -1,0 +1,214 @@
+import React, { PureComponent } from 'react';
+import { defineMessages, injectIntl } from 'react-intl';
+import PropTypes from 'prop-types';
+import EndMeetingConfirmationContainer from '/imports/ui/components/end-meeting-confirmation/container';
+import BBBMenu from '/imports/ui/components/common/menu/component';
+import Styled from './styles';
+import Session from '/imports/ui/services/storage/in-memory';
+import { ModalRegistration } from '/imports/ui/core/singletons/modalController';
+
+const intlMessages = defineMessages({
+  leaveMeetingBtnLabel: {
+    id: 'app.navBar.leaveMeetingBtnLabel',
+    description: 'Leave meeting button label',
+  },
+  leaveMeetingBtnDesc: {
+    id: 'app.navBar.leaveMeetingBtnDesc',
+    description: 'Describes the leave meeting button',
+  },
+  leaveSessionLabel: {
+    id: 'app.navBar.optionsDropdown.leaveSessionLabel',
+    description: 'Leave session button label',
+  },
+  leaveSessionDesc: {
+    id: 'app.navBar.optionsDropdown.leaveSessionDesc',
+    description: 'Describes leave session option',
+  },
+  returnToMainRoomLabel: {
+    id: 'app.navBar.optionsDropdown.returnToMainRoomLabel',
+    description: 'Go back to the main room label',
+  },
+  returnToMainRoomDesc: {
+    id: 'app.navBar.optionsDropdown.returnToMainRoomDesc',
+    description: 'Describes option to return to the main room',
+  },
+  endMeetingLabel: {
+    id: 'app.navBar.optionsDropdown.endMeetingForAllLabel',
+    description: 'End meeting button label',
+  },
+  endMeetingDesc: {
+    id: 'app.navBar.optionsDropdown.endMeetingDesc',
+    description: 'Describes settings option closing the current meeting',
+  },
+});
+
+const propTypes = {
+  intl: PropTypes.shape({
+    formatMessage: PropTypes.func.isRequired,
+  }).isRequired,
+  amIModerator: PropTypes.bool,
+  isBreakoutRoom: PropTypes.bool,
+  connected: PropTypes.bool.isRequired,
+  isDropdownOpen: PropTypes.bool,
+  ismobile: PropTypes.bool.isRequired,
+  userLeaveMeeting: PropTypes.func.isRequired,
+  openLeaveMenu: PropTypes.string,
+};
+
+const defaultProps = {
+  amIModerator: false,
+  isBreakoutRoom: false,
+  isDropdownOpen: false,
+};
+
+class LeaveMeetingButton extends PureComponent {
+  constructor(props) {
+    super(props);
+
+    // Set the logout code to 680 because it's not a real code and can be matched on the other side
+    this.LOGOUT_CODE = '680';
+
+    this.leaveSession = this.leaveSession.bind(this);
+  }
+
+  leaveSession() {
+    const { userLeaveMeeting } = this.props;
+
+    userLeaveMeeting();
+    Session.setItem('codeError', this.LOGOUT_CODE);
+  }
+
+  renderMenuItems() {
+    const {
+      intl, amIModerator, isBreakoutRoom, connected,
+    } = this.props;
+
+    const allowedToEndMeeting = amIModerator && !isBreakoutRoom;
+
+    const { allowLogout: allowLogoutSetting } = window.meetingClientSettings.public.app;
+
+    this.menuItems = [];
+
+    if (allowLogoutSetting && connected) {
+      this.menuItems.push({
+        key: isBreakoutRoom ? 'list-item-return-main-room' : 'list-item-logout',
+        dataTest: isBreakoutRoom ? 'returnToMainRoomButton' : 'directLogoutButton',
+        icon: isBreakoutRoom ? 'undo' : 'logout',
+        label: intl.formatMessage(isBreakoutRoom
+          ? intlMessages.returnToMainRoomLabel
+          : intlMessages.leaveSessionLabel),
+        description: intl.formatMessage(isBreakoutRoom
+          ? intlMessages.returnToMainRoomDesc
+          : intlMessages.leaveSessionDesc),
+        onClick: () => this.leaveSession(),
+      });
+    }
+
+    if (allowedToEndMeeting && connected) {
+      this.menuItems.push(
+        {
+          key: 'list-item-end-meeting',
+          dataTest: 'endMeetingButton',
+          icon: 'close',
+          label: intl.formatMessage(intlMessages.endMeetingLabel),
+          description: intl.formatMessage(intlMessages.endMeetingDesc),
+          onClick: () => this.setEndMeetingConfirmationModalIsOpen(true),
+        },
+      );
+    }
+
+    return this.menuItems;
+  }
+
+  render() {
+    const {
+      intl,
+      isDropdownOpen,
+      ismobile,
+      isRTL,
+      openLeaveMenu,
+      connected,
+    } = this.props;
+
+    const enableExitLabel = window?.meetingClientSettings?.public?.layout?.showLeaveSessionLabel;
+
+    const customStyles = { top: '1rem' };
+
+    const actions = this.renderMenuItems();
+
+    if (actions.length === 0 && connected) {
+      return null;
+    }
+
+    const isDisabled = actions.length === 0 && !connected;
+
+    return (
+      <Styled.LeaveButtonWrapper>
+        <BBBMenu
+          customStyles={!ismobile ? customStyles : null}
+          trigger={(
+            <Styled.LeaveButton
+              state={isDropdownOpen ? 'open' : 'closed'}
+              $isMobile={ismobile}
+              accessKey={openLeaveMenu}
+              aria-label={intl.formatMessage(intlMessages.leaveMeetingBtnLabel)}
+              label={intl.formatMessage(intlMessages.leaveMeetingBtnLabel)}
+              tooltipLabel={intl.formatMessage(intlMessages.leaveMeetingBtnLabel)}
+              description={intl.formatMessage(intlMessages.leaveMeetingBtnDesc)}
+              data-test="leaveMeetingDropdown"
+              icon="logout"
+              color="danger"
+              size="lg"
+              hideLabel={!enableExitLabel}
+              disabled={isDisabled}
+              // FIXME: Without onClick react proptypes keep warning
+              // even after the DropdownTrigger inject an onClick handler
+              onClick={() => null}
+            />
+          )}
+          actions={actions}
+          disabled={isDisabled}
+          overrideMobileStyles
+          opts={{
+            id: 'app-leave-meeting-menu',
+            keepMounted: true,
+            transitionDuration: 0,
+            elevation: 3,
+            getcontentanchorel: null,
+            fullwidth: 'true',
+            anchorOrigin: { vertical: 'bottom', horizontal: isRTL ? 'left' : 'right' },
+            transformorigin: { vertical: 'top', horizontal: isRTL ? 'left' : 'right' },
+          }}
+        />
+        <ModalRegistration id="leaveMeetingMenuModal" priority="low">
+          {({
+            isOpen, open, close,
+          }) => {
+            this.setEndMeetingConfirmationModalIsOpen = (value) => {
+              if (value) open();
+              else close();
+            };
+            if (!isOpen) return null;
+            return (
+              <EndMeetingConfirmationContainer
+                {...{
+                  isOpen,
+                  onRequestClose: () => close(),
+                  setIsOpen: (value) => {
+                    if (value) open();
+                    else close();
+                  },
+                  priority: 'low',
+                }}
+              />
+            );
+          }}
+        </ModalRegistration>
+      </Styled.LeaveButtonWrapper>
+    );
+  }
+}
+
+LeaveMeetingButton.propTypes = propTypes;
+LeaveMeetingButton.defaultProps = defaultProps;
+export default injectIntl(LeaveMeetingButton);

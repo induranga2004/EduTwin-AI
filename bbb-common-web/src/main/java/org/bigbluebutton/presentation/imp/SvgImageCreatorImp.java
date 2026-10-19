@@ -1,0 +1,673 @@
+package org.bigbluebutton.presentation.imp;
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+import org.apache.commons.io.FileUtils;
+import org.bigbluebutton.presentation.*;
+import org.bigbluebutton.presentation.handlers.AddNamespaceToSvgHandler;
+import org.bigbluebutton.presentation.handlers.Pdf2PngPageConverterHandler;
+import org.bigbluebutton.presentation.handlers.Png2SvgConversionHandler;
+import org.bigbluebutton.presentation.handlers.SvgConversionHandler;
+import org.bigbluebutton.presentation.handlers.PdfFontType3DetectorHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.gson.Gson;
+import com.zaxxer.nuprocess.NuProcess;
+import com.zaxxer.nuprocess.NuProcessBuilder;
+
+public class SvgImageCreatorImp implements SvgImageCreator {
+    // These values should be kept in sync across all BBB components.
+    // See the values under "process" in bbb-export-annotations/config/settings.json
+    private static final int MAX_SVG_WIDTH = 1440;
+    private static final int MAX_SVG_HEIGHT = 1080;
+
+    // Size (longest side, in pixels) of the renders compared to find the slides pdftocairo gets wrong
+    private static final int RENDER_COMPARISON_SIZE = 400;
+
+    private static Logger log = LoggerFactory.getLogger(SvgImageCreatorImp.class);
+
+    private SlidesGenerationProgressNotifier notifier;
+    private long imageTagThreshold;
+    private long useTagThreshold;
+    private long pathsThreshold;
+    private long maskTagThreshold = 0;
+    private long filterTagThreshold = 1;
+    private int convPdfToSvgTimeout = 60;
+    private int pdfFontsTimeout = 3;
+    private int svgResolutionPpi = 300;
+    private boolean forceRasterizeSlides = false;
+    private int pngWidthRasterizedSlides = 2048;
+	private String BLANK_SVG;
+    private int maxNumberOfAttempts = 3;
+    private ImageResizer imageResizer;
+    private ImageResolutionService imageResolutionService;
+
+    private long maxBigSvgSize;
+
+    @Override
+    public boolean createSvgImage(UploadedPresentation pres, int page, boolean useBlank) throws TimeoutException{
+        boolean success = false;
+        File svgImagesPresentationDir = determineSvgImagesDirectory(pres.getUploadedFile());
+        if (!svgImagesPresentationDir.exists())
+            svgImagesPresentationDir.mkdir();
+
+        File destSvg = new File(svgImagesPresentationDir.getAbsolutePath() + File.separatorChar + "slide" + page + ".svg");
+
+        if (useBlank) {
+            copyBlankSvg(destSvg);
+            return true;
+        }
+
+        try {
+            success = generateSvgImage(svgImagesPresentationDir, pres, page);
+        } catch (InterruptedException e) {
+            log.error("Interrupted Exception while generating images {}", pres.getName(), e);
+            success = false;
+        }
+
+        if (!success) {
+            if (destSvg.exists()) {
+                destSvg.delete();
+            }
+            copyBlankSvg(destSvg);
+        }
+
+
+        return success;
+    }
+
+    @Override
+    public void createBlank(UploadedPresentation pres, int page) {
+        File dir = determineSvgImagesDirectory(pres.getUploadedFile());
+
+        if (!dir.exists()) {
+            boolean created = dir.mkdir();
+            if (!created) {
+                log.warn("Failed to create SVG directory");
+                return;
+            }
+        }
+
+        File destSvg = new File(dir.getAbsolutePath() + File.separatorChar + "slide" + page + ".svg");
+        copyBlankSvg(destSvg);
+    }
+
+    private PdfFontType3DetectorHandler createDetectFontType3tHandler(boolean done, int page, String source, UploadedPresentation pres) {
+        long pdfFontsTimeout = this.pdfFontsTimeout;
+        if (pdfFontsTimeout > pres.getMaxPageConversionTime()) {
+            pdfFontsTimeout = pres.getMaxPageConversionTime();
+        }
+
+        //Detect if PDF contains text with font Type 3
+        //Pdftocairo has problem to convert Pdf to Svg when text contains font Type 3
+        //Case detects type 3, rasterize will be forced to avoid the problem
+        NuProcessBuilder detectFontType3Process = this.createDetectFontType3Process(source, page, pdfFontsTimeout);
+        PdfFontType3DetectorHandler detectFontType3tHandler = new PdfFontType3DetectorHandler("font3pdf-" + pres.getMeetingId() + "-" + pres.getId() + "-" + page);
+        detectFontType3Process.setProcessListener(detectFontType3tHandler);
+
+        NuProcess processDetectFontType3 = detectFontType3Process.start();
+        try {
+            processDetectFontType3.waitFor(pdfFontsTimeout + 1, TimeUnit.SECONDS);
+            done = true;
+        } catch (InterruptedException e) {
+            done = false;
+            log.error("InterruptedException while verifing font type 3 on {} page {}: {}", pres.getName(), page, e);
+        }
+        return detectFontType3tHandler;
+    }
+
+    private boolean generateSvgImage(File imagePresentationDir, UploadedPresentation pres, int page)
+            throws InterruptedException, TimeoutException {
+        long convPdfToSvgTimeout = this.convPdfToSvgTimeout;
+        if (convPdfToSvgTimeout > pres.getMaxPageConversionTime()) {
+            convPdfToSvgTimeout = pres.getMaxPageConversionTime();
+        }
+
+        long pdfFontsTimeout = this.pdfFontsTimeout;
+        if (pdfFontsTimeout > pres.getMaxPageConversionTime()) {
+            pdfFontsTimeout = pres.getMaxPageConversionTime();
+        }
+
+        String source = pres.getUploadedFile().getAbsolutePath();
+        String dest;
+
+        // Skip processing if the destination file exists, as it was likely restored from the cache
+        File destsvg = new File(imagePresentationDir.getAbsolutePath() + File.separatorChar + "slide" + page + ".svg");
+        if(destsvg.exists()) {
+            return true;
+        }
+
+        int countOfTimeOut = 0;
+
+        int numSlides = 1;
+        boolean done = false;
+        Boolean rasterizeCurrSlide = this.forceRasterizeSlides;
+
+        // Convert single image file
+        if (SupportedFileTypes.isImageFile(pres.getFileType())) {
+
+            dest = imagePresentationDir.getAbsolutePath() + File.separator + "slide-1.pdf";
+
+            NuProcessBuilder convertImgToSvg = new NuProcessBuilder(
+                    Arrays.asList("/usr/share/bbb-web/run-in-systemd.sh", convPdfToSvgTimeout + "s", "convert", source, "-auto-orient", dest));
+
+            Png2SvgConversionHandler pHandler = new Png2SvgConversionHandler("png2svg-" + pres.getMeetingId() + "-" + pres.getId() + "-" + page);
+            convertImgToSvg.setProcessListener(pHandler);
+
+            NuProcess process = convertImgToSvg.start();
+            try {
+                process.waitFor(convPdfToSvgTimeout + 1, TimeUnit.SECONDS);
+                done = true;
+            } catch (InterruptedException e) {
+                log.error("InterruptedException while converting to SVG {}", dest, e);
+                return done;
+            }
+
+            if(pHandler.isCommandTimeout()) {
+                log.error("Command execution (convertImgToSvg) exceeded the {} secs timeout for {} page {}.", convPdfToSvgTimeout, pres.getName(), page);
+            }
+
+            // Use the intermediate PDF file as source
+            source = dest;
+        }
+
+        //System.out.println("******** CREATING SVG page ");
+
+        // Continue image processing
+        long startConv = System.currentTimeMillis();
+
+        PdfFontType3DetectorHandler detectFontType3tHandler = this.createDetectFontType3tHandler(done, page, source, pres);
+
+        while (detectFontType3tHandler.isCommandTimeout()) {
+            // Took the first process of the function out of the count because it already happened above
+            if (countOfTimeOut >= maxNumberOfAttempts - 1) {
+                log.error("Command execution (detectFontType3) exceeded the {} secs timeout within {} attempts for {} page {}.", pdfFontsTimeout, maxNumberOfAttempts, pres.getName(), page);
+                throw new TimeoutException("(Timeout error) The slide " + page +
+                        " could not be processed within "
+                        + convPdfToSvgTimeout +
+                        " seconds.");
+            }
+            detectFontType3tHandler = this.createDetectFontType3tHandler(done, page, source, pres);
+            countOfTimeOut += 1;
+        }
+
+        if(detectFontType3tHandler.hasFontType3()) {
+            log.info("Font Type 3 identified on {} page {}, slide will be rasterized.", pres.getName(), page);
+            rasterizeCurrSlide = true;
+        }
+
+        SvgConversionHandler pHandler = new SvgConversionHandler("pdf2svg-" + pres.getMeetingId() + "-" + pres.getId() + "-" + page);
+
+        if(rasterizeCurrSlide == false) {
+            NuProcessBuilder convertPdfToSvg = createConversionProcess("-svg", page, source, destsvg.getAbsolutePath(),
+                    true, convPdfToSvgTimeout);
+
+            convertPdfToSvg.setProcessListener(pHandler);
+
+            NuProcess process = convertPdfToSvg.start();
+            try {
+                process.waitFor(convPdfToSvgTimeout + 1, TimeUnit.SECONDS);
+                done = true;
+            } catch (InterruptedException e) {
+                log.error("Interrupted Exception while generating SVG slides {}", pres.getName(), e);
+                return false;
+            }
+
+            if(pHandler.isCommandTimeout()) {
+                log.error("Command execution (convertPdfToSvg) exceeded the {} secs timeout for {} page {}.", convPdfToSvgTimeout, pres.getName(), page);
+            }
+
+            if (!done) {
+                return done;
+            }
+        }
+
+        boolean svgTooComplex = pHandler.numberOfImageTags() > imageTagThreshold ||
+                pHandler.numberOfPaths() > pathsThreshold ||
+                pHandler.numberOfUseTags() > useTagThreshold;
+
+        // <filter> tags only tell that the slide has soft masks, which are common and mostly convert
+        // fine. Rasterize just the slides where the cairo backend (the one generating the svg) renders
+        // something noticeably different from the splash backend. See issue #23953.
+        boolean softMaskRenderMismatch = false;
+        if (destsvg.length() > 0 && !svgTooComplex &&
+                filterTagThreshold > 0 && pHandler.numberOfFilterTags() >= filterTagThreshold) {
+            softMaskRenderMismatch = cairoRenderDiffersFromSplash(pres, page, source, convPdfToSvgTimeout);
+        }
+
+        if (destsvg.length() == 0 ||
+                svgTooComplex ||
+                (maskTagThreshold > 0 && pHandler.numberOfMaskTags() >= maskTagThreshold) ||
+                softMaskRenderMismatch ||
+                rasterizeCurrSlide) {
+
+            // The vector svg is kept when only its soft masks asked for the rasterization: if the
+            // raster cannot be embedded it is a better fallback than a blank slide. Otherwise we need
+            // to delete the destination file as we are starting a new conversion process
+            boolean vectorFallback = destsvg.length() > 0 && !svgTooComplex;
+            if (destsvg.exists() && !vectorFallback) {
+                destsvg.delete();
+            }
+
+            done = false;
+
+            if(!rasterizeCurrSlide) {
+                Map<String, Object> logData = new HashMap<String, Object>();
+                logData.put("meetingId", pres.getMeetingId());
+                logData.put("presId", pres.getId());
+                logData.put("filename", pres.getName());
+                logData.put("page", page);
+                logData.put("convertSuccess", pHandler.isCommandSuccessful());
+                logData.put("fileExists", destsvg.exists());
+                logData.put("numberOfImages", pHandler.numberOfImageTags());
+                logData.put("numberOfPaths", pHandler.numberOfPaths());
+                logData.put("numberOfUseTags", pHandler.numberOfUseTags());
+                logData.put("numberOfMasks", pHandler.numberOfMaskTags());
+                logData.put("numberOfFilters", pHandler.numberOfFilterTags());
+                logData.put("softMaskRenderMismatch", softMaskRenderMismatch);
+                logData.put("logCode", "potential_problem_with_svg");
+                logData.put("message", "Potential problem with generated SVG");
+                Gson gson = new Gson();
+                String logStr = gson.toJson(logData);
+
+                log.warn(" --analytics-- data={}", logStr);
+            }
+
+
+            File tempPng = null;
+            String basePresentationame = UUID.randomUUID().toString();
+            try {
+                tempPng = File.createTempFile(basePresentationame + "-" + page, ".png");
+            } catch (IOException ioException) {
+                // We should never fall into this if the server is correctly
+                // configured
+                Map<String, Object> logData = new HashMap<String, Object>();
+                logData = new HashMap<String, Object>();
+                logData.put("meetingId", pres.getMeetingId());
+                logData.put("presId", pres.getId());
+                logData.put("filename", pres.getName());
+                logData.put("logCode", "problem_with_creating_svg");
+                logData.put("message", "Unable to create temporary files");
+                Gson gson = new Gson();
+                String logStr = gson.toJson(logData);
+                log.error(" --analytics-- data={}", logStr, ioException);
+            }
+
+            // Step 1: Rasterize the PDF page to PNG using poppler's splash backend (pdftoppm).
+            // We intentionally avoid pdftocairo (cairo backend) here: it misplaces an alpha soft
+            // mask (SMask) whose transparency group carries a /Matrix, dropping the masked content
+            // from the raster as well. The splash backend renders it correctly. See issue #23953.
+            NuProcessBuilder convertPdfToPng = createRasterizationProcess(page, source,
+                        tempPng.getAbsolutePath().substring(0, tempPng.getAbsolutePath().lastIndexOf('.')),
+                    convPdfToSvgTimeout);
+
+            Pdf2PngPageConverterHandler pngHandler = new Pdf2PngPageConverterHandler("pdf2png-" + pres.getMeetingId() + "-" + pres.getId() + "-" + page);
+            convertPdfToPng.setProcessListener(pngHandler);
+            NuProcess pngProcess = convertPdfToPng.start();
+            try {
+                pngProcess.waitFor(convPdfToSvgTimeout + 1, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                log.error("Interrupted Exception while generating PNG image {}", pres.getName(), e);
+                return false;
+            }
+
+            if(pngHandler.isCommandTimeout()) {
+                log.error("Command execution (convertPdfToPng) exceeded the {} secs timeout for {} page {}.", convPdfToSvgTimeout, pres.getName(), page);
+            }
+
+            boolean rasterWritten = false;
+
+            if(tempPng.length() > 0) {
+                try  {
+                    byte[] pngData = readFileToByteArray(tempPng);
+                    String base64encodedPng = Base64.getEncoder().encodeToString(pngData);
+                    int base64Size = base64encodedPng.getBytes(StandardCharsets.UTF_8).length;
+
+                    // Maximum base64 encoded PNG size to embed in the SVG (currently 4MB)
+                    int browserLimit = 2 * 2 * 1024 * 1024;
+
+                    int width = MAX_SVG_WIDTH;
+                    int height = MAX_SVG_HEIGHT;
+
+                    ImageResolution imageResolution = imageResolutionService.identifyImageResolution(tempPng);
+                    log.debug("Identified page {} image {} width={} and height={}", page, pres.getName(), imageResolution.getWidth(), imageResolution.getHeight());
+
+                    if (imageResolution.getWidth() != 0 && imageResolution.getHeight() != 0) {
+                        width = imageResolution.getWidth();
+                        height = imageResolution.getHeight();
+                    }
+
+                    if(imageResolution.getWidth() > MAX_SVG_WIDTH || imageResolution.getHeight() > MAX_SVG_HEIGHT) {
+                        log.info("The image exceeds max dimension allowed, it will be resized.");
+                        imageResizer.resize(tempPng, MAX_SVG_WIDTH + "x" + MAX_SVG_HEIGHT);
+                        imageResolution = imageResolutionService.identifyImageResolution(tempPng);
+                        if (imageResolution.getWidth() != 0 && imageResolution.getHeight() != 0) {
+                            width = imageResolution.getWidth();
+                            height = imageResolution.getHeight();
+                        } else {
+                            log.warn("Image resolution after resize returned 0 for page {} of {}, using defaults {}x{}",
+                                     page, pres.getName(), width, height);
+                        }
+
+                        // The full size render is the one embedded, shown at the resized dimensions.
+                        // When it is too large, settle for the resized render before giving up.
+                        if (base64Size > browserLimit) {
+                            base64encodedPng = Base64.getEncoder().encodeToString(readFileToByteArray(tempPng));
+                            base64Size = base64encodedPng.getBytes(StandardCharsets.UTF_8).length;
+                        }
+                    }
+
+                    if (base64Size > browserLimit) {
+                        log.error("Encoded PNG is too large for the browser");
+                    } else {
+                        String svg = createSvgWithEmbeddedPng(base64encodedPng, width, height);
+                        replaceFile(destsvg, svg);
+                        // From here on the vector svg is gone
+                        vectorFallback = false;
+                        rasterWritten = true;
+                    }
+                } catch (IOException e) {
+                    log.error("Error during conversion from PNG to SVG: {}", e.getMessage());
+                }
+
+                if(rasterWritten) {
+                    // Step 3: Add SVG namespace to the destination file
+                    // Check : https://phabricator.wikimedia.org/T43174
+                    NuProcessBuilder addNameSpaceToSVG = new NuProcessBuilder(Arrays.asList(
+                            "/usr/share/bbb-web/run-in-systemd.sh", convPdfToSvgTimeout + "s",
+                            "/bin/sh", "-c",
+                            "sed -i "
+                                    + "'4s|>| xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" version=\"1.2\">|' "
+                                    + destsvg.getAbsolutePath()));
+
+                    AddNamespaceToSvgHandler namespaceHandler = new AddNamespaceToSvgHandler("svg-namespace-" + pres.getMeetingId() + "-" + pres.getId() + "-" + page);
+                    addNameSpaceToSVG.setProcessListener(namespaceHandler);
+                    NuProcess namespaceProcess = addNameSpaceToSVG.start();
+                    try {
+                        namespaceProcess.waitFor(convPdfToSvgTimeout + 1, TimeUnit.SECONDS);
+                    } catch (InterruptedException e) {
+                        log.error("Interrupted Exception while adding SVG namespace {}", pres.getName(), e);
+                        return false;
+                    }
+                    if (namespaceHandler.isCommandTimeout()) {
+                        log.error("Command execution (addNameSpaceToSVG) exceeded the {} secs timeout for {} page {}.", convPdfToSvgTimeout, pres.getName(), page);
+                    }
+
+                    done = true;
+                }
+            }
+
+            // Delete the temporary PNG after finishing the image conversion
+            if(tempPng.exists()) {
+                tempPng.delete();
+            }
+
+            if (!done && vectorFallback && destsvg.length() > 0) {
+                log.warn("Rasterization failed for {} page {}, keeping the vector SVG.", pres.getName(), page);
+                done = true;
+            }
+        }
+
+
+        long endConv = System.currentTimeMillis();
+
+        long svgLength = destsvg.length();
+        if (maxBigSvgSize > 0 && svgLength > maxBigSvgSize) {
+            log.warn("Generated SVG [{}] is too large: {}; using blank SVG instead", destsvg, svgLength);
+            return false;
+        }
+
+        if (done) {
+            return true;
+        }
+
+        copyBlankSvg(destsvg);
+
+        Map<String, Object> logData = new HashMap<String, Object>();
+        logData.put("meetingId", pres.getMeetingId());
+        logData.put("presId", pres.getId());
+        logData.put("filename", pres.getName());
+        logData.put("page", page);
+        logData.put("logCode", "create_svg_images_failed");
+        logData.put("message", "Failed to create svg image.");
+
+        Gson gson = new Gson();
+        String logStr = gson.toJson(logData);
+        log.warn(" --analytics-- data={}", logStr);
+
+        return false;
+    }
+
+    private NuProcessBuilder createConversionProcess(String format, int page, String source, String destFile,
+            boolean analyze, long timeout) {
+        String rawCommand = "pdftocairo -r " + this.svgResolutionPpi + " " + format + (analyze ? "" : " -singlefile");
+
+        //Resize png resolution to avoid too large files
+        if(format.equals("-png") && this.pngWidthRasterizedSlides != 0) {
+            rawCommand += " -scale-to-x " + this.pngWidthRasterizedSlides + " -scale-to-y -1 ";
+        }
+
+        rawCommand  += " -q -f " + String.valueOf(page) + " -l " + String.valueOf(page) + " " + source + " " + destFile;
+        if (analyze) {
+            rawCommand += " && grep -oE '<image|<path|<use|<mask|<filter' "+destFile+" | sort | uniq -c ";
+        }
+
+        return new NuProcessBuilder(Arrays.asList("/usr/share/bbb-web/run-in-systemd.sh", timeout + "s", "/bin/sh", "-c", rawCommand));
+    }
+
+    // Rasterizes a single PDF page to PNG using poppler's splash backend (pdftoppm) instead of
+    // the cairo backend (pdftocairo -png). The cairo backend drops the content behind some soft
+    // masks (an alpha SMask whose transparency group carries a /Matrix), whereas the splash
+    // backend composites it correctly. "-singlefile" makes pdftoppm write exactly
+    // "<destFileRoot>.png" (no page number suffix), matching the temp file the caller created.
+    // See issue #23953.
+    private NuProcessBuilder createRasterizationProcess(int page, String source, String destFileRoot, long timeout) {
+        String rawCommand = "pdftoppm -q -png -singlefile -r " + this.svgResolutionPpi;
+
+        //Resize png resolution to avoid too large files
+        if (this.pngWidthRasterizedSlides != 0) {
+            rawCommand += " -scale-to-x " + this.pngWidthRasterizedSlides + " -scale-to-y -1";
+        }
+
+        rawCommand += " -f " + String.valueOf(page) + " -l " + String.valueOf(page) + " " + source + " " + destFileRoot;
+
+        return new NuProcessBuilder(Arrays.asList("/usr/share/bbb-web/run-in-systemd.sh", timeout + "s", "/bin/sh", "-c", rawCommand));
+    }
+
+    // Renders a single PDF page at low resolution with both poppler backends, cairo (pdftocairo)
+    // and splash (pdftoppm), so the two results can be compared.
+    private NuProcessBuilder createRenderComparisonProcess(int page, String source, String cairoFileRoot,
+            String splashFileRoot, long timeout) {
+        String pageArgs = " -q -png -singlefile -scale-to " + RENDER_COMPARISON_SIZE
+                + " -f " + String.valueOf(page) + " -l " + String.valueOf(page) + " " + source + " ";
+        String rawCommand = "pdftocairo" + pageArgs + cairoFileRoot + " && pdftoppm" + pageArgs + splashFileRoot;
+
+        return new NuProcessBuilder(Arrays.asList("/usr/share/bbb-web/run-in-systemd.sh", timeout + "s", "/bin/sh", "-c", rawCommand));
+    }
+
+    // Tells whether the cairo backend, the one generating the svg, renders the page noticeably
+    // different from the splash backend. The svg is kept whenever that cannot be determined.
+    private boolean cairoRenderDiffersFromSplash(UploadedPresentation pres, int page, String source, long timeout)
+            throws InterruptedException {
+        File cairoPng = null;
+        File splashPng = null;
+        try {
+            cairoPng = File.createTempFile("cairo-" + page + "-", ".png");
+            splashPng = File.createTempFile("splash-" + page + "-", ".png");
+
+            NuProcessBuilder renderBoth = createRenderComparisonProcess(page, source,
+                    cairoPng.getAbsolutePath().substring(0, cairoPng.getAbsolutePath().lastIndexOf('.')),
+                    splashPng.getAbsolutePath().substring(0, splashPng.getAbsolutePath().lastIndexOf('.')),
+                    timeout);
+
+            Pdf2PngPageConverterHandler handler = new Pdf2PngPageConverterHandler("pdf2png-compare-" + pres.getMeetingId() + "-" + pres.getId() + "-" + page);
+            renderBoth.setProcessListener(handler);
+            NuProcess process = renderBoth.start();
+            process.waitFor(timeout + 1, TimeUnit.SECONDS);
+
+            if (handler.isCommandTimeout()) {
+                log.error("Command execution (renderComparison) exceeded the {} secs timeout for {} page {}.", timeout, pres.getName(), page);
+            }
+
+            if (cairoPng.length() == 0 || splashPng.length() == 0) {
+                log.warn("Unable to render {} page {} with both backends, keeping the SVG.", pres.getName(), page);
+                return false;
+            }
+
+            boolean differ = SlideRenderComparator.differ(cairoPng, splashPng);
+            if (differ) {
+                log.info("pdftocairo renders {} page {} differently from pdftoppm, slide will be rasterized.", pres.getName(), page);
+            }
+            return differ;
+        } catch (IOException e) {
+            log.warn("Unable to compare the renders of {} page {}, keeping the SVG: {}", pres.getName(), page, e.getMessage());
+            return false;
+        } finally {
+            if (cairoPng != null) {
+                cairoPng.delete();
+            }
+            if (splashPng != null) {
+                splashPng.delete();
+            }
+        }
+    }
+
+    private NuProcessBuilder createDetectFontType3Process(String source, int page, long timeout) {
+        String rawCommand  = "pdffonts -f " + String.valueOf(page) + " -l " + String.valueOf(page) + " " + source;
+        rawCommand += " | grep -m 1 'Type 3'";
+        rawCommand += " | wc -l";
+
+        return new NuProcessBuilder(Arrays.asList("/usr/share/bbb-web/run-in-systemd.sh", timeout + "s", "/bin/sh", "-c", rawCommand));
+    }
+
+    private File determineSvgImagesDirectory(File presentationFile) {
+        return new File(presentationFile.getParent() + File.separatorChar + "svgs");
+    }
+
+    private void copyBlankSvgs(File svgssDir, int pageCount) {
+    	File[] svgs = svgssDir.listFiles();
+
+		if (svgs.length != pageCount) {
+			for (int i = 1; i <= pageCount; i++) {
+				File svg = new File(svgssDir.getAbsolutePath() + File.separator + "slide" + i + ".svg");
+				if (!svg.exists()) {
+					log.info("Copying blank svg for slide {}", i);
+					copyBlankSvg(svg);
+				}
+			}
+		}
+    }
+
+	private void copyBlankSvg(File svg) {
+		try {
+            log.info("Copying blank SVG to {}", svg);
+			FileUtils.copyFile(new File(BLANK_SVG), svg);
+		} catch (IOException e) {
+			log.error("IOException while copying blank SVG.");
+		}
+	}
+
+    private byte[] readFileToByteArray(File file) throws IOException {
+        try (FileInputStream fis = new FileInputStream(file);
+             ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = fis.read(buffer)) != -1) {
+                bos.write(buffer, 0, bytesRead);
+            }
+            return bos.toByteArray();
+        }
+    }
+
+    // Writes the content next to the file and moves it over the file only once complete, so
+    // that a failed write leaves the file as it was
+    static void replaceFile(File file, String content) throws IOException {
+        Path temp = Paths.get(file.getAbsolutePath() + ".tmp");
+        try {
+            Files.writeString(temp, content);
+            Files.move(temp, file.toPath(), StandardCopyOption.ATOMIC_MOVE);
+        } finally {
+            temp.toFile().delete();
+        }
+    }
+
+    private String createSvgWithEmbeddedPng(String base64Png, int width, int height) {
+        return """
+            <svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d">
+                <image href="data:image/png;base64,%s" width="%d" height="%d"/>
+            </svg>
+            """.formatted(width, height, base64Png, width, height);
+    }
+
+	public void setBlankSvg(String blankSvg) {
+		BLANK_SVG = blankSvg;
+	}
+    public void setMaxNumberOfAttempts(int maxNumberOfAttempts) {
+        this.maxNumberOfAttempts = maxNumberOfAttempts;
+    }
+    public void setPdfFontsTimeout(int pdfFontsTimeout) {
+        this.pdfFontsTimeout = pdfFontsTimeout;
+    }
+
+    public void setImageTagThreshold(long threshold) {
+        imageTagThreshold = threshold;
+    }
+
+    public void setUseTagThreshold(long threshold) {
+        useTagThreshold = threshold;
+    }
+
+    public void setPathsThreshold(long threshold) {
+        pathsThreshold = threshold;
+    }
+
+    public void setMaskTagThreshold(long threshold) {
+        maskTagThreshold = threshold;
+    }
+
+    public void setFilterTagThreshold(long threshold) {
+        filterTagThreshold = threshold;
+    }
+    
+    public void setSlidesGenerationProgressNotifier(
+        SlidesGenerationProgressNotifier notifier) {
+      this.notifier = notifier;
+    }
+
+    public void setConvPdfToSvgTimeout(int convPdfToSvgTimeout) {
+        this.convPdfToSvgTimeout = convPdfToSvgTimeout;
+    }
+
+    public void setSvgResolutionPpi(int svgResolutionPpi) {
+        this.svgResolutionPpi = svgResolutionPpi;
+    }
+
+    public void setForceRasterizeSlides(boolean forceRasterizeSlides) {
+        this.forceRasterizeSlides = forceRasterizeSlides;
+    }
+
+    public void setPngWidthRasterizedSlides(int pngWidthRasterizedSlides) {
+        this.pngWidthRasterizedSlides = pngWidthRasterizedSlides;
+    }
+
+    public void setImageResizer(ImageResizer imageResizer) {
+        this.imageResizer = imageResizer;
+    }
+
+    public void setImageResolutionService(ImageResolutionService imageResolutionService) {
+        this.imageResolutionService = imageResolutionService;
+    }
+
+    public void setMaxBigSvgSize(long maxBigSvgSize) {
+        this.maxBigSvgSize = maxBigSvgSize;
+    }
+}

@@ -1,0 +1,71 @@
+table:
+  name: v_chat_message_public
+  schema: public
+configuration:
+  column_config: {}
+  custom_column_names: {}
+  custom_name: chat_message_public
+  custom_root_fields: {}
+object_relationships:
+  - name: deletedBy
+    using:
+      manual_configuration:
+        column_mapping:
+          deletedByUserId: userId
+          meetingId: meetingId
+        insertion_order: null
+        remote_table:
+          name: v_user_ref
+          schema: public
+  - name: replyToMessage
+    using:
+      manual_configuration:
+        column_mapping:
+          replyToMessageId: messageId
+        insertion_order: null
+        remote_table:
+          name: v_chat_message_public
+          schema: public
+  - name: user
+    using:
+      manual_configuration:
+        column_mapping:
+          meetingId: meetingId
+          senderId: userId
+        insertion_order: null
+        remote_table:
+          name: v_user_ref
+          schema: public
+array_relationships:
+  - name: reactions
+    using:
+      manual_configuration:
+        column_mapping:
+          meetingId: meetingId
+          messageId: messageId
+        insertion_order: null
+        remote_table:
+          name: v_chat_message_reaction
+          schema: public
+select_permissions:
+  - role: bbb_client
+    permission:
+      columns:
+        - chatEmphasizedText
+        - chatId
+        - correlationId
+        - createdAt
+        - deletedAt
+        - message
+        - messageAsHtml
+        - messageId
+        - messageMetadata
+        - messageSequence
+        - messageType
+        - senderId
+        - senderName
+        - senderRole
+        - editedAt
+      filter:
+        meetingId:
+          _eq: X-Hasura-MeetingId
