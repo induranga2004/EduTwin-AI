@@ -1,0 +1,146 @@
+import { gql } from '@apollo/client';
+import { BreakoutUser } from './room-managment-state/types';
+
+export interface getUserResponse {
+  user: Array<BreakoutUser>;
+}
+
+export interface breakoutRoom {
+  sequence: number;
+  name: string;
+  breakoutRoomMeetingId: string;
+  participants: Array<{
+    user: {
+      name: string;
+      userId: string;
+      isModerator: boolean;
+    }
+  }>
+}
+
+export interface getBreakoutsResponse {
+  breakoutRoom: Array<breakoutRoom>
+}
+
+export interface LastBreakoutData {
+  user: {
+    lastBreakoutRoom: {
+      breakoutRoomMeetingId: string;
+      isUserCurrentlyInRoom: boolean;
+      sequence: number;
+      shortName: string;
+      userId: string;
+    }
+  }[];
+  breakoutRoom_createdLatest: {
+    sequence: number;
+    shortName: string;
+    isDefaultName: boolean;
+  }[];
+}
+
+export interface getMeetingGroupResponse {
+  meeting_group: {
+    groupId : string;
+    name: string;
+    usersExtId: string[];
+  }[];
+}
+
+export const getBreakouts = gql`
+  query getBreakouts {
+    breakoutRoom {
+      sequence
+      name
+      breakoutRoomMeetingId
+      participants {
+        user {
+          name
+          userId
+          isModerator
+        }
+      }
+    }
+  }
+`;
+
+export const getLastBreakouts = gql`
+  query getLastBreakouts {
+    user {
+      lastBreakoutRoom {
+        breakoutRoomMeetingId
+        isUserCurrentlyInRoom
+        sequence
+        shortName
+        userId
+      }
+    }
+    breakoutRoom_createdLatest {
+      sequence
+      shortName
+      isDefaultName
+    }
+  }
+`;
+
+export const getMeetingGroup = gql`
+  query getMeetingGroup {
+    meeting_group(order_by: {groupIndex: asc}) {
+      groupId
+      name
+      usersExtId
+    }
+ }
+`;
+
+export const getUser = gql`
+  query getUser {
+    user(
+      where: { bot: {_eq: false } }
+      order_by: [
+        {presenter: desc},
+        {role: asc},
+        {isDialIn: desc},
+        {whiteboardWriteAccess: desc},
+        {nameSortable: asc},
+        {registeredAt: asc},
+        {userId: asc}
+      ]) {
+      meetingId
+      extId
+      userId
+      name
+      isModerator
+    }
+  }
+`;
+
+export const getUserSubscription = gql`
+  subscription getUserSubscription {
+    user(
+      where: { bot: {_eq: false } }
+      order_by: [
+        {presenter: desc},
+        {role: asc},
+        {isDialIn: desc},
+        {whiteboardWriteAccess: desc},
+        {nameSortable: asc},
+        {registeredAt: asc},
+        {userId: asc}
+      ]) {
+      meetingId
+      extId
+      userId
+      name
+      isModerator
+    }
+  }
+`;
+
+export default {
+  getUser,
+  getUserSubscription,
+  getBreakouts,
+  getLastBreakouts,
+  getMeetingGroup,
+};

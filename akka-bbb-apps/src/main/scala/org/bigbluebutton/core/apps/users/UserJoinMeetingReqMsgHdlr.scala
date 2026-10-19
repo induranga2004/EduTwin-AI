@@ -1,0 +1,233 @@
+package org.bigbluebutton.core.apps.users
+
+import org.bigbluebutton.common2.msgs.UserJoinMeetingReqMsg
+import org.bigbluebutton.core.apps.breakout.BreakoutHdlrHelpers
+import org.bigbluebutton.core.apps.mediagroups.{ MediaGroupApp }
+import org.bigbluebutton.common2.msgs.LiveKitRoomRef
+import org.bigbluebutton.core.db.{BreakoutRoomDAO, NotificationDAO, UserDAO, UserStateDAO}
+import org.bigbluebutton.core.models.{ LiveKitMembership, LiveKitMemberships }
+import org.bigbluebutton.core.domain.MeetingState2x
+import org.bigbluebutton.core.graphql.GraphqlMiddleware
+import org.bigbluebutton.core.models._
+import org.bigbluebutton.core.running._
+import org.bigbluebutton.core2.message.senders._
+
+trait UserJoinMeetingReqMsgHdlr extends HandlerHelpers {
+  this: MeetingActor =>
+  val liveMeeting: LiveMeeting
+  val outGW: OutMsgRouter
+
+  def handleUserJoinMeetingReqMsg(msg: UserJoinMeetingReqMsg, state: MeetingState2x): MeetingState2x = {
+    log.info("Received user joined meeting. user {} meetingId={}", msg.body.userId, msg.header.meetingId)
+
+    Users2x.findWithIntId(liveMeeting.users2x, msg.body.userId) match {
+      case Some(user) => handleUserReconnecting(user, msg, state)
+      case None       => handleUserJoining(msg, state)
+    }
+  }
+
+  private def handleUserJoining(msg: UserJoinMeetingReqMsg, state: MeetingState2x): MeetingState2x = {
+
+    val regUser = RegisteredUsers.getRegisteredUserWithToken(msg.body.authToken, msg.body.userId, liveMeeting.registeredUsers)
+    log.info(s"Number of registered users [${RegisteredUsers.numRegisteredUsers(liveMeeting.registeredUsers)}]")
+
+    regUser.fold {
+      handleFailedUserJoin(msg, "Invalid auth token.", EjectReasonCode.VALIDATE_TOKEN)
+      state
+    } { user =>
+      val validationResult = for {
+        _ <- checkIfUserGuestStatusIsAllowed(user)
+        _ <- checkIfUserIsBanned(user)
+        _ <- checkIfUserAccessRevoked(user)
+        _ <- checkIfUserEjected(user)
+        _ <- checkIfUserLoggedOut(user)
+        _ <- validateMaxParticipants(user)
+      } yield user
+
+      validationResult.fold(
+        reason => handleFailedUserJoin(msg, reason._1, reason._2),
+        validUser => handleSuccessfulUserJoin(msg, validUser, state)
+      )
+    }
+  }
+
+  private def handleSuccessfulUserJoin(msg: UserJoinMeetingReqMsg, regUser: RegisteredUser, state: MeetingState2x) = {
+    var newState = userJoinMeeting(outGW, msg.body.authToken, msg.body.clientType, msg.body.clientIsMobile, liveMeeting, state)
+
+    // Enroll user in the public media groups if they exist.
+    if (MediaGroupApp.publicGroupsExist(newState.mediaGroups)) {
+      newState = newState.update(
+        MediaGroupApp.enrollUserInPublicGroups(liveMeeting, regUser.id, newState.mediaGroups)
+      )
+    }
+    updateParentMeetingWithNewListOfUsers()
+    notifyPreviousUsersWithSameExtId(regUser)
+    clearCachedVoiceUser(regUser)
+    clearExpiredUserState(regUser)
+    val newRegUser = RegisteredUsers.updateUserJoin(liveMeeting.registeredUsers, regUser, joined = true)
+    forceUserGraphqlReconnection(newRegUser)
+    updateGraphqlDatabase(newRegUser)
+    generateLivekitToken(newRegUser, liveMeeting)
+    addBreakoutRoomsForLateUser(newRegUser, liveMeeting, state)
+
+    newState
+  }
+
+  private def handleFailedUserJoin(msg: UserJoinMeetingReqMsg, failReason: String, failReasonCode: String) = {
+    log.info("Ignoring user {} attempt to join in meeting {}. Reason Code: {}, Reason Message: {}", msg.body.userId, msg.header.meetingId, failReasonCode, failReason)
+    UserDAO.updateJoinError(msg.header.meetingId, msg.body.userId, failReasonCode, failReason)
+    state
+  }
+
+  private def handleUserReconnecting(user: UserState, msg: UserJoinMeetingReqMsg, state: MeetingState2x): MeetingState2x = {
+    if (user.userLeftFlag.left) {
+      resetUserLeftFlag(msg)
+    }
+    state
+  }
+
+  private def resetUserLeftFlag(msg: UserJoinMeetingReqMsg) = {
+    log.info("Resetting flag that user left meeting. user {}", msg.body.userId)
+    sendUserLeftFlagUpdatedEvtMsg(outGW, liveMeeting, msg.body.userId, leftFlag = false)
+    Users2x.resetUserLeftFlag(liveMeeting.users2x, msg.body.userId)
+  }
+
+  private def validateMaxParticipants(regUser: RegisteredUser): Either[(String, String), Unit] = {
+    val userHasJoinedAlready = RegisteredUsers.checkUserExtIdHasJoined(regUser.externId, liveMeeting.registeredUsers)
+    val maxParticipants = liveMeeting.props.usersProp.maxUsers
+
+    if (maxParticipants > 0 && //0 = no limit
+      RegisteredUsers.numUniqueJoinedUsers(liveMeeting.registeredUsers) >= maxParticipants &&
+      !userHasJoinedAlready && !regUser.bot) {
+      Left(("The maximum number of participants allowed for this meeting has been reached.", EjectReasonCode.MAX_PARTICIPANTS))
+    } else {
+      Right(())
+    }
+  }
+
+  private def checkIfUserGuestStatusIsAllowed(user: RegisteredUser): Either[(String, String), Unit] = {
+    if (user.guestStatus != GuestStatus.ALLOW) {
+      Left(("User is not allowed to join", EjectReasonCode.PERMISSION_FAILED))
+    } else {
+      Right(())
+    }
+  }
+
+  private def checkIfUserIsBanned(user: RegisteredUser): Either[(String, String), Unit] = {
+    if (user.banned) {
+      Left(("Banned user rejoining", EjectReasonCode.BANNED_USER_REJOINING))
+    } else {
+      Right(())
+    }
+  }
+
+  private def checkIfUserAccessRevoked(user: RegisteredUser): Either[(String, String), Unit] = {
+    if (RegisteredUsers.isExtIdRevoked(liveMeeting.registeredUsers, user.externId)) {
+      Left(("User is not allowed to join", EjectReasonCode.PERMISSION_FAILED))
+    } else {
+      Right(())
+    }
+  }
+
+  private def checkIfUserEjected(user: RegisteredUser): Either[(String, String), Unit] = {
+    if (user.ejected) {
+      Left(("User had ejected", EjectReasonCode.EJECT_USER))
+    } else {
+      Right(())
+    }
+  }
+
+  private def checkIfUserLoggedOut(user: RegisteredUser): Either[(String, String), Unit] = {
+    if (user.loggedOut) {
+      Left(("User had logged out", EjectReasonCode.USER_LOGGED_OUT))
+    } else {
+      Right(())
+    }
+  }
+
+  private def updateParentMeetingWithNewListOfUsers() = {
+    if (liveMeeting.props.meetingProp.isBreakout) {
+      BreakoutHdlrHelpers.updateParentMeetingWithUsers(liveMeeting, eventBus)
+    }
+  }
+
+  private def notifyPreviousUsersWithSameExtId(regUser: RegisteredUser) = {
+    RegisteredUsers.findAllWithExternUserId(regUser.externId, liveMeeting.registeredUsers)
+      .filter(_.id != regUser.id)
+      .foreach { previousUser =>
+        sendUserConnectedNotification(previousUser, regUser, liveMeeting)
+      }
+  }
+
+  private def sendUserConnectedNotification(previousUser: RegisteredUser, newUser: RegisteredUser, liveMeeting: LiveMeeting) = {
+    val notifyUserEvent = MsgBuilder.buildNotifyUserInMeetingEvtMsg(
+      previousUser.id,
+      liveMeeting.props.meetingProp.intId,
+      "info",
+      "promote",
+      "app.mobileAppModal.userConnectedWithSameId",
+      "Notification to warn that user connect again from other browser/device",
+      Map("userName" -> newUser.name)
+    )
+    outGW.send(notifyUserEvent)
+    NotificationDAO.insert(notifyUserEvent)
+  }
+
+  private def generateLivekitToken(regUser: RegisteredUser, liveMeeting: LiveMeeting) = {
+    if (isUsingLiveKit(liveMeeting)) {
+      val roomName = liveMeeting.props.meetingProp.intId
+      val purpose  = "primary"
+      val grant    = HandlerHelpers.buildLiveKitTokenGrant(
+        room         = roomName,
+        canPublish   = true,
+        canSubscribe = true,
+      )
+      val metadata = buildLiveKitParticipantMetadata(liveMeeting)
+      val roomRef  = LiveKitRoomRef(roomName, purpose)
+
+      val membership = LiveKitMembership(
+        userId   = regUser.id,
+        roomName = roomName,
+        purpose  = purpose,
+        grant    = grant,
+        metadata = metadata,
+        token    = None,
+      )
+      LiveKitMemberships.add(liveMeeting.liveKitMemberships, membership)
+
+      val generateLiveKitTokenReqMsg = MsgBuilder.buildGenerateLiveKitTokenReqMsg(
+        roomName,
+        regUser.id,
+        regUser.name,
+        roomRef,
+        grant,
+        metadata,
+      )
+      outGW.send(generateLiveKitTokenReqMsg)
+    }
+  }
+
+  private def addBreakoutRoomsForLateUser(regUser: RegisteredUser, liveMeeting: LiveMeeting, state: MeetingState2x): Unit = {
+    for {
+      breakoutModel <- state.breakout
+    } yield {
+      BreakoutRoomDAO.assignUserToRandomRoom(regUser, breakoutModel, liveMeeting)
+    }
+  }
+
+  private def clearCachedVoiceUser(regUser: RegisteredUser) =
+    // fresh user joined (not due to reconnection). Clear (pop) the cached voice user
+    VoiceUsers.recoverVoiceUser(liveMeeting.voiceUsers, regUser.id)
+
+  private def clearExpiredUserState(regUser: RegisteredUser) =
+    UserStateDAO.updateExpired(regUser.meetingId, regUser.id, expired = false)
+
+  private def forceUserGraphqlReconnection(regUser: RegisteredUser) = {
+    GraphqlMiddleware.requestGraphqlReconnection(regUser.sessionToken, "user_joined")
+  }
+
+  private def updateGraphqlDatabase(regUser: RegisteredUser) = {
+      UserDAO.update(regUser)
+  }
+
+}

@@ -1,0 +1,543 @@
+package org.bigbluebutton.core.models
+
+import com.softwaremill.quicklens._
+import org.bigbluebutton.core.db.{ UserLockSettingsDAO, UserReactionDAO, UserStateDAO }
+
+object Users2x {
+  def findWithIntId(users: Users2x, intId: String): Option[UserState] = {
+    users.toVector find (u => u.intId == intId)
+  }
+
+  def findAll(users: Users2x): Vector[UserState] = users.toVector
+
+  def add(users: Users2x, user: UserState): Option[UserState] = {
+    users.save(user)
+    UserStateDAO.update(user)
+    Some(user)
+  }
+
+  def remove(users: Users2x, intId: String): Option[UserState] = {
+    //UserDAO.softDelete(intId)
+    users.remove(intId)
+  }
+
+  def setUserLeftFlag(users: Users2x, intId: String): Option[UserState] = {
+    for {
+      u <- findWithIntId(users, intId)
+    } yield {
+      val newUser = u.copy(userLeftFlag = UserLeftFlag(true, System.currentTimeMillis()))
+      users.save(newUser)
+      UserStateDAO.update(newUser)
+      newUser
+    }
+  }
+
+  def resetUserLeftFlag(users: Users2x, intId: String): Option[UserState] = {
+    for {
+      u <- findWithIntId(users, intId)
+    } yield {
+      val newUser = u.copy(userLeftFlag = UserLeftFlag(left = false, 0))
+      users.save(newUser)
+      UserStateDAO.update(newUser)
+      UserStateDAO.updateExpired(u.meetingId, u.intId, expired = false)
+      newUser
+    }
+  }
+
+  def findAllExpiredUserLeftFlags(users: Users2x, meetingExpireWhenLastUserLeftInMs: Long): Vector[UserState] = {
+    if (meetingExpireWhenLastUserLeftInMs > 0) {
+      users.toVector filter (u => u.userLeftFlag.left && u.userLeftFlag.leftOn != 0 &&
+        System.currentTimeMillis() - u.userLeftFlag.leftOn > 10000)
+    } else {
+      // When meetingExpireWhenLastUserLeftInMs is set zero we need to
+      // remove user right away to end the meeting as soon as possible.
+      // ralam Nov 16, 2018
+      users.toVector filter (u => u.userLeftFlag.left && u.userLeftFlag.leftOn != 0)
+    }
+  }
+
+  def numUsers(users: Users2x): Int = {
+    users.toVector.filter(u => !u.bot).length
+  }
+
+  def numActiveModerators(users: Users2x): Int = {
+    users.toVector.filter(u => u.role == Roles.MODERATOR_ROLE && !u.userLeftFlag.left).length
+  }
+
+  def findNotPresenters(users: Users2x): Vector[UserState] = {
+    users.toVector.filter(u => !u.presenter)
+  }
+
+  def findViewers(users: Users2x): Vector[UserState] = {
+    users.toVector.filter(u => u.role == Roles.VIEWER_ROLE)
+  }
+
+  def findLockedViewers(users: Users2x): Vector[UserState] = {
+    users.toVector.filter(u => u.role == Roles.VIEWER_ROLE && u.locked)
+  }
+
+  def updateLastUserActivity(users: Users2x, u: UserState): UserState = {
+    val newUserState = modify(u)(_.lastActivityTime).setTo(System.currentTimeMillis())
+    users.save(newUserState)
+
+    //Reset inactivity warning
+    if (u.lastInactivityInspect != 0) {
+      resetLastInactivityInspect(users, newUserState)
+    } else {
+      newUserState
+    }
+  }
+
+  def resetLastInactivityInspect(users: Users2x, u: UserState): UserState = {
+    val newUserState = modify(u)(_.lastInactivityInspect).setTo(0)
+    users.save(newUserState)
+    UserStateDAO.updateInactivityWarning(u.meetingId, u.intId, inactivityWarningDisplay = false, 0)
+    newUserState
+  }
+
+  def updateLastInactivityInspect(users: Users2x, u: UserState): UserState = {
+    val newUserState = modify(u)(_.lastInactivityInspect).setTo(System.currentTimeMillis())
+    users.save(newUserState)
+    newUserState
+  }
+
+  def changeRole(users: Users2x, u: UserState, newRole: String): UserState = {
+    val newUserState = modify(u)(_.role).setTo(newRole).modify(_.roleChangedOn).setTo(System.currentTimeMillis())
+    users.save(newUserState)
+    newUserState
+  }
+
+  def setMobile(users: Users2x, u: UserState): UserState = {
+    val newUserState = modify(u)(_.mobile).setTo(true)
+    users.save(newUserState)
+    UserStateDAO.update((newUserState))
+    newUserState
+  }
+
+  def setLoggedOut(users: Users2x, u: UserState): UserState = {
+    val newUserState = modify(u)(_.loggedOut).setTo(true)
+    users.save(newUserState)
+    newUserState
+  }
+
+  def setClientType(users: Users2x, u: UserState, clientType: String): UserState = {
+    val newUserState = modify(u)(_.clientType).setTo(clientType)
+    users.save(newUserState)
+    UserStateDAO.update(newUserState)
+    newUserState
+  }
+
+  def ejectFromMeeting(users: Users2x, intId: String): Option[UserState] = {
+    for {
+      _ <- users.remove(intId)
+      ejectedUser <- users.removeFromCache(intId)
+    } yield {
+      ejectedUser
+    }
+  }
+
+  def makePresenter(users: Users2x, intId: String): Option[UserState] = {
+    for {
+      u <- findWithIntId(users, intId)
+    } yield {
+      val newUser = u.modify(_.presenter).setTo(true)
+      users.save(newUser)
+      newUser
+    }
+  }
+
+  def makeNotPresenter(users: Users2x, intId: String): Option[UserState] = {
+    for {
+      u <- findWithIntId(users, intId)
+    } yield {
+      val newUser = u.modify(_.presenter).setTo(false)
+      users.save(newUser)
+      newUser
+    }
+  }
+
+  def updatePins(users: Users2x, intId: String, maxPinnedCameras: Int, pin: Boolean): Option[UserState] = {
+    if (pin) {
+      return Users2x.addPin(users, intId, maxPinnedCameras);
+    } else {
+      return Users2x.removePin(users, intId);
+    }
+  }
+
+  def addPin(users: Users2x, intId: String, maxPinnedCameras: Int): Option[UserState] = {
+    users.pinned.enqueue(intId)
+    changePin(users, intId, true)
+    if (users.pinned.size <= maxPinnedCameras) return None
+    changePin(users, users.pinned.dequeue(), false)
+  }
+
+  def removePin(users: Users2x, intId: String): Option[UserState] = {
+    if (!hasPins(users)) return None
+    users.pinned.dequeueFirst(_.startsWith(intId))
+    changePin(users, intId, false)
+  }
+
+  def changePin(users: Users2x, intId: String, pin: Boolean): Option[UserState] = {
+    for {
+      u <- findWithIntId(users, intId)
+    } yield {
+      val newUser = u.modify(_.pin).setTo(pin)
+      users.save(newUser)
+      UserStateDAO.update(newUser)
+      newUser
+    }
+  }
+
+  def setReactionEmoji(users: Users2x, intId: String, reactionEmoji: String, durationInSeconds: Int): Option[UserState] = {
+    for {
+      u <- findWithIntId(users, intId)
+    } yield {
+      val newUser = u.modify(_.reactionEmoji).setTo(reactionEmoji)
+        .modify(_.reactionChangedOn).setTo(System.currentTimeMillis())
+
+      users.save(newUser)
+      UserReactionDAO.insert(u.meetingId, u.intId, reactionEmoji, durationInSeconds)
+      newUser
+    }
+  }
+
+  def setUserRaiseHand(users: Users2x, intId: String, raiseHand: Boolean): Option[UserState] = {
+    for {
+      u <- findWithIntId(users, intId)
+    } yield {
+      val newUserState = u.modify(_.raiseHand).setTo(raiseHand)
+      users.save(newUserState)
+      UserStateDAO.update(newUserState)
+      newUserState
+    }
+  }
+
+  def setUserAway(users: Users2x, intId: String, away: Boolean): Option[UserState] = {
+    for {
+      u <- findWithIntId(users, intId)
+    } yield {
+      val newUserState = u.modify(_.away).setTo(away)
+      users.save(newUserState)
+      UserStateDAO.update(newUserState)
+      newUserState
+    }
+  }
+
+  def setUserLocked(users: Users2x, intId: String, locked: Boolean): Option[UserState] = {
+    for {
+      u <- findWithIntId(users, intId)
+    } yield {
+      val newUser = u.modify(_.locked).setTo(locked)
+      users.save(newUser)
+      UserStateDAO.update(newUser)
+      newUser
+    }
+  }
+
+  def setUserWhiteboardWriteAccess(users: Users2x, intId: String, whiteboardWriteAccess: Boolean): Option[UserState] = {
+    for {
+      u <- findWithIntId(users, intId)
+    } yield {
+      val newUser = u.modify(_.whiteboardWriteAccess).setTo(whiteboardWriteAccess)
+      users.save(newUser)
+      UserStateDAO.update(newUser)
+      newUser
+    }
+  }
+
+  def setUserLockSettings(users: Users2x, intId: String, userLockSettings: UserLockSettings): Option[UserState] = {
+    for {
+      u <- findWithIntId(users, intId)
+    } yield {
+      val newUser = u.modify(_.userLockSettings).setTo(userLockSettings)
+      UserLockSettingsDAO.insertOrUpdate(u.meetingId, u.intId, userLockSettings)
+      users.save(newUser)
+      newUser
+    }
+  }
+
+  def setUserUnmuteRequested(users: Users2x, intId: String): Option[UserState] = {
+    for {
+      u <- findWithIntId(users, intId)
+    } yield {
+      val newUser = u.modify(_.requestedUnmuteByMod).setTo(true)
+      users.save(newUser)
+      UserStateDAO.update(newUser)
+      newUser
+    }
+  }
+
+  def resetUserUnmuteRequested(users: Users2x, intId: String): Option[UserState] = {
+    for {
+      u <- findWithIntId(users, intId)
+    } yield {
+      val newUser = u.modify(_.requestedUnmuteByMod).setTo(false)
+      users.save(newUser)
+      UserStateDAO.update(newUser)
+      newUser
+    }
+  }
+
+  def setUserSpeechLocale(users: Users2x, intId: String, locale: String): Option[UserState] = {
+    for {
+      u <- findWithIntId(users, intId)
+    } yield {
+      val newUser = u.modify(_.speechLocale).setTo(locale)
+      UserStateDAO.update(newUser)
+      users.save(newUser)
+      newUser
+    }
+  }
+
+  def setUserCaptionLocale(users: Users2x, intId: String, locale: String): Option[UserState] = {
+    for {
+      u <- findWithIntId(users, intId)
+    } yield {
+      val newUser = u.modify(_.captionLocale).setTo(locale)
+      UserStateDAO.update(newUser)
+      users.save(newUser)
+      newUser
+    }
+  }
+
+  def hasPresenter(users: Users2x): Boolean = {
+    findPresenter(users) match {
+      case Some(p) => true
+      case None    => false
+    }
+  }
+
+  def isPresenter(intId: String, users: Users2x): Boolean = {
+    findWithIntId(users, intId) match {
+      case Some(u) => u.presenter
+      case None    => false
+    }
+  }
+
+  def findPresenter(users: Users2x): Option[UserState] = {
+    users.toVector.find(u => u.presenter)
+  }
+
+  def hasPins(users: Users2x): Boolean = {
+    !users.pinned.isEmpty
+  }
+
+  def isPin(intId: String, users: Users2x): Boolean = {
+    findWithIntId(users, intId) match {
+      case Some(u) => u.pin
+      case None    => false
+    }
+  }
+
+  def findPins(users: Users2x): Vector[Option[UserState]] = {
+    for {
+      uIntId <- users.pinned.toVector
+    } yield {
+      val u = findWithIntId(users, uIntId)
+      u
+    }
+  }
+
+  def findModerator(users: Users2x): Option[UserState] = {
+    users.toVector.find(u => u.role == Roles.MODERATOR_ROLE)
+  }
+
+  def findAllAuthedUsers(users: Users2x): Vector[UserState] = {
+    users.toVector.find(u => u.authed).toVector
+  }
+
+  def addUserToPresenterGroup(users: Users2x, userIdToAdd: String): Boolean = {
+    users.updatePresenterGroup(users.presenterGroup.filterNot(_ == userIdToAdd).:+(userIdToAdd)) // ensure no repetition
+    users.presenterGroup.contains(userIdToAdd)
+  }
+
+  def removeUserFromPresenterGroup(users: Users2x, userIdToRemove: String): Boolean = {
+    users.updatePresenterGroup(users.presenterGroup.filterNot(_ == userIdToRemove))
+    !users.presenterGroup.contains(userIdToRemove)
+  }
+
+  def getPresenterGroupUsers(users2x: Users2x): Vector[String] = {
+    users2x.presenterGroup
+  }
+
+  def userIsInPresenterGroup(users2x: Users2x, userId: String): Boolean = {
+    users2x.presenterGroup.contains(userId)
+  }
+
+  def setUserRequestedPresenter(users: Users2x, userId: String, requested: Boolean): Option[UserState] = {
+    for {
+      u <- findWithIntId(users, userId)
+    } yield {
+      val newUser = u.modify(_.requestedPresenter).setTo(requested)
+      users.save(newUser)
+      UserStateDAO.updateRequestedPresenter(u.intId, requested)
+      newUser
+    }
+  }
+}
+
+class Users2x {
+  private var users: collection.immutable.HashMap[String, UserState] = new collection.immutable.HashMap[String, UserState]
+  private var presenterGroup: Vector[String] = scala.collection.immutable.Vector.empty
+
+  private var oldPresenterGroup: collection.immutable.HashMap[String, OldPresenter] = new collection.immutable.HashMap[String, OldPresenter]
+
+  // Collection of users that left the meeting. We keep a cache of the old users state to recover in case
+  // the user reconnected by refreshing the client. (ralam june 13, 2017)
+  private var usersCache: collection.immutable.HashMap[String, UserState] = new collection.immutable.HashMap[String, UserState]
+
+  private var pinned: collection.mutable.Queue[String] = new collection.mutable.Queue[String]()
+
+  private def toVector: Vector[UserState] = users.values.toVector
+
+  private def save(user: UserState): UserState = {
+    users += user.intId -> user
+    user
+  }
+
+  private def remove(id: String): Option[UserState] = {
+    for {
+      user <- users.get(id)
+    } yield {
+      users -= id
+      saveToCache(user)
+      user
+    }
+  }
+
+  private def saveToCache(user: UserState): Unit = {
+    usersCache += user.intId -> user
+  }
+
+  private def removeFromCache(intId: String): Option[UserState] = {
+    for {
+      user <- usersCache.get(intId)
+    } yield {
+      usersCache -= intId
+      user
+    }
+  }
+
+  private def findUserFromCache(intId: String): Option[UserState] = {
+    usersCache.values.find(u => u.intId == intId)
+  }
+
+  private def updatePresenterGroup(updatedGroup: Vector[String]): Unit = {
+    presenterGroup = updatedGroup
+  }
+
+  def addOldPresenter(userId: String): OldPresenter = {
+    val op = OldPresenter(userId, System.currentTimeMillis())
+    oldPresenterGroup += op.userId -> op
+    op
+  }
+
+  def removeOldPresenter(userId: String): Option[OldPresenter] = {
+    for {
+      op <- oldPresenterGroup.get(userId)
+    } yield {
+      oldPresenterGroup -= userId
+      op
+    }
+  }
+
+  def findOldPresenter(userId: String): Option[OldPresenter] = {
+    oldPresenterGroup.get(userId)
+  }
+
+  def purgeOldPresenters(): Unit = {
+    val now = System.currentTimeMillis()
+    oldPresenterGroup.values.foreach { op =>
+      if (now - op.changedPresenterOn < 5000) {
+        oldPresenterGroup -= op.userId
+      }
+    }
+  }
+
+}
+
+case class OldPresenter(userId: String, changedPresenterOn: Long)
+
+case class UserLeftFlag(left: Boolean, leftOn: Long)
+
+case class UserLockSettings(disablePublicChat: Boolean = false)
+
+case class UserState(
+    intId:                 String,
+    extId:                 String,
+    meetingId:             String,
+    name:                  String,
+    role:                  String,
+    bot:                   Boolean,
+    guest:                 Boolean,
+    pin:                   Boolean,
+    mobile:                Boolean,
+    authed:                Boolean,
+    guestStatus:           String,
+    reactionEmoji:         String,
+    reactionChangedOn:     Long                = 0,
+    raiseHand:             Boolean,
+    away:                  Boolean,
+    locked:                Boolean,
+    presenter:             Boolean,
+    whiteboardWriteAccess: Boolean,
+    avatar:                String,
+    webcamBackground:      String,
+    color:                 String,
+    roleChangedOn:         Long                = System.currentTimeMillis(),
+    lastActivityTime:      Long                = System.currentTimeMillis(),
+    lastInactivityInspect: Long                = 0,
+    requestedUnmuteByMod:  Boolean             = false,
+    requestedPresenter:    Boolean             = false,
+    clientType:            String,
+    userLeftFlag:          UserLeftFlag,
+    loggedOut:             Boolean             = false,
+    speechLocale:          String              = "",
+    captionLocale:         String              = "",
+    joinRequestMetadata:   Map[String, String] = Map.empty,
+    userMetadata:          Map[String, String] = Map.empty,
+    userLockSettings:      UserLockSettings    = UserLockSettings()
+)
+
+case class UserIdAndName(id: String, name: String)
+
+object CallingWith {
+  val WEBRTC = "webrtc"
+  val FLASH = "flash"
+  val PHONE = "phone"
+}
+
+object Roles {
+  val MODERATOR_ROLE = "MODERATOR"
+  val PRESENTER_ROLE = "PRESENTER"
+  val VIEWER_ROLE = "VIEWER"
+  val GUEST_ROLE = "GUEST"
+  val AUTHENTICATED_ROLE = "AUTHENTICATED"
+}
+
+object ClientType {
+  val FLASH = "FLASH"
+  val HTML5 = "HTML5"
+  val DIAL_IN = "dial-in-user"
+}
+
+object SystemUser {
+  val ID = "SYSTEM"
+}
+
+object IntIdPrefixType {
+  val DIAL_IN = "v_"
+}
+
+object EjectReasonCode {
+  val NOT_EJECT = "not_eject_reason"
+  val DUPLICATE_USER = "duplicate_user_in_meeting_eject_reason"
+  val PERMISSION_FAILED = "not_enough_permission_eject_reason"
+  val EJECT_USER = "user_requested_eject_reason"
+  val SYSTEM_EJECT_USER = "system_requested_eject_reason"
+  val VALIDATE_TOKEN = "validate_token_failed_eject_reason"
+  val USER_INACTIVITY = "user_inactivity_eject_reason"
+  val BANNED_USER_REJOINING = "banned_user_rejoining_reason"
+  val USER_LOGGED_OUT = "user_logged_out_reason"
+  val MAX_PARTICIPANTS = "max_participants_reason"
+}

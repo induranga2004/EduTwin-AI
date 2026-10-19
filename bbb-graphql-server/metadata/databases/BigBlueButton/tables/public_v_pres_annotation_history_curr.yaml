@@ -1,0 +1,40 @@
+table:
+  name: v_pres_annotation_history_curr
+  schema: public
+configuration:
+  column_config: {}
+  custom_column_names: {}
+  custom_name: pres_annotation_history_curr
+  custom_root_fields: {}
+object_relationships:
+  - name: user
+    using:
+      manual_configuration:
+        column_mapping:
+          meetingId: meetingId
+          userId: userId
+        insertion_order: null
+        remote_table:
+          name: v_user_ref
+          schema: public
+select_permissions:
+  - role: bbb_client
+    permission:
+      columns:
+        - annotationId
+        - pageId
+        - presentationId
+        - userId
+        - updatedAt
+        - annotationInfo
+      filter:
+        _and:
+          - meetingId:
+              _eq: X-Hasura-MeetingId
+          - _or:
+              - userIsModerator:
+                  _eq: true
+              - meetingId:
+                  _eq: X-Hasura-AnnotationsNotLockedInMeeting
+              - userId:
+                  _eq: X-Hasura-AnnotationsLockedUserId

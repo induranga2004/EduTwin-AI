@@ -1,0 +1,270 @@
+/**
+ * BigBlueButton open source conferencing system - http://www.bigbluebutton.org/
+ * <p>
+ * Copyright (c) 2014 BigBlueButton Inc. and by respective authors (see below).
+ * <p>
+ * This program is free software; you can redistribute it and/or modify it under the
+ * terms of the GNU Lesser General Public License as published by the Free Software
+ * Foundation; either version 3.0 of the License, or (at your option) any later
+ * version.
+ * <p>
+ * BigBlueButton is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+ * <p>
+ * You should have received a copy of the GNU Lesser General Public License along
+ * with BigBlueButton; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+package org.bigbluebutton.presentation.imp;
+
+import com.google.gson.Gson;
+import com.zaxxer.nuprocess.NuProcess;
+import com.zaxxer.nuprocess.NuProcessBuilder;
+import org.apache.commons.io.FileUtils;
+import org.bigbluebutton.presentation.PngCreator;
+import org.bigbluebutton.presentation.SupportedFileTypes;
+import org.bigbluebutton.presentation.UploadedPresentation;
+import org.bigbluebutton.presentation.handlers.Png2SvgConversionHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class PngCreatorImp implements PngCreator {
+	private static Logger log = LoggerFactory.getLogger(PngCreatorImp.class);
+
+	private static final Pattern PAGE_NUMBER_PATTERN = Pattern.compile("(.+-png)-([0-9]+)-([0-9]+)(.png)");
+
+	private String BLANK_PNG;
+	private int slideWidth = 800;
+	private int convTimeout = 7;
+	private long execTimeout = 10;
+
+	private static final String TEMP_PNG_NAME = "temp-png";
+
+	public boolean createPng(UploadedPresentation pres, int page, File pageFile, boolean useBlank) {
+		boolean success = false;
+		File pngDir = determinePngDirectory(pres.getUploadedFile());
+
+		if (!pngDir.exists())
+			pngDir.mkdir();
+
+        if (useBlank) {
+            createBlankPng(pngDir, page);
+            return true;
+        }
+
+		try {
+			long start = System.currentTimeMillis();
+			success = generatePng(pngDir, pres, page, pageFile);
+			long end = System.currentTimeMillis();
+			//System.out.println("*** GENERATE PNG " + (end - start));
+		} catch (InterruptedException e) {
+			log.warn("Interrupted Exception while generating png.");
+			success = false;
+		}
+
+		long start = System.currentTimeMillis();
+		renamePng(pngDir, page);
+		// Create blank thumbnails for pages that failed to generate a thumbnail.
+		createBlankPng(pngDir, page);
+		long end = System.currentTimeMillis();
+		//System.out.println("*** GENERATE BLANK PNG " + (end - start));
+
+		//start = System.currentTimeMillis();
+		//renamePng(pngDir);
+		//end = System.currentTimeMillis();
+		//System.out.println("*** RENAME PNG " + (end - start));
+
+		return success;
+	}
+
+	@Override
+	public void createBlank(UploadedPresentation pres, int page) {
+		File dir = determinePngDirectory(pres.getUploadedFile());
+
+		if (!dir.exists()) {
+			boolean created = dir.mkdir();
+			if (!created) {
+				log.warn("Failed to create PNG directory");
+				return;
+			}
+		}
+
+		createBlankPng(dir, page);
+	}
+
+	private boolean generatePng(File pngsDir, UploadedPresentation pres, int page, File pageFile)
+					throws InterruptedException {
+		long convTimeout = this.convTimeout;
+		if (convTimeout > pres.getMaxPageConversionTime()) {
+			convTimeout = (int) pres.getMaxPageConversionTime();
+		}
+
+		long execTimeout = this.execTimeout;
+		if (execTimeout > pres.getMaxPageConversionTime()) {
+			execTimeout = pres.getMaxPageConversionTime();
+		}
+
+		String source = pageFile.getAbsolutePath();
+		String dest = pngsDir.getAbsolutePath() + File.separator + "slide-" + page + ".png";
+
+		// Skip processing if the destination file exists, as it was likely restored from the cache
+		if(Files.exists(Paths.get(dest))) {
+			return true;
+		}
+
+		if (SupportedFileTypes.isImageFile(pres.getFileType())) {
+			// Need to create a PDF as intermediate step.
+			// Convert single image file
+			dest = pngsDir.getAbsolutePath() + File.separator + "slide-1.pdf";
+
+			NuProcessBuilder convertImgToSvg = new NuProcessBuilder(
+					Arrays.asList("/usr/share/bbb-web/run-in-systemd.sh", convTimeout + "s", "convert", source, "-auto-orient", dest));
+
+			Png2SvgConversionHandler pHandler = new Png2SvgConversionHandler("png2svg-" + pres.getMeetingId() + "-" + pres.getId() + "-" + page);
+			convertImgToSvg.setProcessListener(pHandler);
+
+			NuProcess process = convertImgToSvg.start();
+			try {
+				process.waitFor(convTimeout + 1, TimeUnit.SECONDS);
+			} catch (InterruptedException e) {
+				log.error("InterruptedException while converting to PDF {}", dest, e);
+				return false;
+			}
+
+			// Use the intermediate PDF file as source
+			source = dest;
+		}
+
+		String COMMAND = "";
+		dest = pngsDir.getAbsolutePath() + File.separator + TEMP_PNG_NAME + "-" + page; // the "-x.png" is appended automagically
+		// pdftoppm rather than pdftocairo, which drops the content behind some soft masks (issue #23953)
+		COMMAND = "pdftoppm -png -scale-to " + slideWidth + " " + source + " " + dest;
+
+		//System.out.println("********* CREATING PNGs " + COMMAND);
+
+		boolean done = new ExternalProcessExecutor().exec(COMMAND, TimeUnit.SECONDS.toMillis(execTimeout));
+
+		if (done) {
+			return true;
+		} else {
+			Map<String, Object> logData = new HashMap<String, Object>();
+			logData.put("meetingId", pres.getMeetingId());
+			logData.put("presId", pres.getId());
+			logData.put("filename", pres.getName());
+			logData.put("logCode", "png_create_failed");
+			logData.put("message", "Failed to create png.");
+
+			Gson gson = new Gson();
+			String logStr = gson.toJson(logData);
+			log.warn(" --analytics-- data={}",  logStr);
+		}
+
+		return false;
+	}
+
+	private File determinePngDirectory(File presentationFile) {
+		return new File(presentationFile.getParent() + File.separatorChar + "pngs");
+	}
+
+	private void renamePng(File dir, int page) {
+		/*
+		 * If more than 1 file, filename like 'temp-png-X.png' else filename is
+		 * 'temp-png.png'
+		 */
+		if (dir.list().length > 1) {
+			File[] files = dir.listFiles();
+			Matcher matcher;
+			for (int i = 0; i < files.length; i++) {
+
+				//System.out.println("*** PPNG file " + files[i].getAbsolutePath());
+
+				matcher = PAGE_NUMBER_PATTERN.matcher(files[i].getAbsolutePath());
+				if (matcher.matches()) {
+					// Path should be something like
+					// 'c:/temp/bigluebutton/presname/pngs/temp-png-1.png'
+					// Extract the page number. There should be 4 matches.
+					// 0. c:/temp/bigluebutton/presname/pngs/temp-png-1.png
+					// 1. c:/temp/bigluebutton/presname/pngs/temp-png
+					// 2. 1 ---> what we are interested in
+					// 3. .png
+					// We are interested in the second match.
+					int pageNum = Integer.parseInt(matcher.group(2).trim());
+					if (pageNum == page) {
+						String newFilename = "slide-" + (page) + ".png";
+						File renamedFile = new File(
+								dir.getAbsolutePath() + File.separator + newFilename);
+						files[i].renameTo(renamedFile);
+					}
+
+				}
+			}
+		} else if (dir.list().length == 1) {
+			File oldFilename = new File(
+							dir.getAbsolutePath() + File.separator + dir.list()[0]);
+			//System.out.println("*** PPNG file " + oldFilename.getAbsolutePath());
+			String newFilename = "slide-1.png";
+
+			// Might be the first png of a set and it might be out of order
+			// Avoid setting the second/third/... slide as slide-1.png
+			Matcher matcher = PAGE_NUMBER_PATTERN.matcher(oldFilename.getAbsolutePath());
+			if (matcher.matches()) {
+				newFilename = "slide-" + Integer.parseInt(matcher.group(2).trim()) + ".png";
+			}
+
+			File renamedFile = new File(
+							oldFilename.getParent() + File.separator + newFilename);
+			oldFilename.renameTo(renamedFile);
+		}
+	}
+
+	private void createBlankPng(File pngsDir, int page) {
+		File png = new File(pngsDir.getAbsolutePath() + File.separator + "slide-" + page + ".png");
+		if (!png.exists()) {
+			log.info("Copying blank png for slide {}", page);
+			copyBlankPng(png);
+		}
+	}
+
+	private void copyBlankPng(File png) {
+		try {
+			FileUtils.copyFile(new File(BLANK_PNG), png);
+		} catch (IOException e) {
+			log.error("IOException while copying blank PNG.");
+		}
+	}
+
+	private void cleanDirectory(File directory) {
+		File[] files = directory.listFiles();
+		for (int i = 0; i < files.length; i++) {
+			files[i].delete();
+		}
+	}
+
+	public void setBlankPng(String blankPng) {
+		BLANK_PNG = blankPng;
+	}
+
+	public void setSlideWidth(int slideWidth) {
+		this.slideWidth = slideWidth;
+	}
+
+	public void setConvTimeout(int convTimeout) {
+		this.convTimeout = convTimeout;
+	}
+
+	public void setExecTimeout(long execTimeout) {
+		this.execTimeout = execTimeout;
+	}
+}

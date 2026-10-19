@@ -1,0 +1,111 @@
+name: Python - lint, test, docker smoke
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "edusync/**"
+      - "docker-compose*.yml"
+      - ".env.example"
+      - ".github/workflows/python-ci.yml"
+      - ".pre-commit-config.yaml"
+  push:
+    branches: [main]
+    paths:
+      - "edusync/**"
+      - "docker-compose*.yml"
+      - ".env.example"
+      - ".github/workflows/python-ci.yml"
+      - ".pre-commit-config.yaml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+defaults:
+  run:
+    working-directory: edusync
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: edusync/uv.lock
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: Ruff lint
+        run: uv run ruff check .
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: edusync/uv.lock
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: Run tests with coverage
+        # The coverage gate (fail_under) is configured in pyproject.toml
+        run: uv run pytest --cov --cov-report=xml --cov-report=term-missing
+      - name: Coverage summary
+        if: always()
+        run: |
+          {
+            echo "## Coverage"
+            uv run coverage report --format=markdown
+          } >> "$GITHUB_STEP_SUMMARY" || true
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: edusync/coverage.xml
+          if-no-files-found: warn
+
+  docker:
+    needs: [lint, test]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: .
+    env:
+      COMPOSE_PROFILES: edusync
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+      - uses: docker/setup-buildx-action@v3
+      - name: Prepare .env
+        run: cp .env.example .env
+      - name: Validate compose files (incl. BBB service definition)
+        # The BBB dev image is deliberately not started in CI (multi-GB image);
+        # we only validate that its service definition is well-formed.
+        run: docker compose --profile bbb --profile edusync config -q
+      - name: Build EduSync image
+        run: docker compose --profile edusync build
+      - name: Start EduSync
+        run: docker compose --profile edusync up -d --wait
+      - name: Smoke test endpoints
+        run: |
+          curl -fsS http://localhost:8100/health
+          curl -fsS http://localhost:8100/api/components
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose --profile edusync logs
+      - name: Tear down
+        if: always()
+        run: docker compose --profile edusync down -v

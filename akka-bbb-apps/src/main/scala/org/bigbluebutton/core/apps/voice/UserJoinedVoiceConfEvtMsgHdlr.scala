@@ -1,0 +1,214 @@
+package org.bigbluebutton.core.apps.voice
+
+import org.bigbluebutton.SystemConfiguration
+import org.bigbluebutton.common2.msgs._
+import org.bigbluebutton.core.apps.mediagroups.MediaGroupApp
+import org.bigbluebutton.core.db.NotificationDAO
+import org.bigbluebutton.core.domain.MeetingState2x
+import org.bigbluebutton.core.running.{ LiveMeeting, MeetingActor, OutMsgRouter, HandlerHelpers }
+import org.bigbluebutton.core2.message.senders.MsgBuilder
+import org.bigbluebutton.core.models._
+import org.bigbluebutton.core.util.ColorPicker
+import org.bigbluebutton.core2.MeetingStatus2x
+
+trait UserJoinedVoiceConfEvtMsgHdlr extends SystemConfiguration with HandlerHelpers {
+  this: MeetingActor =>
+
+  val liveMeeting: LiveMeeting
+  val outGW: OutMsgRouter
+
+  def handleUserJoinedVoiceConfEvtMsg(msg: UserJoinedVoiceConfEvtMsg, state: MeetingState2x): MeetingState2x = {
+
+    val guestPolicy = GuestsWaiting.getGuestPolicy(liveMeeting.guestsWaiting)
+    val isDialInUser = msg.body.intId.startsWith(IntIdPrefixType.DIAL_IN)
+    val userColor = ColorPicker.nextColor(liveMeeting.props.meetingProp.intId)
+
+    def notifyModeratorsOfGuestWaiting(guest: GuestWaiting, users: Users2x, meetingId: String): Unit = {
+      val moderators = Users2x.findAll(users).filter(p => p.role == Roles.MODERATOR_ROLE)
+      moderators foreach { mod =>
+        val event = MsgBuilder.buildGuestsWaitingForApprovalEvtMsg(meetingId, mod.intId, Vector(guest))
+        outGW.send(event)
+      }
+      // bbb-html should only listen for this single message
+      val event = MsgBuilder.buildGuestsWaitingForApprovalEvtMsg(meetingId, "nodeJSapp", Vector(guest))
+      outGW.send(event)
+
+      val notifyEvent = MsgBuilder.buildNotifyRoleInMeetingEvtMsg(
+        Roles.MODERATOR_ROLE,
+
+        liveMeeting.props.meetingProp.intId,
+        "info",
+        "user",
+        "app.userList.guest.pendingGuestAlert",
+        "Notification that a new guest user joined the session",
+        Map("0" -> s"${guest.name}")
+      )
+      outGW.send(notifyEvent)
+      NotificationDAO.insert(notifyEvent)
+    }
+
+    def registerUserInRegisteredUsers() = {
+      val regUser = RegisteredUsers.create(liveMeeting.props.meetingProp.intId, msg.body.intId, msg.body.voiceUserId,
+        msg.body.callerIdName, "", "", Roles.VIEWER_ROLE, msg.body.intId, Vector(""), "", "", userColor, false,
+        true, true, GuestStatus.WAIT, true, "", "", Map.empty, Map.empty, false)
+      RegisteredUsers.add(liveMeeting.registeredUsers, regUser, liveMeeting.props.meetingProp.intId)
+    }
+
+    def registerUserInUsers2x() = {
+      val newUser = UserState(
+        intId = msg.body.intId,
+        extId = msg.body.voiceUserId,
+        meetingId = liveMeeting.props.meetingProp.intId,
+        name = msg.body.callerIdName,
+        role = Roles.VIEWER_ROLE,
+        bot = false,
+        guest = true,
+        authed = true,
+        guestStatus = GuestStatus.WAIT,
+        reactionEmoji = "none",
+        raiseHand = false,
+        away = false,
+        pin = false,
+        mobile = false,
+        presenter = false,
+        whiteboardWriteAccess = MeetingStatus2x.multiUserWhiteboardEnabled(liveMeeting.status),
+        locked = MeetingStatus2x.getPermissions(liveMeeting.status).lockOnJoin,
+        avatar = "",
+        webcamBackground = "",
+        color = userColor,
+        clientType = if (isDialInUser) ClientType.DIAL_IN else "",
+        userLeftFlag = UserLeftFlag(false, 0)
+      )
+      Users2x.add(liveMeeting.users2x, newUser)
+    }
+
+    def registerUserAsGuest() = {
+      if (GuestsWaiting.findWithIntId(liveMeeting.guestsWaiting, msg.body.intId).isEmpty) {
+        val guest = GuestWaiting(
+          msg.body.intId,
+          msg.body.callerIdName,
+          Roles.VIEWER_ROLE,
+          guest = true,
+          avatar = "",
+          webcamBackground = "",
+          userColor,
+          authenticated = true,
+          System.currentTimeMillis()
+        )
+        GuestsWaiting.add(liveMeeting.guestsWaiting, guest)
+        notifyModeratorsOfGuestWaiting(guest, liveMeeting.users2x, liveMeeting.props.meetingProp.intId)
+
+        VoiceApp.toggleUserAudioInVoiceConf(
+          liveMeeting,
+          outGW,
+          msg.body.intId,
+          msg.body.voiceUserId,
+          enabled = false
+        )
+      }
+    }
+
+    def letUserEnter(state: MeetingState2x): MeetingState2x = {
+      val role = Users2x.findWithIntId(liveMeeting.users2x, msg.body.intId) match {
+        case Some(u) => u.role
+        case None    => Roles.VIEWER_ROLE
+      }
+      val speechLocale = Users2x.findWithIntId(liveMeeting.users2x, msg.body.intId) match {
+        case Some(u) => u.speechLocale
+        case None    => ""
+      }
+
+      VoiceApp.handleUserJoinedVoiceConfEvtMsg(
+        liveMeeting,
+        outGW,
+        eventBus,
+        msg.body.voiceConf,
+        msg.body.intId,
+        msg.body.voiceUserId,
+        msg.body.callingWith,
+        msg.body.callerIdName,
+        msg.body.callerIdNum,
+        role,
+        userColor,
+        speechLocale,
+        msg.body.muted,
+        listenOnlyInputDevice = false,
+        deafened = false,
+        msg.body.talking,
+        "freeswitch",
+        msg.body.hold,
+        msg.body.uuid
+      )
+
+      // Dial-in users need to be enrolled in public media groups to be heard
+      // by clients that use selective subscription. Regular web users do this
+      // in UserJoinMeetingReqMsgHdlr. Only enroll when the public groups have
+      // been created (i.e. the meeting already has a scoped group).
+      if (isDialInUser && MediaGroupApp.publicGroupsExist(state.mediaGroups)) {
+        state.update(
+          MediaGroupApp.enrollUserInPublicGroups(liveMeeting, msg.body.intId, state.mediaGroups)
+        )
+      } else {
+        state
+      }
+    }
+
+    //Firs of all we check whether the user is banned from the meeting
+    if (VoiceUsers.isCallerBanned(msg.body.callerIdNum, liveMeeting.voiceUsers)) {
+      log.info("Ejecting banned voice user " + msg)
+      val event = MsgBuilder.buildEjectUserFromVoiceConfSysMsg(
+        props.meetingProp.intId,
+        props.voiceProp.voiceConf,
+        msg.body.voiceUserId
+      )
+      outGW.send(event)
+      state
+    } else {
+      if (isDialInUser) {
+        // Guest lobby is always disabled for dial-in users joining via LiveKit
+        // as it's not fully supported yet.
+        val enforceGuestPolicy = dialInEnforceGuestPolicy && !isUsingLiveKitAudio(liveMeeting)
+
+        registerUserInRegisteredUsers()
+        registerUserInUsers2x()
+
+        if (enforceGuestPolicy) {
+          guestPolicy match {
+            case GuestPolicy(policy, setBy) => {
+              policy match {
+                case GuestPolicyType.ALWAYS_ACCEPT => letUserEnter(state)
+                case GuestPolicyType.ALWAYS_DENY =>
+                  VoiceApp.removeUserFromVoiceConf(liveMeeting, outGW, msg.body.voiceUserId)
+                  state
+                case GuestPolicyType.ASK_MODERATOR =>
+                  registerUserAsGuest()
+                  state
+              }
+            }
+          }
+        } else {
+          letUserEnter(state)
+        }
+      } else {
+        if (liveMeeting.voiceUserReconciler.isOrphanedVoiceJoin(liveMeeting, msg.body.intId)) {
+          // LiveKit/media usually reconns faster than the graphql side, so this is also how a
+          // returning user's voice session arrives. Admit it either way and let the media grants
+          // decide: a later user re-join will restore permissions, while an orphan will have none
+          // by default.
+          liveMeeting.voiceUserReconciler.fenceVoiceJoin(
+            liveMeeting,
+            outGW,
+            msg.body.intId,
+            msg.body.voiceUserId
+          )
+        } else {
+          // Guarantee that a returning voice user has the same permissions as before they left if
+          // they aren't orphaned.
+          liveMeeting.voiceUserReconciler.restorePermissions(liveMeeting, outGW, msg.body.intId)
+        }
+        letUserEnter(state)
+      }
+    }
+  }
+
+}

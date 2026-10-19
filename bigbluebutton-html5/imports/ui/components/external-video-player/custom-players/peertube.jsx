@@ -1,0 +1,178 @@
+import React, { Component } from 'react'
+import getSDK from './get-sdk';
+
+//To work with PeerTube >=v3.3 URL patterns
+const MATCH_URL = new RegExp("(https?)://(.*)(/videos/watch/|/w/)(.*)");
+
+const SDK_URL = 'https://unpkg.com/@peertube/embed-api@0.0.4/build/player.min.js';
+
+export class PeerTubePlayer extends Component {
+  static displayName = 'PeerTubePlayer';
+
+  static canPlay = url => {
+    return MATCH_URL.test(url)
+  };
+
+  constructor(props) {
+    super(props);
+
+    this.player = this;
+    this._player = null;
+
+    this.currentTime = 0;
+    this.playbackRate = 1;
+    this.getCurrentTime = this.getCurrentTime.bind(this);
+    this.getEmbedUrl = this.getEmbedUrl.bind(this);
+    this.setupEvents = this.setupEvents.bind(this);
+  }
+
+  componentDidMount () {
+    this.props.onMount && this.props.onMount(this)
+  }
+
+  getEmbedUrl = () => {
+    const { url, config } = this.props;
+    const m = MATCH_URL.exec(url);
+
+    const isPresenter = config && config.peertube && config.peertube.isPresenter;
+
+    return `${m[1]}://${m[2]}/videos/embed/${m[4]}?api=1&controls=${isPresenter}`;
+  };
+
+  load() {
+    new Promise((resolve, reject) => {
+      this.render();
+      resolve();
+    })
+    .then(() => { return getSDK(SDK_URL, 'PeerTube') })
+    .then(() => {
+      this._player = new window['PeerTubePlayer'](this.container);
+
+      this.setupEvents();
+
+      return this._player.ready.then(() => {
+        return this.props.onReady();
+      });
+    });
+  }
+
+  setupEvents(event) {
+    const player = this._player;
+
+    if (!player) {
+      return;
+    }
+
+    player.addEventListener("playbackStatusUpdate", (data) => {
+      this.currentTime = data.position;
+    });
+    player.addEventListener("playbackStatusChange", (data) => {
+      if (data === 'playing') {
+        this.props.onPlay();
+      } else {
+        this.props.onPause();
+      }
+    });
+
+  }
+
+  play() {
+    if (this._player) {
+      this._player.play();
+    }
+  }
+
+  pause() {
+    if (this._player) {
+      this._player.pause();
+    }
+  }
+
+  stop() {
+  }
+
+  seekTo(seconds) {
+    if (this._player) {
+      this._player.seek(seconds);
+    }
+  }
+
+  setVolume(fraction) {
+    this._player.setVolume(fraction);
+  }
+
+  getVolume() {
+    return this._player?.props?.volume ?? 1; // Default volume is 1 (100%)
+  }
+
+  setLoop(loop) {
+    // console.log("SET LOOP");
+  }
+
+  mute() {
+    // console.log("SET MUTE");
+  }
+
+  unmute() {
+    // console.log("SET UNMUTE");
+  }
+
+  getDuration() {
+    //console.log("GET DURATION");
+  }
+
+  getCurrentTime () {
+    return this.currentTime;
+  }
+
+  getSecondsLoaded () {
+  }
+
+  getPlaybackRate () {
+
+    if (this._player) {
+      this._player.getPlaybackRate().then((rate) => {
+        this.playbackRate = rate;
+      });
+    }
+
+    return this.playbackRate;
+  }
+
+  setPlaybackRate (rate) {
+
+    if (this._player) {
+      this._player.setPlaybackRate(rate);
+    }
+  }
+
+  render () {
+    const style = {
+      width: '100%',
+      height: '100%',
+      margin: 0,
+      padding: 0,
+      border: 0,
+      overflow: 'hidden',
+    };
+    const { url } = this.props;
+
+    return (
+      <iframe
+        key={url}
+        style={style}
+        src={this.getEmbedUrl(url)}
+        id={"peerTubeContainer"}
+        allow="autoplay; fullscreen"
+        sandbox="allow-same-origin allow-scripts allow-popups"
+        ref={(container) => {
+          this.container = container;
+        }}
+      >
+      </iframe>
+    )
+  }
+}
+
+export default PeerTubePlayer;
+

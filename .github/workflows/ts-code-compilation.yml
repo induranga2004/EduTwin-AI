@@ -1,0 +1,35 @@
+name: Typescript - compile code
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "bigbluebutton-html5/**"
+      - ".github/workflows/ts-code-compilation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "bigbluebutton-html5/**"
+      - ".github/workflows/ts-code-compilation.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  ts-code-compilation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: bigbluebutton-html5/package-lock.json
+      - name: run npm ci
+        working-directory: bigbluebutton-html5
+        run: npm ci
+      - name: typescript code compilation
+        working-directory: bigbluebutton-html5
+        run: npx tsc

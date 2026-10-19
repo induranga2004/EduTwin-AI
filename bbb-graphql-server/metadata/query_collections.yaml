@@ -1,0 +1,79 @@
+- name: allowed-queries
+  definition:
+    queries:
+      - name: userMetadata
+        query: |
+          query getUserMetadata {
+            user_metadata {
+              parameter
+              value
+            }
+          }
+      - name: meetingStaticData
+        query: |
+          query meetingStaticData {
+            meeting {
+              meetingId
+              extId
+              name
+              disabledFeatures
+              isBreakout
+              endWhenNoModerator
+              endWhenNoModeratorDelayInMinutes
+              createdTime
+              maxPinnedCameras
+              meetingCameraCap
+              cameraBridge
+              screenShareBridge
+              audioBridge
+              loginUrl
+              logoutUrl
+              bannerColor
+              bannerText
+              customLogoUrl
+              customDarkLogoUrl
+              notifyRecordingIsOn
+              notifyRecordingAppend
+              presentationUploadExternalDescription
+              presentationUploadExternalUrl
+              recordingPolicies {
+                allowStartStopRecording
+                autoStartRecording
+                record
+                keepEvents
+              }
+              usersPolicies {
+                allowModsToEjectCameras
+                allowModsToUnmuteUsers
+                authenticatedGuest
+                allowPromoteGuestToModerator
+                maxUserConcurrentAccesses
+                maxUsers
+                meetingLayout
+                moderatorsCanMuteAudio
+                moderatorsCanUnmuteAudio
+                userCameraCap
+              }
+              breakoutPolicies {
+                breakoutRooms
+                captureNotes
+                captureNotesFilename
+                captureSlides
+                captureSlidesFilename
+                freeJoin
+                parentMeetingId
+                privateChatEnabled
+                record
+                sequence
+              }
+              voiceSettings {
+                dialNumber
+                muteOnStart
+                voiceConf
+                telVoice
+              }
+              clientSettings {
+                clientSettingsJson
+              }
+            }
+          }
