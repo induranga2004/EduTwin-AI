@@ -1,0 +1,31 @@
+name: Run ShellCheck
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "**.sh"
+      - ".github/workflows/shellcheck.yml"
+  push:
+    branches: [main]
+    paths:
+      - "**.sh"
+      - ".github/workflows/shellcheck.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+      - name: Run ShellCheck on all *.sh files
+        run: |
+          # shellcheck is preinstalled on GitHub's ubuntu runners
+          find . -name '*.sh' -not -path '*/node_modules/*' -not -path './.git/*' -print0 \
+            | xargs -0 shellcheck --severity=error
