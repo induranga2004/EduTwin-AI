@@ -51,6 +51,7 @@ known-first-party = [
     "edusync_c3",
     "edusync_c4",
     "edusync_api",
+    "edusync_blueprint_model",
 ]
 
 [tool.pytest.ini_options]
