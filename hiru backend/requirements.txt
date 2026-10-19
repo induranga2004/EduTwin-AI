@@ -1,13 +1,14 @@
-
 fastapi
 uvicorn[standard]
-pypdf
 python-multipart
+pypdf
+python-pptx
 networkx
 numpy
 pandas
 scikit-learn
 sentence-transformers
 joblib
+faster-whisper
 pytest
 httpx
