@@ -8,10 +8,14 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('help', 'setup', 'up', 'first-run', 'secret', 'status', 'logs', 'down', 'html5')]
+    [ValidateSet('help', 'setup', 'up', 'first-run', 'secret', 'status', 'logs', 'down', 'html5', 'meeting')]
     [string]$Command = 'help',
     [switch]$PythonOnly,
     [switch]$Lite,
+    [switch]$NoOpen,
+    [string]$Name = 'Lecturer',
+    [ValidateSet('MODERATOR', 'VIEWER')]
+    [string]$Role = 'MODERATOR',
     [switch]$DryRun,
     [switch]$Yes,
     [Parameter(ValueFromRemainingArguments = $true)]
@@ -487,6 +491,40 @@ function Invoke-Logs {
 
 function Invoke-Down { [void](Invoke-ComposeLive @('down')) }
 
+function Get-Sha1Hex([string]$Text) {
+    $hash = [Security.Cryptography.SHA1]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($Text))
+    return (($hash | ForEach-Object { $_.ToString('x2') }) -join '')
+}
+
+# BBB API URL for $Call; the checksum is sha1(call + query + shared secret).
+function Get-BbbApiUrl([string]$Call, [string]$Query, [string]$Secret) {
+    $sum = Get-Sha1Hex ($Call + $Query + $Secret)
+    return "https://$(Get-Hostname)/bigbluebutton/api/${Call}?$Query&checksum=$sum"
+}
+
+# BigBlueButton has no login page: create a meeting through its API and open the join link.
+function Invoke-Meeting {
+    if ($PythonOnly) { throw 'meeting needs BigBlueButton; do not use -PythonOnly.' }
+    $secret = Get-EnvValue 'EDUSYNC_BBB_SECRET'
+    if ([string]::IsNullOrWhiteSpace($secret)) {
+        throw 'EDUSYNC_BBB_SECRET is empty in .env. Run: .\scripts\dev.ps1 first-run'
+    }
+    $createQuery = 'allowStartStopRecording=false&attendeePW=ap&autoStartRecording=false' +
+        '&meetingID=edusync-demo&moderatorPW=mp&name=EduSync+Demo&record=false'
+    $password = if ($Role -eq 'MODERATOR') { 'mp' } else { 'ap' }
+    $joinQuery = "fullName=$([uri]::EscapeDataString($Name))&meetingID=edusync-demo&password=$password&redirect=true"
+    Write-Step "Create meeting 'EduSync Demo' (id edusync-demo) and join as $Name ($Role)"
+    if ($DryRun) { return }
+    try { $created = Invoke-RestMethod -Uri (Get-BbbApiUrl 'create' $createQuery $secret) -TimeoutSec 30 }
+    catch { throw "BigBlueButton API not reachable ($($_.Exception.Message)). Is it running? Try: .\scripts\dev.ps1 status" }
+    $code = [string]$created.response.returncode
+    if ($code -ne 'SUCCESS') { throw "create failed: $($created.response.messageKey) $($created.response.message)" }
+    $joinUrl = Get-BbbApiUrl 'join' $joinQuery $secret
+    Write-Ok "Meeting ready. Join link (valid while the meeting runs, roughly 5 minutes if nobody joins):"
+    Write-Info $joinUrl
+    if (-not $NoOpen) { Start-Process $joinUrl }
+}
+
 function Invoke-Html5 {
     $inner = 'cd ~/src/bigbluebutton-html5 && ./run-dev.sh'
     [void](Invoke-ComposeLive @('exec', '-u', 'bigbluebutton', 'bbb', 'bash', '-lc', $inner))
@@ -507,10 +545,14 @@ Commands:
   logs        Follow logs; optional service name, e.g.  logs bbb
   down        docker compose down
   html5       Start the BBB HTML5 dev server (run-dev.sh) in the bbb container
+  meeting     Create a demo meeting and open the join link in your browser (BBB has no login page)
 
 Options:
   -PythonOnly Run only the Python API (profile edusync), no BBB
   -Lite       With `setup`: low-memory BBB for ~6 GB PCs (no audio/video, notes or recording)
+  -Name <n>   With `meeting`: your display name (default Lecturer)
+  -Role <r>   With `meeting`: MODERATOR (default) or VIEWER
+  -NoOpen     With `meeting`: only print the join link
   -DryRun     Print what would happen without changing anything
   -Yes        Skip confirmation prompts
 
@@ -519,6 +561,7 @@ Examples:
   .\scripts\dev.ps1 first-run
   .\scripts\dev.ps1 up -PythonOnly
   .\scripts\dev.ps1 setup -Lite        (then first-run; re-run `setup` without -Lite to switch back)
+  .\scripts\dev.ps1 meeting             (join as moderator; add -Name Alice -Role VIEWER for a second user)
   .\scripts\dev.ps1 status
   .\scripts\dev.ps1 setup -DryRun
 '@ | Write-Host
@@ -538,6 +581,7 @@ try {
         'logs' { Invoke-Logs }
         'down' { Invoke-Down }
         'html5' { Invoke-Html5 }
+        'meeting' { Invoke-Meeting }
     }
 }
 catch {
