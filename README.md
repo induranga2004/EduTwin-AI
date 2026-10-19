@@ -59,4 +59,17 @@ curl http://localhost:8100/health    # API docs: http://localhost:8100/docs
 
 Python-only (no BBB): set `COMPOSE_PROFILES=edusync` in `.env`. Without Docker: `uv --directory edusync sync`.
 
+Windows (PowerShell only, Docker Desktop with the WSL2 backend; no WSL terminal needed, the repo may stay on `E:`):
+
+```powershell
+.\scripts\dev.ps1 setup         # .env, mkcert certs, hosts entry (asks for admin), resource checks
+.\scripts\dev.ps1 first-run     # starts BBB + EduSync, stores BBB secrets in .env
+.\scripts\dev.ps1 up -PythonOnly   # fallback: Python API only
+```
+
+Docker Desktop must be running. Add `-DryRun` to preview. BBB needs more memory than the default WSL cap: set
+`memory=10GB` / `swap=4GB` under `[wsl2]` in `%UserProfile%\.wslconfig`, run `wsl --shutdown` and restart Docker
+Desktop; consider moving Docker's disk image off `C:` (Settings > Resources > Advanced). Running BBB in Docker on
+Windows is UNVERIFIED; details in [Docker docs](docs/edusync/docker.md).
+
 Docs: [architecture](docs/edusync/architecture.md), [development](docs/edusync/development.md), [Docker](docs/edusync/docker.md).
