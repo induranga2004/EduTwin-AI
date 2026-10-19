@@ -1,0 +1,30 @@
+# EduSync pre-commit hooks. Every hook is scoped so the large BigBlueButton
+# tree is never touched.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.1
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: &scope ^(edusync/|docker-compose.*\.yml$|\.github/workflows/python-ci\.yml$|\.pre-commit-config\.yaml$)
+      - id: ruff-format
+        files: *scope
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: end-of-file-fixer
+        files: *scope
+      - id: trailing-whitespace
+        files: *scope
+      - id: check-yaml
+        files: *scope
+        # Compose's custom `!reset` tag is valid Compose but not plain YAML.
+        exclude: ^docker-compose\.sidecar\.yml$
+      - id: check-toml
+        files: *scope
+      - id: check-added-large-files
+        args: [--maxkb=500]
+        files: *scope
+      - id: mixed-line-ending
+        args: [--fix=no]
+        files: *scope
