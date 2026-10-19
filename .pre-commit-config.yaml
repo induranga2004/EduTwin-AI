@@ -18,8 +18,8 @@ repos:
         files: *scope
       - id: check-yaml
         files: *scope
-        # Compose's custom `!reset` tag is valid Compose but not plain YAML.
-        exclude: ^docker-compose\.sidecar\.yml$
+        # Compose's custom `!reset`/`!override` tags are valid Compose but not plain YAML.
+        exclude: ^docker-compose\.(sidecar|lite)\.yml$
       - id: check-toml
         files: *scope
       - id: check-added-large-files

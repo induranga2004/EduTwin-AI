@@ -57,6 +57,7 @@ docker compose up
 curl http://localhost:8100/health    # API docs: http://localhost:8100/docs
 ```
 
+Low on RAM (~6 GB)? `.\scripts\dev.ps1 setup -Lite` trims BigBlueButton to ~1.6 GB (no audio/video); see [Docker docs](docs/edusync/docker.md).
 With BBB (sidecar mode) the API is at `https://bbb.test/edusync/` (docs: `/edusync/docs`).
 Python-only (no BBB): set `COMPOSE_PROFILES=edusync` in `.env`. Without Docker: `uv --directory edusync sync`.
 
