@@ -30,6 +30,21 @@ curl http://localhost:8100/health
 API docs: <http://localhost:8100/docs>. Get the BBB shared secret with `just salt` and put it in
 `EDUSYNC_BBB_SECRET`. On Windows use the PowerShell flow below, which does this for you.
 
+## Joining a meeting (BBB has no login page)
+
+`https://bbb.test/` only shows "Welcome to BigBlueButton!". BigBlueButton creates meetings through its API
+(the official login/room UI, Greenlight, is a separate Rails app and is not part of this stack). Use:
+
+```powershell
+.\scripts\dev.ps1 meeting                              # create "EduSync Demo" and open it as moderator
+.\scripts\dev.ps1 meeting -Name Alice -Role VIEWER     # a second participant (use another browser/profile)
+.\scripts\dev.ps1 meeting -NoOpen                      # only print the join link
+```
+
+The command signs the API call with the shared secret stored in `.env` by `first-run`. A meeting with nobody in
+it is closed by BigBlueButton after a few minutes; run the command again to recreate it. In lite mode there is
+no audio/video, so close the audio dialog.
+
 ## Windows setup (PowerShell only)
 
 Docker Desktop (WSL2 backend) provides the hidden Linux VM, so no WSL/Ubuntu terminal is needed. The repo can stay
