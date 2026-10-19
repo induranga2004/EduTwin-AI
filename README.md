@@ -43,3 +43,20 @@ The latest version is BigBlueButton 4.0.  You can install BigBlueButton it on Ub
 For full technical documentation of BigBlueButton -- including architecture, features, API, and GreenLight (the default front-end) -- see [https://docs.bigbluebutton.org/](https://docs.bigbluebutton.org/).
 
 BigBlueButton and the BigBlueButton Logo are trademarks of [BigBlueButton Inc](https://bigbluebutton.org).
+
+
+---
+
+## EduSync AI backend
+
+Python backend (FastAPI, uv workspace in [`edusync/`](edusync)) for the EduSync AI components C1-C4.
+
+```bash
+cp .env.example .env
+docker compose up
+curl http://localhost:8100/health    # API docs: http://localhost:8100/docs
+```
+
+Python-only (no BBB): set `COMPOSE_PROFILES=edusync` in `.env`. Without Docker: `uv --directory edusync sync`.
+
+Docs: [architecture](docs/edusync/architecture.md), [development](docs/edusync/development.md), [Docker](docs/edusync/docker.md).
