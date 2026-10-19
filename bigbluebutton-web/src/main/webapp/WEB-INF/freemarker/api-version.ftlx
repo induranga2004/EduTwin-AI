@@ -1,0 +1,13 @@
+<#ftl output_format="XML" auto_esc=true>
+<#compress>
+<response>
+    <#-- Where code is a 'SUCCESS' String -->
+    <returncode>${returnCode}</returncode>
+    <version>${apiVersion}</version>
+    <apiVersion>${apiVersion}</apiVersion>
+    <bbbVersion>${bbbVersion}</bbbVersion>
+    <html5PluginSdkVersion>${html5PluginSdkVersion}</html5PluginSdkVersion>
+    <graphqlWebsocketUrl>${graphqlWebsocketUrl}</graphqlWebsocketUrl>
+    <graphqlApiUrl>${graphqlApiUrl}</graphqlApiUrl>
+</response>
+</#compress>

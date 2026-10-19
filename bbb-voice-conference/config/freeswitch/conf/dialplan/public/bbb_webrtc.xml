@@ -1,0 +1,14 @@
+<include>
+
+    <extension name="bbb_webrtc_call" continue="true">
+      <condition field="${sip_via_protocol}" expression="^wss?$" break="on-false">
+	<action application="set" data="bbb_authorized=true"/>
+	<action application="set" data="jb_use_timestamps=true"/>
+	<action application="set" data="include_external_ip=true"/>
+        <condition field="destination_number" expression="^(\d{5,11})$" break="on-false">
+          <action application="transfer" data="$1 XML default"/>
+        </condition>
+      </condition>
+    </extension>
+
+</include>

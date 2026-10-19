@@ -1,0 +1,93 @@
+package org.bigbluebutton.core.apps.layout
+
+import org.bigbluebutton.common2.msgs._
+import org.bigbluebutton.core.models.{ Layouts, LayoutsType }
+import org.bigbluebutton.core.running.{ MeetingActor, OutMsgRouter }
+import org.bigbluebutton.core.apps.{ PermissionCheck, RightsManagementTrait }
+import org.bigbluebutton.core.db.{ LayoutDAO, NotificationDAO }
+import org.bigbluebutton.core2.message.senders.MsgBuilder
+
+trait BroadcastLayoutMsgHdlr extends RightsManagementTrait {
+  this: MeetingActor =>
+
+  val outGW: OutMsgRouter
+
+  def handleBroadcastLayoutMsg(msg: BroadcastLayoutMsg): Unit = {
+
+    if (permissionFailed(PermissionCheck.GUEST_LEVEL, PermissionCheck.PRESENTER_LEVEL, liveMeeting.users2x, msg.header.userId)) {
+      val meetingId = liveMeeting.props.meetingProp.intId
+      val reason = "No permission to broadcast layout to meeting."
+      PermissionCheck.ejectUserForFailedPermission(meetingId, msg.header.userId, reason, outGW, liveMeeting)
+    } else {
+      if (LayoutsType.layoutsType.contains(msg.body.layout)) {
+        val newlayout = LayoutsType.layoutsType.getOrElse(msg.body.layout, "")
+        val isInitialSetup = Layouts.getCurrentLayout(liveMeeting.layouts).isEmpty
+        val pushLayoutJustEnabled = msg.body.pushLayout && !Layouts.getPushLayout(liveMeeting.layouts)
+
+        val significantChange = !isInitialSetup && (
+          pushLayoutJustEnabled ||
+          Layouts.getCurrentLayout(liveMeeting.layouts) != newlayout ||
+          Layouts.getPresentationIsOpen(liveMeeting.layouts) != msg.body.presentationIsOpen ||
+          Layouts.getCameraPosition(liveMeeting.layouts) != msg.body.cameraPosition ||
+          Layouts.getFocusedCamera(liveMeeting.layouts) != msg.body.focusedCamera
+        )
+
+        Layouts.setCurrentLayout(liveMeeting.layouts, newlayout)
+        Layouts.setPushLayout(liveMeeting.layouts, msg.body.pushLayout)
+        Layouts.setPresentationIsOpen(liveMeeting.layouts, msg.body.presentationIsOpen)
+        Layouts.setCameraDockIsResizing(liveMeeting.layouts, msg.body.isResizing)
+        Layouts.setCameraPosition(liveMeeting.layouts, msg.body.cameraPosition)
+        Layouts.setFocusedCamera(liveMeeting.layouts, msg.body.focusedCamera)
+        val presentationVideoRate = LayoutHdlrHelpers.clampPresentationVideoRate(msg.body.presentationVideoRate)
+        if (presentationVideoRate != msg.body.presentationVideoRate) {
+          log.warning(
+            "Clamped invalid presentation video rate {} from user {} in meeting {}",
+            msg.body.presentationVideoRate,
+            msg.header.userId,
+            liveMeeting.props.meetingProp.intId
+          )
+        }
+        Layouts.setPresentationVideoRate(liveMeeting.layouts, presentationVideoRate)
+        Layouts.setRequestedBy(liveMeeting.layouts, msg.header.userId)
+
+        LayoutDAO.insertOrUpdate(liveMeeting.props.meetingProp.intId, liveMeeting.layouts)
+        sendBroadcastLayoutEvtMsg(msg.header.userId, significantChange)
+      }
+    }
+  }
+
+  def sendBroadcastLayoutEvtMsg(fromUserId: String, significantChange: Boolean = true): Unit = {
+    val routing = Routing.addMsgToClientRouting(MessageTypes.BROADCAST_TO_MEETING, liveMeeting.props.meetingProp.intId, fromUserId)
+    val envelope = BbbCoreEnvelope(BroadcastLayoutEvtMsg.NAME, routing)
+    val header = BbbClientMsgHeader(BroadcastLayoutEvtMsg.NAME, liveMeeting.props.meetingProp.intId, fromUserId)
+
+    val body = BroadcastLayoutEvtMsgBody(
+      Layouts.getCurrentLayout(liveMeeting.layouts),
+      Layouts.getPushLayout(liveMeeting.layouts),
+      Layouts.getPresentationIsOpen(liveMeeting.layouts),
+      Layouts.getCameraDockIsResizing(liveMeeting.layouts),
+      Layouts.getCameraPosition(liveMeeting.layouts),
+      Layouts.getFocusedCamera(liveMeeting.layouts),
+      Layouts.getPresentationVideoRate(liveMeeting.layouts),
+      Layouts.getLayoutSetter(liveMeeting.layouts)
+    )
+    val event = BroadcastLayoutEvtMsg(header, body)
+    val msgEvent = BbbCommonEnvCoreMsg(envelope, event)
+
+    outGW.send(msgEvent)
+
+    if (body.pushLayout && significantChange) {
+      val notifyEvent = MsgBuilder.buildNotifyUserInMeetingEvtMsg(
+        fromUserId,
+        liveMeeting.props.meetingProp.intId,
+        "info",
+        "user",
+        "app.layoutUpdate.label",
+        "Notification to when the presenter changes size of cams",
+        Map()
+      )
+      outGW.send(notifyEvent)
+      NotificationDAO.insert(notifyEvent)
+    }
+  }
+}

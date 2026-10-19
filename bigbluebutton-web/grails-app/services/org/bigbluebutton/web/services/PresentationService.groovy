@@ -1,0 +1,269 @@
+/**
+ * BigBlueButton open source conferencing system - http://www.bigbluebutton.org/
+ *
+ * Copyright (c) 2014 BigBlueButton Inc. and by respective authors (see below).
+ *
+ * This program is free software; you can redistribute it and/or modify it under the
+ * terms of the GNU Lesser General Public License as published by the Free Software
+ * Foundation; either version 3.0 of the License, or (at your option) any later
+ * version.
+ *
+ * BigBlueButton is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License along
+ * with BigBlueButton; if not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+package org.bigbluebutton.web.services
+
+import org.bigbluebutton.api.domain.Meeting
+import org.bigbluebutton.api.service.ServiceUtils
+import org.bigbluebutton.presentation.DocumentConversionService
+import org.bigbluebutton.presentation.UploadedPresentation
+import org.springframework.beans.factory.annotation.Autowired
+import jakarta.annotation.PostConstruct
+import jakarta.annotation.PreDestroy
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.ThreadFactory
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+
+class PresentationService {
+
+	static transactional = false
+	@Autowired
+	DocumentConversionService documentConversionService
+	def presentationDir
+	def testConferenceMock
+	def testRoomMock
+	def testPresentationName
+	def testUploadedPresentation
+	def defaultUploadedPresentation
+	def presentationBaseUrl
+	def preUploadedPresentationOverrideDefault
+	def scanUploadedPresentationFiles
+	def pageTokenSecret
+	def numDownloadThreads
+
+	// Bounds how many tasks may wait for a free download thread, as a multiple of
+	// the pool size. Keeps a burst of create/insertDocument requests from queueing
+	// without limit (each raw-bytes task can hold a whole file in memory).
+	private static final int DOWNLOAD_QUEUE_CAPACITY_PER_THREAD = 20
+
+	private ExecutorService downloadExecutor
+
+	@PostConstruct
+	void initDownloadExecutor() {
+		// Clamp to at least 1: a configured 0 or negative would make the
+		// ThreadPoolExecutor constructor throw and fail bean initialization.
+		// (numDownloadThreads is injected as a String, so "0" is truthy here and
+		// slips past the Elvis default — only null/empty falls back to 5.)
+		int threads = Math.max(1, (numDownloadThreads ?: 5) as int)
+		AtomicInteger threadSeq = new AtomicInteger()
+		ThreadFactory threadFactory = { Runnable r ->
+			Thread t = new Thread(r, "pres-download-" + threadSeq.incrementAndGet())
+			t.daemon = true
+			return t
+		} as ThreadFactory
+		// Fixed pool with a *bounded* queue. Executors.newFixedThreadPool would use an
+		// unbounded queue, letting bursts pile up until the heap is exhausted; here
+		// excess tasks are rejected (see submitPresentationTask) instead.
+		downloadExecutor = new ThreadPoolExecutor(
+				threads, threads,
+				0L, TimeUnit.MILLISECONDS,
+				new LinkedBlockingQueue<Runnable>(threads * DOWNLOAD_QUEUE_CAPACITY_PER_THREAD),
+				threadFactory,
+				new ThreadPoolExecutor.AbortPolicy())
+	}
+
+	@PreDestroy
+	void shutdownDownloadExecutor() {
+		downloadExecutor?.shutdownNow()
+	}
+
+	/**
+	 * Runs presentation download/processing off the request thread so API responses
+	 * are not delayed by it. The pool is bounded (numPresentationDownloadThreads) and
+	 * backed by a bounded queue; if it is saturated the task is rejected and logged
+	 * rather than queued without limit. Any failure escaping the work closure is
+	 * logged with meeting context. Returns false when the task could not be accepted.
+	 */
+	boolean submitPresentationTask(String meetingId, String source, Closure work) {
+		try {
+			downloadExecutor.submit({
+				try {
+					work()
+				} catch (Throwable t) {
+					log.error("Failed to process pre-uploaded presentation for meeting [${meetingId}], source [${source}]", t)
+				}
+			} as Runnable)
+			return true
+		} catch (RejectedExecutionException e) {
+			log.error("Rejected pre-uploaded presentation task, download pool saturated for meeting [${meetingId}], source [${source}]", e)
+			return false
+		}
+	}
+
+	def deletePresentation = {conf, room, filename ->
+		def directory = new File(roomDirectory(conf, room).absolutePath + File.separatorChar + filename)
+		deleteDirectory(directory)
+	}
+
+	def deleteDirectory = {directory ->
+		log.debug "delete {}" directory
+		/**
+		 * Go through each directory and check if it's not empty.
+		 * We need to delete files inside a directory before a
+		 * directory can be deleted.
+		 **/
+		File[] files = directory.listFiles();
+		for (int i = 0; i < files.length; i++) {
+			if (files[i].isDirectory()) {
+				deleteDirectory(files[i])
+			} else {
+				files[i].delete()
+			}
+		}
+		// Now that the directory is empty. Delete it.
+		directory.delete()
+	}
+
+	def listPresentations = {conf, room ->
+		def presentationsList = []
+		def directory = roomDirectory(conf, room)
+		log.debug "directory ${directory.absolutePath}"
+		if( directory.exists() ){
+			directory.eachFile(){ file->
+				if( file.isDirectory() )
+					presentationsList.add( file.name )
+			}
+		}
+		return presentationsList
+	}
+
+	def getPresentationDir = {
+		return presentationDir
+	}
+
+	def processUploadedPresentation = { uploadedPres ->
+		// Run conversion on another thread to allow multiple conversions to run simultaneously
+		def scheduler = Executors.newSingleThreadScheduledExecutor()
+		def startTime = System.currentTimeMillis()
+		def timeout = 10000 // 10 secs
+
+		scheduler.scheduleWithFixedDelay({
+			long elapsedTime = System.currentTimeMillis() - startTime
+			if (elapsedTime >= timeout) {
+				log.error "It was not able to find the meeting within 10 seconds. [meetingId: ${uploadedPres.getMeetingId()}]"
+				scheduler.shutdown()
+				return
+			}
+
+			// Check if meeting is already started
+			Meeting meeting = ServiceUtils.findMeetingFromMeetingID(uploadedPres.getMeetingId())
+			boolean isStarted = meeting != null && meeting.getStartTime() != 0
+
+			if (isStarted) {
+				log.debug "Meeting is already started, it will proceed with presentation upload"
+				try {
+					documentConversionService.processDocument(uploadedPres, Boolean.parseBoolean(scanUploadedPresentationFiles))
+				} catch (Throwable e) {
+					log.error "Error in Presentation service:", e
+				} finally {
+					scheduler.shutdown()
+				}
+			} else {
+				log.debug "Meeting is not started, waiting"
+			}
+		}, 0, 1, TimeUnit.SECONDS)
+	}
+
+	def sendDocConversionFailedOnMimeType(UploadedPresentation pres, String fileMime, String fileExtension) {
+		documentConversionService.sendDocConversionFailedOnMimeType(pres, fileMime, fileExtension)
+	}
+
+	def showSvgImage(String conf, String room, String presentationName, String id) {
+		new File(roomDirectory(conf, room).absolutePath + File.separatorChar + presentationName + File.separatorChar + "svgs" + File.separatorChar + "slide${id}.svg")
+	}
+
+	def showThumbnail = {conf, room, presentationName, thumb ->
+		def thumbFile = roomDirectory(conf, room).absolutePath + File.separatorChar + presentationName + File.separatorChar +
+				"thumbnails" + File.separatorChar + "thumb-${thumb}.png"
+		log.debug "showing $thumbFile"
+
+		new File(thumbFile)
+	}
+
+	def showPng = {conf, room, presentationName, page ->
+		def pngFile = roomDirectory(conf, room).absolutePath + File.separatorChar + presentationName + File.separatorChar +
+				"pngs" + File.separatorChar + "slide-${page}.png"
+		log.debug "showing $pngFile"
+
+		new File(pngFile)
+	}
+
+	def showTextfile = {conf, room, presentationName, textfile ->
+		def txt = roomDirectory(conf, room).absolutePath + File.separatorChar + presentationName + File.separatorChar +
+				"textfiles" + File.separatorChar + "slide-${textfile}.txt"
+		log.debug "showing $txt"
+
+		new File(txt)
+	}
+
+	def numberOfThumbnails = {conf, room, name ->
+		def thumbDir = new File(roomDirectory(conf, room).absolutePath + File.separatorChar + name + File.separatorChar + "thumbnails")
+		thumbDir.listFiles().length
+	}
+
+	def numberOfSvgs = {conf, room, name ->
+		def SvgsDir = new File(roomDirectory(conf, room).absolutePath + File.separatorChar + name + File.separatorChar + "svgs")
+		SvgsDir.listFiles().length
+	}
+
+	def numberOfTextfiles = {conf, room, name ->
+		log.debug roomDirectory(conf, room).absolutePath + File.separatorChar + name + File.separatorChar + "textfiles"
+		def textfilesDir = new File(roomDirectory(conf, room).absolutePath + File.separatorChar + name + File.separatorChar + "textfiles")
+		textfilesDir.listFiles().length
+	}
+
+	def roomDirectory = {conf, room ->
+		return new File(presentationDir + File.separatorChar + conf + File.separatorChar + room)
+	}
+
+	def testConversionProcess() {
+		File presDir = new File(roomDirectory(testConferenceMock, testRoomMock).absolutePath + File.separatorChar + testPresentationName)
+
+		if (presDir.exists()) {
+			File pres = new File(presDir.getAbsolutePath() + File.separatorChar + testUploadedPresentation)
+			if (pres.exists()) {
+				// TODO add podId
+				UploadedPresentation uploadedPres = new UploadedPresentation("B", testConferenceMock, testRoomMock, testPresentationName);
+				uploadedPres.setUploadedFile(pres);
+				// Run conversion on another thread.
+				new Timer().runAfter(1000)
+				{
+					documentConversionService.processDocument(uploadedPres)
+				}
+			} else {
+				log.error "${pres.absolutePath} does NOT exist"
+			}
+		} else {
+			log.error "${presDir.absolutePath} does NOT exist."
+		}
+
+	}
+
+}
+
+/*** Helper classes **/
+class SvgFilter implements FilenameFilter {
+	public boolean accept(File dir, String name) {
+		return (name.endsWith(".svg"));
+	}
+}

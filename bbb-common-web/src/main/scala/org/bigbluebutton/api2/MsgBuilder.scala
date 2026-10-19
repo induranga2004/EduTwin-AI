@@ -1,0 +1,565 @@
+package org.bigbluebutton.api2
+
+import org.bigbluebutton.api.messaging.converters.messages._
+import org.bigbluebutton.api.messaging.messages.{ ChatMessageFromApi, RegisterUserSessionToken }
+import org.bigbluebutton.api.service.ServiceUtils
+import org.bigbluebutton.api2.meeting.RegisterUser
+import org.bigbluebutton.common2.domain.{ DefaultProps, PageVO, PresentationPageConvertedVO, PresentationVO }
+import org.bigbluebutton.common2.msgs._
+import org.bigbluebutton.presentation.messages._
+import org.slf4j.{ Logger, LoggerFactory }
+
+import java.io.{ BufferedInputStream, FilterInputStream, InputStream }
+import java.nio.charset.StandardCharsets
+import java.nio.file.{ Files, Paths }
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
+import javax.xml.stream.{ XMLInputFactory, XMLStreamConstants }
+import scala.io.Source
+import scala.jdk.CollectionConverters._
+import scala.math.BigDecimal.RoundingMode
+import scala.util.{ Try, Using }
+
+object MsgBuilder {
+  private lazy val logger: Logger = LoggerFactory.getLogger("msg-builder")
+
+  private def generatePageToken(presId: String, page: Int, secret: String): String = {
+    val mac = Mac.getInstance("HmacSHA256")
+    mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"))
+    mac.doFinal(s"$presId|$page".getBytes(StandardCharsets.UTF_8)).map("%02x".format(_)).mkString
+  }
+
+  def buildDestroyMeetingSysCmdMsg(msg: DestroyMeetingMessage): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(DestroyMeetingSysCmdMsg.NAME, routing)
+    val header = BbbCoreBaseHeader(DestroyMeetingSysCmdMsg.NAME)
+    val body = DestroyMeetingSysCmdMsgBody(msg.meetingId)
+    val req = DestroyMeetingSysCmdMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildEndMeetingSysCmdMsg(msg: EndMeetingMessage): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(EndMeetingSysCmdMsg.NAME, routing)
+    val header = BbbClientMsgHeader(EndMeetingSysCmdMsg.NAME, msg.meetingId, "not-used")
+    val body = EndMeetingSysCmdMsgBody(msg.meetingId)
+    val req = EndMeetingSysCmdMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildCreateMeetingRequestToAkkaApps(props: DefaultProps): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(CreateMeetingReqMsg.NAME, routing)
+    val header = BbbCoreBaseHeader(CreateMeetingReqMsg.NAME)
+    val body = CreateMeetingReqMsgBody(props)
+    val req = CreateMeetingReqMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildRegisterUserRequestToAkkaApps(msg: RegisterUser): BbbCommonEnvCoreMsg = {
+    // Check whether the logout Url is not empty and a valid url.
+    // If not leave logoutUrl empty. An empty logoutUrl will fallback to the
+    // meeting logoutUrl.
+    val logoutUrl = Option(msg.logoutUrl)
+      .filter(url => url.nonEmpty && ServiceUtils.getValidationService().isValidURL(url))
+      .getOrElse("")
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(RegisterUserReqMsg.NAME, routing)
+    val header = BbbCoreHeaderWithMeetingId(RegisterUserReqMsg.NAME, msg.meetingId)
+    val body = RegisterUserReqMsgBody(meetingId = msg.meetingId, intUserId = msg.intUserId,
+      name = msg.name, firstName = msg.firstName, lastName = msg.lastName, role = msg.role, extUserId = msg.extUserId,
+      authToken = msg.authToken, sessionToken = msg.sessionToken,
+      avatarURL = msg.avatarURL, webcamBackgroundURL = msg.webcamBackgroundURL, bot = msg.bot, guest = msg.guest, authed = msg.authed,
+      guestStatus = msg.guestStatus, excludeFromDashboard = msg.excludeFromDashboard, enforceLayout = msg.enforceLayout,
+      logoutUrl = logoutUrl, joinRequestMetadata = msg.joinRequestMetadata, userMetadata = msg.userMetadata)
+    val req = RegisterUserReqMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildRegisterUserSessionTokenRequestToAkkaApps(msg: RegisterUserSessionToken): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(RegisterUserSessionTokenReqMsg.NAME, routing)
+    val header = BbbCoreHeaderWithMeetingId(RegisterUserSessionTokenReqMsg.NAME, msg.meetingID)
+    val body = RegisterUserSessionTokenReqMsgBody(
+      meetingId = msg.meetingID,
+      userId = msg.internalUserId,
+      sessionToken = msg.sessionToken,
+      sessionName = msg.sessionName,
+      replaceSessionToken = msg.replaceSessionToken,
+      enforceLayout = msg.enforceLayout,
+      userSessionMetadata = msg.userSessionMetadata.asScala.toMap
+    )
+    val req = RegisterUserSessionTokenReqMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildCheckAlivePingSysMsg(system: String, bbbWebTimestamp: Long, akkaAppsTimestamp: Long): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(CheckAlivePingSysMsg.NAME, routing)
+    val header = BbbCoreBaseHeader(CheckAlivePingSysMsg.NAME)
+    val body = CheckAlivePingSysMsgBody(system, bbbWebTimestamp, akkaAppsTimestamp)
+    val req = CheckAlivePingSysMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def generatePresentationPage(presId: String, presBaseUrl: String, presParentPath: String, page: Int, pageTokenSecret: String = ""): PresentationPageConvertedVO = {
+    val pageToken = if (pageTokenSecret.nonEmpty) generatePageToken(presId, page, pageTokenSecret) else ""
+    val tokenParam = if (pageToken.nonEmpty) "?pageToken=" + pageToken else ""
+    val thumbUrl = presBaseUrl + "/thumbnail/" + page + tokenParam
+    val txtUrl = presBaseUrl + "/textfiles/" + page + tokenParam
+    val svgUrl = presBaseUrl + "/svg/" + page + tokenParam
+    val pngUrl = presBaseUrl + "/png/" + page + tokenParam
+
+    val urls = Map("thumb" -> thumbUrl, "text" -> txtUrl, "svg" -> svgUrl, "png" -> pngUrl)
+
+    // get SVG dimensions
+    var width = 1440D
+    var height = 1080D
+    val pageAbsoluteSvgPath = presParentPath + "/svgs/slide" + page.toString + ".svg"
+
+    val dims = readSvgDims(pageAbsoluteSvgPath)
+    dims match {
+      case Some(d) =>
+        width = d.width
+        height = d.height
+        logger.debug(s"SVG dims from probe: ${d.width.toInt}x${d.height.toInt} for $pageAbsoluteSvgPath")
+      case None =>
+        logger.warn(s"SVG dimensions unresolved from probe (width/height/viewBox absent or unparseable); using defaults ${width.toInt}x${height.toInt} for $pageAbsoluteSvgPath")
+    }
+
+    val content = Try {
+      val maxChars: Int = 1024 * 1024 // limit ~1 MB to avoid OOM
+      val pageAbsoluteTxtPath = presParentPath + "/textfiles/slide-" + page.toString + ".txt"
+      Using(Source.fromFile(pageAbsoluteTxtPath, StandardCharsets.UTF_8.name())) { source =>
+        val buffer = new StringBuilder
+        val iter = source.iter
+        var count = 0
+        while (iter.hasNext && count < maxChars) {
+          buffer.append(iter.next())
+          count += 1
+        }
+        buffer.toString()
+      }.get
+    }.getOrElse("")
+
+    PresentationPageConvertedVO(
+      id = s"$presId/$page",
+      num = page,
+      urls = urls,
+      content = content,
+      current = page == 1,
+      width = width,
+      height = height,
+      pageToken = pageToken
+    )
+  }
+
+  def buildPresentationPageConvertedSysMsg(msg: DocPageGeneratedProgress, pageTokenSecret: String = ""): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(PresentationPageConvertedSysMsg.NAME, routing)
+    val header = BbbClientMsgHeader(PresentationPageConvertedSysMsg.NAME, msg.meetingId, msg.authzToken)
+
+    val page = generatePresentationPage(msg.presId, msg.presBaseUrl, msg.presParentPath, msg.page.intValue(), pageTokenSecret)
+
+    val body = PresentationPageConvertedSysMsgBody(
+      podId = msg.podId,
+      messageKey = msg.key,
+      code = msg.key,
+      presentationId = msg.presId,
+      numberOfPages = msg.numPages.intValue(),
+      pagesCompleted = msg.pagesCompleted.intValue(),
+      presName = msg.filename,
+      page
+    )
+    val req = PresentationPageConvertedSysMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildPresentationPageGeneratedPubMsg(msg: DocPageGeneratedProgress): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(PresentationPageGeneratedSysPubMsg.NAME, routing)
+    val header = BbbClientMsgHeader(PresentationPageGeneratedSysPubMsg.NAME, msg.meetingId, msg.authzToken)
+
+    val body = PresentationPageGeneratedSysPubMsgBody(podId = msg.podId, messageKey = msg.key,
+      code = msg.key, presentationId = msg.presId, numberOfPages = msg.numPages.intValue(),
+      pagesCompleted = msg.pagesCompleted.intValue(), presName = msg.filename)
+    val req = PresentationPageGeneratedSysPubMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildPresentationConversionUpdateSysPubMsg(msg: DocConversionProgress): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(PresentationConversionUpdateSysPubMsg.NAME, routing)
+    val header = BbbClientMsgHeader(PresentationConversionUpdateSysPubMsg.NAME, msg.meetingId, msg.authzToken)
+    val body = PresentationConversionUpdateSysPubMsgBody(podId = msg.podId, messageKey = msg.key,
+      code = msg.key, presentationId = msg.presId, presName = msg.filename,
+      temporaryPresentationId = msg.temporaryPresentationId)
+    val req = PresentationConversionUpdateSysPubMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildPresentationConversionStartedSysPubMsg(msg: DocConversionStarted): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(PresentationConversionStartedSysPubMsg.NAME, routing)
+    val header = BbbClientMsgHeader(PresentationConversionStartedSysPubMsg.NAME, msg.meetingId, msg.authzToken)
+    val common = PresentationConversionCommonBody(podId = msg.podId, meetingId = msg.meetingId, presentationId = msg.presId,
+      presentationName = msg.filename, messageKey = "", temporaryPresentationId = msg.temporaryPresentationId)
+    val body = PresentationConversionStartedSysPubMsgBody(common = common, maxDuration = msg.maxConversionTime)
+    val req = PresentationConversionStartedSysPubMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildOfficeToPdfConversionFailedMsg(msg: OfficeToPdfConversionFailed): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(PresentationConversionFailedErrorSysPubMsg.NAME, routing)
+    val header = BbbClientMsgHeader(PresentationConversionFailedErrorSysPubMsg.NAME, msg.meetingId, "notUsed")
+    val body = PresentationConversionFailedErrorSysPubMsgBody(podId = msg.podId, messageKey = msg.messageKey,
+      presentationId = msg.presentationId, presName = msg.filename, meetingId = msg.meetingId, errorDetail = "OfficeToPdfConversionFailed")
+    val req = PresentationConversionFailedErrorSysPubMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildPresentationConversionEndedSysMsg(msg: DocPageCompletedProgress): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(PresentationConversionEndedSysMsg.NAME, routing)
+    val header = BbbClientMsgHeader(PresentationConversionEndedSysMsg.NAME, msg.meetingId, msg.authzToken)
+
+    val body = PresentationConversionEndedSysMsgBody(
+      podId = msg.podId,
+      presentationId = msg.presId,
+      presName = msg.filename
+    )
+    val req = PresentationConversionEndedSysMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildPresentationConversionCompletedSysPubMsg(msg: DocPageCompletedProgress, pageTokenSecret: String = ""): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(PresentationConversionCompletedSysPubMsg.NAME, routing)
+    val header = BbbClientMsgHeader(PresentationConversionCompletedSysPubMsg.NAME, msg.meetingId, msg.authzToken)
+
+    val pages = generatePresentationPages(msg.presId, msg.numPages.intValue(), msg.presBaseUrl, pageTokenSecret)
+    val presentation = PresentationVO(msg.presId, msg.temporaryPresentationId, msg.filename,
+      current = msg.current.booleanValue(), pages.values.toVector, msg.downloadable.booleanValue(),
+      msg.removable.booleanValue(),
+      defaultPresentation = msg.defaultPresentation, msg.filenameConverted)
+
+    val body = PresentationConversionCompletedSysPubMsgBody(podId = msg.podId, messageKey = msg.key,
+      code = msg.key, presentation)
+    val req = PresentationConversionCompletedSysPubMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def generatePresentationPages(presId: String, numPages: Int, presBaseUrl: String, pageTokenSecret: String = ""): scala.collection.immutable.Map[String, PageVO] = {
+    val pages = new scala.collection.mutable.HashMap[String, PageVO]
+    for (i <- 1 to numPages) {
+      val id = presId + "/" + i
+      val num = i
+      val current = if (i == 1) true else false
+      val pageToken = if (pageTokenSecret.nonEmpty) generatePageToken(presId, i, pageTokenSecret) else ""
+      val tokenParam = if (pageToken.nonEmpty) "?pageToken=" + pageToken else ""
+      val thumbnail = presBaseUrl + "/thumbnail/" + i + tokenParam
+
+      val txtUri = presBaseUrl + "/textfiles/" + i + tokenParam
+      val svgUri = presBaseUrl + "/svg/" + i + tokenParam
+
+      val p = PageVO(id = id, num = num, thumbUri = thumbnail,
+        txtUri = txtUri, svgUri = svgUri, current = current, pageToken = pageToken)
+      pages += p.id -> p
+    }
+
+    pages.toMap
+  }
+
+  def buildPresentationPageCountFailedSysPubMsg(msg: DocPageCountFailed): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(PresentationPageCountErrorSysPubMsg.NAME, routing)
+    val header = BbbClientMsgHeader(PresentationPageCountErrorSysPubMsg.NAME, msg.meetingId, msg.authzToken)
+
+    val body = PresentationPageCountErrorSysPubMsgBody(podId = msg.podId, messageKey = msg.key,
+      code = msg.key, msg.presId, 0, 0, msg.filename, msg.temporaryPresentationId)
+    val req = PresentationPageCountErrorSysPubMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildPresentationPageCountExceededSysPubMsg(msg: DocPageCountExceeded): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(PresentationPageCountErrorSysPubMsg.NAME, routing)
+    val header = BbbClientMsgHeader(PresentationPageCountErrorSysPubMsg.NAME, msg.meetingId, msg.authzToken)
+
+    val body = PresentationPageCountErrorSysPubMsgBody(podId = msg.podId, messageKey = msg.key,
+      code = msg.key, msg.presId, msg.numPages.intValue(), msg.maxNumPages.intValue(), msg.filename, msg.temporaryPresentationId)
+    val req = PresentationPageCountErrorSysPubMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildPdfConversionInvalidErrorSysPubMsg(msg: PdfConversionInvalid): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(PdfConversionInvalidErrorSysPubMsg.NAME, routing)
+    val header = BbbClientMsgHeader(PdfConversionInvalidErrorSysPubMsg.NAME, msg.meetingId, msg.authzToken)
+
+    val body = PdfConversionInvalidErrorSysPubMsgBody(podId = msg.podId, messageKey = msg.key,
+      code = msg.key, msg.presId, msg.bigPageNumber.intValue(), msg.bigPageSize.intValue(), msg.filename)
+    val req = PdfConversionInvalidErrorSysPubMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildPresentationConversionRequestReceivedSysMsg(msg: DocConversionRequestReceived): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(PresentationConversionRequestReceivedSysMsg.NAME, routing)
+    val header = BbbClientMsgHeader(PresentationConversionRequestReceivedSysMsg.NAME, msg.meetingId, msg.authzToken)
+
+    val body = PresentationConversionRequestReceivedSysMsgBody(
+      podId = msg.podId,
+      presentationId = msg.presId,
+      temporaryPresentationId = msg.temporaryPresentationId,
+      current = msg.current,
+      presName = msg.filename,
+      downloadable = msg.downloadable,
+      removable = msg.removable,
+      authzToken = msg.authzToken
+    )
+    val req = PresentationConversionRequestReceivedSysMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildPresentationPageConversionStartedSysMsg(msg: DocPageConversionStarted): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(PresentationPageConversionStartedSysMsg.NAME, routing)
+    val header = BbbClientMsgHeader(PresentationPageConversionStartedSysMsg.NAME, msg.meetingId, msg.authzToken)
+
+    val body = PresentationPageConversionStartedSysMsgBody(
+      podId = msg.podId,
+      presentationId = msg.presId,
+      current = msg.current,
+      default = msg.defaultPresentation,
+      presName = msg.filename,
+      presFilenameConverted = msg.filenameConverted,
+      downloadable = msg.downloadable,
+      removable = msg.removable,
+      numPages = msg.numPages,
+      authzToken = msg.authzToken
+    )
+    val req = PresentationPageConversionStartedSysMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildPublishedRecordingSysMsg(msg: PublishedRecordingMessage): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(PublishedRecordingSysMsg.NAME, routing)
+    val header = BbbCoreBaseHeader(PublishedRecordingSysMsg.NAME)
+    val body = PublishedRecordingSysMsgBody(msg.recordId)
+    val req = PublishedRecordingSysMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildUnpublishedRecordingSysMsg(msg: UnpublishedRecordingMessage): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(UnpublishedRecordingSysMsg.NAME, routing)
+    val header = BbbCoreBaseHeader(UnpublishedRecordingSysMsg.NAME)
+    val body = UnpublishedRecordingSysMsgBody(msg.recordId)
+    val req = UnpublishedRecordingSysMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildDeletedRecordingSysMsg(msg: DeletedRecordingMessage): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(DeletedRecordingSysMsg.NAME, routing)
+    val header = BbbCoreBaseHeader(DeletedRecordingSysMsg.NAME)
+    val body = DeletedRecordingSysMsgBody(msg.recordId)
+    val req = DeletedRecordingSysMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildPresentationUploadedFileTooLargeErrorSysMsg(msg: UploadFileTooLargeMessage): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(PresentationUploadedFileTooLargeErrorSysPubMsg.NAME, routing)
+    val header = BbbClientMsgHeader(PresentationUploadedFileTooLargeErrorSysPubMsg.NAME, msg.meetingId, msg.authzToken)
+
+    val body = PresentationUploadedFileTooLargeErrorSysPubMsgBody(
+      presentationId = msg.presentationId, podId = msg.podId, messageKey = msg.key,
+      code = msg.key, presentationName = msg.filename, presentationToken = msg.authzToken, fileSize = msg.uploadedFileSize.intValue(), maxFileSize = msg.maxUploadFileSize
+    )
+
+    val req = PresentationUploadedFileTooLargeErrorSysPubMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildPresentationHasInvalidMimeType(msg: DocInvalidMimeType): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(PresentationHasInvalidMimeTypeErrorSysPubMsg.NAME, routing)
+    val header = BbbClientMsgHeader(PresentationHasInvalidMimeTypeErrorSysPubMsg.NAME, msg.meetingId, "not-used")
+
+    val body = PresentationHasInvalidMimeTypeErrorSysPubMsgBody(podId = msg.podId, presentationName = msg.filename,
+      temporaryPresentationId = msg.temporaryPresentationId, presentationId = msg.presId, meetingId = msg.meetingId,
+      messageKey = msg.messageKey, fileMime = msg.fileMime, fileExtension = msg.fileExtension)
+
+    val req = PresentationHasInvalidMimeTypeErrorSysPubMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildSendChatMessageFromApi(msg: ChatMessageFromApi): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(SendGroupChatMessageFromApiSysPubMsg.NAME, routing)
+    val header = BbbClientMsgHeader(SendGroupChatMessageFromApiSysPubMsg.NAME, msg.meetingId, "not-used")
+
+    val body = SendGroupChatMessageFromApiSysPubMsgBody(
+      userName = msg.name, message = msg.message
+    )
+
+    val req = SendGroupChatMessageFromApiSysPubMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildPresentationUploadedFileTimedoutErrorSysMsg(msg: UploadFileTimedoutMessage): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(PresentationUploadedFileTimeoutErrorSysPubMsg.NAME, routing)
+    val header = BbbClientMsgHeader(PresentationUploadedFileTimeoutErrorSysPubMsg.NAME, msg.meetingId, "not-used")
+
+    val body = PresentationUploadedFileTimeoutErrorSysPubMsgBody(podId = msg.podId, presentationName = msg.filename,
+      page = msg.page, meetingId = msg.meetingId, messageKey = msg.messageKey,
+      temporaryPresentationId = msg.temporaryPresentationId, presentationId = msg.presentationId,
+      maxNumberOfAttempts = msg.maxNumberOfAttempts)
+
+    val req = PresentationUploadedFileTimeoutErrorSysPubMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildPresentationUploadedFileVirusErrorSysPubMsg(msg: UploadFileVirusMessage): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(PresentationUploadedFileVirusErrorSysPubMsg.NAME, routing)
+    val header = BbbClientMsgHeader(PresentationUploadedFileVirusErrorSysPubMsg.NAME, msg.meetingId, "not-used")
+
+    val body = PresentationUploadedFileVirusErrorSysPubMsgBody(podId = msg.podId, presentationName = msg.filename,
+      meetingId = msg.meetingId, messageKey = msg.messageKey, temporaryPresentationId = msg.temporaryPresentationId,
+      presentationId = msg.presentationId)
+
+    val req = PresentationUploadedFileVirusErrorSysPubMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  def buildPresentationUploadedFileScanFailedErrorSysPubMsg(msg: UploadFileScanFailedMessage): BbbCommonEnvCoreMsg = {
+    val routing = collection.immutable.HashMap("sender" -> "bbb-web")
+    val envelope = BbbCoreEnvelope(PresentationUploadedFileScanFailedErrorSysPubMsg.NAME, routing)
+    val header = BbbClientMsgHeader(PresentationUploadedFileScanFailedErrorSysPubMsg.NAME, msg.meetingId, "not-used")
+
+    val body = PresentationUploadedFileScanFailedErrorSysPubMsgBody(podId = msg.podId, presentationName = msg.filename,
+      meetingId = msg.meetingId, messageKey = msg.messageKey, temporaryPresentationId = msg.temporaryPresentationId,
+      presentationId = msg.presentationId)
+
+    val req = PresentationUploadedFileScanFailedErrorSysPubMsg(header, body)
+    BbbCommonEnvCoreMsg(envelope, req)
+  }
+
+  private final case class SvgDimensions(width: Double, height: Double)
+
+  private def readSvgDims(svgPath: String, maxBytes: Long = 10L * 1024 * 1024, scale: Int = 0): Option[SvgDimensions] = {
+    Using.Manager { use =>
+      val in = use(Files.newInputStream(Paths.get(svgPath)))
+      val bis = use(new BufferedInputStream(in))
+      val bounded = use(new BoundedInputStream(bis, if (maxBytes <= 0) Long.MaxValue else maxBytes))
+
+      val f = XMLInputFactory.newFactory()
+      f.setProperty(XMLInputFactory.SUPPORT_DTD, java.lang.Boolean.FALSE)
+      Try(f.setProperty("javax.xml.stream.isSupportingExternalEntities", java.lang.Boolean.FALSE))
+      Try(f.setProperty("javax.xml.stream.isCoalescing", java.lang.Boolean.FALSE))
+      Try(f.setProperty("javax.xml.stream.isNamespaceAware", java.lang.Boolean.TRUE))
+      Try(f.setXMLResolver((_, _, _, _) => null))
+
+      val reader = {
+        val r0 = f.createXMLStreamReader(bounded, StandardCharsets.UTF_8.name())
+        use(new AutoCloseable { override def close(): Unit = r0.close() })
+        r0
+      }
+
+      while (reader.hasNext) {
+        reader.next() match {
+          case XMLStreamConstants.START_ELEMENT if reader.getLocalName.equalsIgnoreCase("svg") =>
+            val wRaw = Option(reader.getAttributeValue(null, "width"))
+            val hRaw = Option(reader.getAttributeValue(null, "height"))
+
+            val wPx = wRaw.flatMap(parseCssLengthPx)
+            val hPx = hRaw.flatMap(parseCssLengthPx)
+
+            (wPx, hPx) match {
+              case (Some(w), Some(h)) if w > 0 && h > 0 =>
+                val W = roundPx(w, scale)
+                val H = roundPx(h, scale)
+                return Some(SvgDimensions(W, H))
+              case _ =>
+                // width/height absent or unparseable (e.g. percentage): fall back to the
+                // viewBox, which pdftocairo always emits ("min-x min-y width height").
+                return Option(reader.getAttributeValue(null, "viewBox")).flatMap(parseViewBoxDims(_, scale))
+            }
+          case _ =>
+        }
+      }
+      None
+    }.toOption.flatten
+  }
+
+  // Derive dimensions from the SVG viewBox ("min-x min-y width height"; values separated by
+  // whitespace and/or commas). Used as a safety net when width/height are absent or unparseable.
+  private def parseViewBoxDims(viewBox: String, scale: Int): Option[SvgDimensions] = {
+    val parts = viewBox.trim.split("[\\s,]+").filter(_.nonEmpty)
+    if (parts.length != 4) return None
+    Try {
+      val w = parts(2).toDouble
+      val h = parts(3).toDouble
+      if (w > 0 && h > 0 && w.isFinite && h.isFinite) Some(SvgDimensions(roundPx(w, scale), roundPx(h, scale))) else None
+    }.toOption.flatten
+  }
+
+  private def parseCssLengthPx(s: String): Option[Double] = {
+    if (s == null) return None
+    val t = s.trim
+    if (t.isEmpty || t.endsWith("%")) return None
+    val R = """^\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*([A-Za-z]*)\s*$""".r
+    t match {
+      case R(num, unit0) =>
+        val n = num.toDouble
+        val px = unit0.toLowerCase match {
+          case "" | "px" => 1.0
+          case "pt"      => 1.0
+          case "pc"      => 16.0
+          case "in"      => 96.0
+          case "cm"      => 96.0 / 2.54
+          case "mm"      => 96.0 / 25.4
+          case "q"       => 96.0 / 25.4 / 4.0
+          case _         => Double.NaN
+        }
+        if (px.isNaN) None else Some(n * px)
+      case _ => None
+    }
+  }
+
+  private def roundPx(d: Double, scale: Int): Double = {
+    if (java.lang.Double.isNaN(d) || java.lang.Double.isInfinite(d)) d
+    else {
+      val r = BigDecimal(d).setScale(scale, RoundingMode.HALF_UP).toDouble
+      if (r == -0.0d) 0.0d else r
+    }
+  }
+
+  private final class BoundedInputStream(in: InputStream, max: Long) extends FilterInputStream(in) {
+    private var remaining = max
+
+    override def read(): Int =
+      if (remaining <= 0) -1
+      else {
+        val r = super.read();
+        if (r >= 0) remaining -= 1;
+        r
+      }
+
+    override def read(b: Array[Byte], off: Int, len: Int): Int = {
+      if (remaining <= 0) -1
+      else {
+        val want = Math.min(len.toLong, Math.max(0L, Math.min(Int.MaxValue.toLong, remaining))).toInt
+        val r = super.read(b, off, want)
+        if (r > 0) remaining -= r
+        r
+      }
+    }
+  }
+}

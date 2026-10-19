@@ -1,0 +1,1669 @@
+/**
+ * BigBlueButton open source conferencing system - http://www.bigbluebutton.org/
+ * <p>
+ * Copyright (c) 2012 BigBlueButton Inc. and by respective authors (see below).
+ * <p>
+ * This program is free software; you can redistribute it and/or modify it under the
+ * terms of the GNU Lesser General Public License as published by the Free Software
+ * Foundation; either version 3.0 of the License, or (at your option) any later
+ * version.
+ * <p>
+ * BigBlueButton is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ * PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+ * <p>
+ * You should have received a copy of the GNU Lesser General Public License along
+ * with BigBlueButton; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+package org.bigbluebutton.api;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.*;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.JsonObject;
+import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.http.client.utils.URIBuilder;
+import org.bigbluebutton.api.domain.*;
+import org.bigbluebutton.api.exception.PluginMalformedParametersException;
+import org.bigbluebutton.api.exception.PluginManifestChecksumMismatchException;
+import org.bigbluebutton.api.exception.PluginMetadataException;
+import org.bigbluebutton.api.exception.PluginMissingNameException;
+import org.bigbluebutton.api.messaging.MessageListener;
+import org.bigbluebutton.api.messaging.converters.messages.DestroyMeetingMessage;
+import org.bigbluebutton.api.messaging.converters.messages.EndMeetingMessage;
+import org.bigbluebutton.api.messaging.converters.messages.PublishedRecordingMessage;
+import org.bigbluebutton.api.messaging.converters.messages.UnpublishedRecordingMessage;
+import org.bigbluebutton.api.messaging.converters.messages.DeletedRecordingMessage;
+import org.bigbluebutton.api.messaging.messages.*;
+import org.bigbluebutton.api.service.impl.SharedNotesRedirectValidatorService;
+import org.bigbluebutton.api.util.ParsedPluginManifest;
+import org.bigbluebutton.api.util.PluginUtils;
+import org.bigbluebutton.api.service.RedirectFollowerService;
+import org.bigbluebutton.api.service.SecureUrlDownloader;
+import org.bigbluebutton.api.service.ValidatedUrl;
+import org.bigbluebutton.api2.IBbbWebApiGWApp;
+import org.bigbluebutton.api2.domain.UploadedTrack;
+import org.bigbluebutton.common2.redis.RedisStorageService;
+import org.bigbluebutton.presentation.PresentationUrlDownloadService;
+import org.bigbluebutton.presentation.imp.SlidesGenerationProgressNotifier;
+import org.bigbluebutton.web.services.UserCleanupTimerTask;
+import org.bigbluebutton.web.services.callback.CallbackUrlService;
+import org.bigbluebutton.web.services.callback.MeetingEndedEvent;
+import org.bigbluebutton.web.services.turn.StunTurnService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.gson.Gson;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+
+import org.springframework.data.domain.*;
+
+public class MeetingService implements MessageListener {
+  private static Logger log = LoggerFactory.getLogger(MeetingService.class);
+
+  private BlockingQueue<IMessage> receivedMessages = new LinkedBlockingQueue<IMessage>();
+  private volatile boolean processMessage = false;
+
+  private final Executor msgProcessorExec = Executors.newSingleThreadExecutor();
+  private final Executor runExec = Executors.newSingleThreadExecutor();
+
+  /**
+   * http://ria101.wordpress.com/2011/12/12/concurrenthashmap-avoid-a-common-misuse/
+   */
+  private final ConcurrentMap<String, Meeting> meetings;
+  private final ConcurrentMap<String, UserSession> sessions;
+  private final ConcurrentMap<String, UserSessionBasicData> removedSessions;
+
+  private RecordingService recordingService;
+  private LearningDashboardService learningDashboardService;
+  private UserCleanupTimerTask userCleaner;
+  private StunTurnService stunTurnService;
+  private RedisStorageService storeService;
+  private CallbackUrlService callbackUrlService;
+  private SlidesGenerationProgressNotifier notifier;
+
+  private PluginUtils pluginUtils;
+
+  private long usersTimeout;
+  private int numPluginManifestsFetchingThreads;
+  private long pluginManifestFetchTimeout;
+  private long waitingGuestUsersTimeout;
+  private int sessionsCleanupDelayInMinutes;
+
+  private ParamsProcessorUtil paramsProcessorUtil;
+  private PresentationUrlDownloadService presDownloadService;
+  private RedirectFollowerService redirectFollower;
+  private SharedNotesRedirectValidatorService sharedNotesRedirectValidator;
+  private SecureUrlDownloader secureUrlDownloader;
+  private int maxSharedNotesInitialContentUrlPayloadSize;
+
+  private IBbbWebApiGWApp gw;
+
+  private final ConcurrentMap<String, PresentationUploadToken> uploadAuthzTokens;
+
+  ObjectMapper objectMapper = new ObjectMapper();
+
+  public MeetingService() {
+    meetings = new ConcurrentHashMap<String, Meeting>(8, 0.9f, 1);
+    sessions = new ConcurrentHashMap<String, UserSession>(8, 0.9f, 1);
+    removedSessions = new ConcurrentHashMap<String, UserSessionBasicData>(8, 0.9f, 1);
+    uploadAuthzTokens = new ConcurrentHashMap<String, PresentationUploadToken>();
+  }
+
+  public void addUserSession(String token, UserSession user) {
+    sessions.put(token, user);
+  }
+
+  public String getTokenByUserId(String internalUserId) {
+      String result = null;
+      for (Entry<String, UserSession> e : sessions.entrySet()) {
+          String token = e.getKey();
+          UserSession userSession = e.getValue();
+          if (userSession.internalUserId.equals(internalUserId)) {
+              result = token;
+          }
+      }
+      return result;
+  }
+
+  public void registerUser(String meetingID, String internalUserId,
+                           String fullname, String firstName, String lastName, String role, String externUserID,
+                           String authToken, String sessionToken, String avatarURL, String webcamBackgroundURL, Boolean bot,
+                           Boolean guest, Boolean authed, String guestStatus, Boolean excludeFromDashboard, Boolean leftGuestLobby,
+                           String enforceLayout, String logoutUrl, Map<String, String> joinRequestMetadata, Map<String, String> userMetadata) {
+    handle(
+            new RegisterUser(meetingID, internalUserId, fullname, firstName, lastName, role,
+                            externUserID, authToken, sessionToken, avatarURL, webcamBackgroundURL, bot, guest, authed, guestStatus,
+                            excludeFromDashboard, leftGuestLobby, enforceLayout, logoutUrl, joinRequestMetadata, userMetadata
+            )
+    );
+
+    Meeting m = getMeeting(meetingID);
+    if (m != null) {
+      RegisteredUser ruser = new RegisteredUser(authToken, internalUserId, guestStatus,
+                                                excludeFromDashboard, leftGuestLobby, enforceLayout, logoutUrl);
+      m.userRegistered(ruser);
+    }
+  }
+
+  public void registerUserSession(
+          String meetingID,
+          String internalUserId,
+          String sessionToken,
+          String sessionName,
+          String replaceSessionToken,
+          String enforceLayout,
+          Map<String, String> userSessionMetadata
+  ) {
+    handle(
+            new RegisterUserSessionToken(meetingID, internalUserId, sessionToken, sessionName,
+                    replaceSessionToken, enforceLayout, userSessionMetadata)
+    );
+  }
+
+  public UserSession getUserSessionWithUserId(String userId) {
+    for (UserSession userSession : sessions.values()) {
+      if (userSession.internalUserId.equals(userId)) {
+        return userSession;
+      }
+    }
+
+    return null;
+  }
+
+  public UserSession getUserSessionWithSessionToken(String token) {
+    return sessions.get(token);
+  }
+
+  public UserSessionBasicData getRemovedUserSessionWithSessionToken(String sessionToken) {
+    return removedSessions.get(sessionToken);
+  }
+
+  public Boolean getAllowRequestsWithoutSession(String token) {
+    UserSession us = getUserSessionWithSessionToken(token);
+    if (us == null) {
+      return false;
+    } else {
+      Meeting meeting = getMeeting(us.meetingID);
+      if (meeting == null || meeting.isForciblyEnded()) return false;
+      return meeting.getAllowRequestsWithoutSession();
+    }
+  }
+
+  public void removeUserSessionWithSessionToken(String token) {
+    log.debug("Removing token={}", token);
+    UserSession us = getUserSessionWithSessionToken(token);
+    if (us != null) {
+      log.debug("Found user {} token={} to meeting {}", us.fullname, token, us.meetingID);
+
+      UserSessionBasicData removedUser = new UserSessionBasicData();
+      removedUser.meetingId = us.meetingID;
+      removedUser.extMeetingId = us.externMeetingID;
+      removedUser.userId = us.internalUserId;
+      removedUser.extUserId = us.externUserID;
+      removedUser.userFullName = us.fullname;
+      removedUser.sessionToken = us.authToken;
+      removedUser.role = us.role;
+      removedSessions.put(token, removedUser);
+      sessions.remove(token);
+    } else {
+      log.debug("Not found token={}", token);
+    }
+  }
+
+  /**
+   * Remove users who did not successfully reconnected to the meeting.
+   */
+  public void purgeUsers() {
+    for (AbstractMap.Entry<String, Meeting> entry : this.meetings.entrySet()) {
+      Long now = System.currentTimeMillis();
+      Meeting meeting = entry.getValue();
+
+      for (AbstractMap.Entry<String, User> userEntry : meeting.getUsersMap().entrySet()) {
+        String userId = userEntry.getKey();
+        User user = userEntry.getValue();
+
+        if (!user.hasLeft()) continue;
+
+        long elapsedTime = now - user.getLeftOn();
+        if (elapsedTime >= usersTimeout) {
+          meeting.removeUser(userId);
+
+          Map<String, Object> logData = new HashMap<>();
+          logData.put("meetingId", meeting.getInternalId());
+          logData.put("userId", userId);
+          logData.put("logCode", "removed_user");
+          logData.put("description", "User left and was removed from the meeting.");
+
+          Gson gson = new Gson();
+          String logStr = gson.toJson(logData);
+
+          log.info(" --analytics-- data={}", logStr);
+        }
+      }
+    }
+  }
+
+  public void guestIsWaiting(String meetingId, String userId) {
+    Meeting m = getMeeting(meetingId);
+    if (m != null) {
+      m.guestIsWaiting(userId);
+    }
+  }
+
+  public void sendChatMessage(String meetingId, String name, String message) {
+    gw.sendChatMessage(new ChatMessageFromApi(meetingId, name, message));
+  }
+
+  private void kickOffProcessingOfRecording(Meeting m) {
+    if (m.isRecord() && m.getNumUsers() == 0) {
+      processRecording(m);
+    }
+  }
+
+  public Boolean authzTokenIsValid(String authzToken) { // Note we DO NOT expire the token
+    return authzToken != null && uploadAuthzTokens.containsKey(authzToken);
+  }
+
+  public Boolean authzTokenIsValidAndExpired(String authzToken) {  // Note we DO expire the token
+    return consumePresentationUploadToken(authzToken) != null;
+  }
+
+  public PresentationUploadToken getPresentationUploadToken(String authzToken) {
+    if (authzToken == null) return null;
+    return uploadAuthzTokens.get(authzToken);
+  }
+
+  /**
+   * Atomically retrieves and expires a one-time presentation upload token.
+   */
+  public PresentationUploadToken consumePresentationUploadToken(String authzToken) {
+    if (authzToken == null) return null;
+    return uploadAuthzTokens.remove(authzToken);
+  }
+
+  public void sendPresentationUploadMaxFilesizeMessage(PresentationUploadToken presUploadToken, int uploadedFileSize, int maxUploadFileSize) {
+    notifier.sendUploadFileTooLargeMessage(presUploadToken, uploadedFileSize, maxUploadFileSize);
+  }
+
+  public void sendPresentationUploadMaxFilesizeMessage(String presentationId, String podId, String meetingId,
+                                                       String filename, String authzToken,
+                                                       int uploadedFileSize, int maxUploadFileSize) {
+    notifier.sendUploadFileTooLargeMessage(presentationId, podId, meetingId, filename, authzToken,
+            uploadedFileSize, maxUploadFileSize);
+  }
+
+  private void removeUserSessionsFromMeeting(String meetingId) {
+    for (String token : sessions.keySet()) {
+      UserSession userSession = sessions.get(token);
+      if (userSession.meetingID.equals(meetingId)) {
+        removeUserSessionWithSessionToken(token);
+      }
+    }
+
+    scheduleRemovedSessionsCleanUp(meetingId);
+  }
+
+  private void scheduleRemovedSessionsCleanUp(String meetingId) {
+    Calendar cleanUpDelayCalendar = Calendar.getInstance();
+    cleanUpDelayCalendar.add(Calendar.MINUTE, sessionsCleanupDelayInMinutes);
+
+    log.debug("Sessions for meeting={} will be removed within {} minutes.", meetingId, sessionsCleanupDelayInMinutes);
+    new java.util.Timer().schedule(
+            new java.util.TimerTask() {
+              @Override
+              public void run() {
+                Iterator<Map.Entry<String, UserSessionBasicData>> iterator = removedSessions.entrySet().iterator();
+                while (iterator.hasNext()) {
+                  Map.Entry<String, UserSessionBasicData> entry = iterator.next();
+                  UserSessionBasicData removedUserSession = entry.getValue();
+
+                  if (removedUserSession.meetingId.equals(meetingId)) {
+                    log.debug("Removed user {} session for meeting {}.",removedUserSession.userId, removedUserSession.meetingId);
+                    iterator.remove();
+                  }
+                }
+              }
+            }, cleanUpDelayCalendar.getTime()
+    );
+  }
+
+  private void destroyMeeting(String meetingId) {
+    gw.destroyMeeting(new DestroyMeetingMessage(meetingId));
+  }
+
+  public Collection<Meeting> getMeetings() {
+    return meetings.isEmpty() ? Collections.<Meeting>emptySet()
+      : Collections.unmodifiableCollection(meetings.values());
+  }
+
+  public Collection<UserSession> getSessions() {
+    return sessions.isEmpty() ? Collections.<UserSession>emptySet()
+      : Collections.unmodifiableCollection(sessions.values());
+  }
+
+  public ArrayList<Object> getSharedNotesInitialContent(Meeting m) {
+    ArrayList<Object> initialContent;
+    String sharedNotesInitialContentJsonUrl = m.getSharedNotesInitialContentJsonUrl();
+    String sharedNotesInitialContentJsonFromPayload = m.getSharedNotesInitialContentJsonFromPayload();
+
+    if (!sharedNotesInitialContentJsonUrl.isEmpty()) {
+      initialContent = requestSharedNotesInitialContentFromUrl(m.getInternalId(), sharedNotesInitialContentJsonUrl);
+    } else {
+      initialContent = parseSharedNotesInitialContent(sharedNotesInitialContentJsonFromPayload);
+    }
+
+    return initialContent;
+  }
+
+  public ArrayList<Object> requestSharedNotesInitialContentFromUrl(String meetingId, String initialContentJsonUrl) {
+    if (initialContentJsonUrl.isEmpty()) {
+      return new ArrayList<>();
+    }
+    String content = fetchUrlContent(meetingId, initialContentJsonUrl);
+    return parseSharedNotesInitialContent(content);
+  }
+
+  /**
+   * Fetches the content at the given URL using the DNS-pinned, security-validated fetch path
+   * (protocol allowlist, blocked/local host rules, and rebinding protection). Returns an empty
+   * string when validation fails, the request errors, or the payload exceeds the configured cap.
+   */
+  private String fetchUrlContent(String meetingId, String url) {
+    ValidatedUrl validatedUrl = redirectFollower.followRedirectSecure(
+            meetingId, url, 0, url, sharedNotesRedirectValidator, 6000
+    );
+
+    if (validatedUrl == null) {
+      log.error("Failed to validate and resolve URL [{}] for meeting [{}]", url, meetingId);
+      return "";
+    }
+
+    String content = secureUrlDownloader.downloadToString(
+            meetingId, validatedUrl, 6000, maxSharedNotesInitialContentUrlPayloadSize
+    );
+
+    return content != null ? content : "";
+  }
+
+  public ArrayList<Object> parseSharedNotesInitialContent(String content) {
+    ArrayList<Object> initialContent = null;
+    try {
+      JsonNode jsonNode = objectMapper.readTree(content);
+      initialContent = objectMapper.convertValue(jsonNode, new TypeReference<>() {});
+    } catch (JsonProcessingException e) {
+      log.error(
+              "Error while processing json for sharedNotesInitialContent: [{}]", e.getMessage());
+    } catch (IllegalArgumentException e) {
+      log.warn("Structure mismatched, ignoring initial content for shared notes.");
+    }
+    if (initialContent == null) return new ArrayList<>();
+    return initialContent;
+  }
+
+  public String getSharedNotesInitialContentMarkdown(Meeting m) {
+    String sharedNotesInitialContentMarkdownUrl = m.getSharedNotesInitialContentMarkdownUrl();
+
+    if (!sharedNotesInitialContentMarkdownUrl.isEmpty()) {
+      return requestSharedNotesInitialContentMarkdownFromUrl(m.getInternalId(), sharedNotesInitialContentMarkdownUrl);
+    }
+
+    // Raw markdown can arrive either as a create param or, for larger content, in the POST
+    // body via the `sharedNotesInitialContentMarkdown` xml module. The create param wins when
+    // both are present; the payload is the fallback (mirrors sharedNotesInitialContentJson).
+    String markdownFromParam = m.getSharedNotesInitialContentMarkdown();
+    if (markdownFromParam != null && !markdownFromParam.isEmpty()) {
+      return markdownFromParam;
+    }
+
+    String markdownFromPayload = m.getSharedNotesInitialContentMarkdownFromPayload();
+    return markdownFromPayload != null ? markdownFromPayload : "";
+  }
+
+  public String requestSharedNotesInitialContentMarkdownFromUrl(String meetingId, String initialContentMarkdownUrl) {
+    if (initialContentMarkdownUrl.isEmpty()) {
+      return "";
+    }
+    return fetchUrlContent(meetingId, initialContentMarkdownUrl);
+  }
+
+  public Map<String, Object> requestPluginManifests(Meeting m) {
+    Map<String, Object> pluginsResult = new ConcurrentHashMap<>();
+    Map<String, String> metadata = m.getMetadata();
+    Map<String, String> pluginMetadataParameter = m.getPluginMetadataParametersMap();
+    List<CompletableFuture<Void>> futures = new ArrayList<>();
+    // The maximum number of threads can be adjusted later on
+    ExecutorService executorService = Executors.newFixedThreadPool(numPluginManifestsFetchingThreads);
+    for (PluginManifest pluginManifest : m.getPluginManifests()) {
+      String pluginManifestUrlString = pluginManifest.getUrl();
+      log.info("Fetching plugin [{}].", pluginManifestUrlString);
+
+      CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+        try {
+          ParsedPluginManifest parsed = pluginUtils.getParsedPluginManifest(pluginManifest, m.getInternalId());
+
+          String pluginName = parsed.pluginName();
+          if (pluginName == null || pluginName.isEmpty()) throw new PluginMissingNameException(
+                  "For url " + pluginManifestUrlString + " there is no name field configured.",
+                  pluginManifestUrlString
+          );
+
+          HashMap<String, Object> manifestObject = new HashMap<>();
+          manifestObject.put("url", pluginManifestUrlString);
+          String manifestContent = PluginUtils.replaceMetadataParametersIntoManifestTemplate(
+                  pluginName, parsed.rawContent(), metadata, pluginMetadataParameter);
+
+          Map<String, Object> mappedManifestContent = objectMapper.readValue(manifestContent, new TypeReference<Map<String, Object>>() {});
+          manifestObject.put("content", mappedManifestContent);
+
+          Map<String, Object> manifestWrapper = new HashMap<>();
+          manifestWrapper.put("manifest", manifestObject);
+          pluginsResult.put(pluginName, manifestWrapper);
+
+        } catch (PluginManifestChecksumMismatchException e) {
+          String clientErrorMessage = "Plugin's manifest.json checksum mismatch with that of the URL parameter. For more information, see bbb-web";
+          pluginsResult.put(pluginManifestUrlString, PluginUtils.createEmptyPluginObjectWithError(
+                  clientErrorMessage, pluginManifestUrlString));
+          log.info("Plugin's manifest.json checksum mismatch with that of the URL parameter for [{}]. Plugin not loaded.",
+                  pluginManifestUrlString);
+        } catch (MalformedURLException e) {
+          String clientErrorMessage = "Invalid URL/Malformed URl when processing a plugin. For more information, see bbb-web";
+          pluginsResult.put(pluginManifestUrlString, PluginUtils.createEmptyPluginObjectWithError(
+                  clientErrorMessage, pluginManifestUrlString));
+          log.error("Invalid URL/Malformed URL for plugin [{}]", pluginManifestUrlString, e);
+        } catch (JsonProcessingException e) {
+          String clientErrorMessage = "Failed to parse manifest JSON from a plugin URL. For more information, see bbb-web";
+          pluginsResult.put(pluginManifestUrlString, PluginUtils.createEmptyPluginObjectWithError(
+                  clientErrorMessage, pluginManifestUrlString));
+          log.error("Failed to parse manifest JSON from URL [{}]", pluginManifestUrlString, e);
+        } catch (IOException e) {
+          String clientErrorMessage = "I/O error when fetching a plugin URL. For more information, see bbb-web";
+          pluginsResult.put(pluginManifestUrlString, PluginUtils.createEmptyPluginObjectWithError(
+                  clientErrorMessage, pluginManifestUrlString));
+          log.error("I/O error when fetching URL [{}]", pluginManifestUrlString, e);
+        } catch (PluginMetadataException e) {
+          String pluginName = e.getPluginName();
+          String clientErrorMessage = String.format(
+            "Missing required metadata (meta_ or plugin_ parameter) for plugin [%s]. Plugin not loaded. For more information, see bbb-web",
+            pluginName
+          );
+          pluginsResult.put(pluginName, PluginUtils.createEmptyPluginObjectWithError(
+                  clientErrorMessage, pluginManifestUrlString));
+          log.error(
+            "Missing required metadata (meta_ or plugin_ parameter) in plugin manifest URL [{}] (Plugin name: [{}]). Plugin not loaded.",
+            pluginManifestUrlString, pluginName, e);
+        } catch (PluginMalformedParametersException e) {
+          String pluginName = e.getPluginName();
+          String clientErrorMessage = String.format(
+            "Malformed metadata parameter for plugin [%s]. Plugin not loaded. For more information, see bbb-web",
+            pluginName
+          );
+          pluginsResult.put(pluginName, PluginUtils.createEmptyPluginObjectWithError(
+                  clientErrorMessage, pluginManifestUrlString));
+          log.error(
+            "Malformed metadata parameter for plugin manifest URL [{}] (Plugin name: [{}]). Plugin not loaded.",
+            pluginManifestUrlString, e);
+        } catch (PluginMissingNameException e) {
+          String clientErrorMessage = "Plugin Manifest without a plugin name, ignoring. For more information, see bbb-web";
+          pluginsResult.put(pluginManifestUrlString, PluginUtils.createEmptyPluginObjectWithError(
+                  clientErrorMessage, pluginManifestUrlString));
+          log.error(
+            "Plugin Manifest [{}] without a plugin name, ignoring...",
+            pluginManifestUrlString, e);
+        } catch (Exception e) {
+          String clientErrorMessage = "Unexpected error while processing plugin manifest. For more information, see bbb-web";
+          pluginsResult.put(pluginManifestUrlString, PluginUtils.createEmptyPluginObjectWithError(
+                  clientErrorMessage, pluginManifestUrlString));
+          log.error("Unexpected error while processing plugin manifest from URL: [{}]", pluginManifestUrlString, e);
+        }
+      }, executorService).orTimeout(pluginManifestFetchTimeout, TimeUnit.SECONDS)
+      .exceptionally(ex -> {
+        if (ex instanceof TimeoutException) {
+          String clientErrorMessage = "Timeout occurred when fetching plugin manifest URL. For more information, see bbb-web";
+          pluginsResult.put(pluginManifestUrlString, PluginUtils.createEmptyPluginObjectWithError(
+                  clientErrorMessage, pluginManifestUrlString));
+          log.warn("Timeout occurred when fetching plugin manifest URL [{}]", pluginManifestUrlString);
+        } else {
+          log.error("Unexpected error for plugin {}: {}", pluginManifestUrlString, ex);
+        }
+        return null;
+      });
+      futures.add(future);
+    }
+    // Wait for all tasks to complete
+    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+    executorService.shutdown();
+    return pluginsResult;
+  }
+
+  public synchronized boolean createMeeting(Meeting m) {
+    Map<String, Object> pluginsMap = new HashMap<>();
+    return createMeeting(m, pluginsMap);
+  }
+
+  public synchronized boolean createMeeting(Meeting m, Map<String, Object> plugins) {
+    String internalMeetingId = paramsProcessorUtil.convertToInternalMeetingId(m.getExternalId());
+    Meeting existingId = getNotEndedMeetingWithId(internalMeetingId);
+    Meeting existingTelVoice = getNotEndedMeetingWithTelVoice(m.getTelVoice());
+    if (existingId == null && existingTelVoice == null) {
+      meetings.put(m.getInternalId(), m);
+      Map<String, Object> pluginsMap;
+      ArrayList<Object> sharedNotesInitialContentMap = getSharedNotesInitialContent(m);
+      if (m.isBreakout() || m.getDisabledFeatures().contains("plugins")) {
+        pluginsMap = plugins;
+      } else {
+        pluginsMap = requestPluginManifests(m);
+      }
+
+      m.setPlugins(pluginsMap);
+      m.setSharedNotesInitialContentJson(sharedNotesInitialContentMap);
+      m.setSharedNotesInitialContentMarkdown(getSharedNotesInitialContentMarkdown(m));
+      handle(new CreateMeeting(m));
+      return true;
+    }
+
+    return false;
+  }
+
+  private boolean storeEvents(Meeting m) {
+    return m.isRecord() || m.getMeetingKeepEvents();
+  }
+
+  private void handleCreateMeeting(Meeting m) {
+    if (m.isBreakout()) {
+      Meeting parent = meetings.get(m.getParentMeetingId());
+      parent.addBreakoutRoom(m.getExternalId(), m.getInternalId());
+      if (storeEvents(parent)) {
+        storeService.addBreakoutRoom(parent.getInternalId(), m.getInternalId());
+      }
+    }
+
+    if (storeEvents(m)) {
+      Map<String, String> metadata = new TreeMap<>();
+      metadata.putAll(m.getMetadata());
+      // TODO: Need a better way to store these values for recordings
+      metadata.put("meetingId", m.getExternalId());
+      metadata.put("meetingName", m.getName());
+      metadata.put("isBreakout", m.isBreakout().toString());
+
+      storeService.recordMeetingInfo(m.getInternalId(), metadata);
+
+      if (m.isBreakout()) {
+        Map<String, String> breakoutMetadata = new TreeMap<>();
+        breakoutMetadata.put("meetingId", m.getExternalId());
+        breakoutMetadata.put("sequence", m.getSequence().toString());
+        breakoutMetadata.put("freeJoin", m.isFreeJoin().toString());
+        breakoutMetadata.put("captureSlides", m.isCaptureSlides().toString());
+        breakoutMetadata.put("captureNotes", m.isCaptureNotes().toString());
+        breakoutMetadata.put("parentMeetingId", m.getParentMeetingId());
+        storeService.recordBreakoutInfo(m.getInternalId(), breakoutMetadata);
+      }
+    }
+
+    Map<String, Object> logData = new HashMap<>();
+    logData.put("meetingId", m.getInternalId());
+    logData.put("externalMeetingId", m.getExternalId());
+    if (m.isBreakout()) {
+      logData.put("sequence", m.getSequence());
+      logData.put("freeJoin", m.isFreeJoin());
+      logData.put("captureSlides",  m.isCaptureSlides());
+      logData.put("captureNotes", m.isCaptureNotes());
+      logData.put("parentMeetingId", m.getParentMeetingId());
+    }
+    logData.put("name", m.getName());
+    logData.put("duration", m.getDuration());
+    logData.put("isBreakout", m.isBreakout());
+    logData.put("webcamsOnlyForModerator", m.getWebcamsOnlyForModerator());
+    logData.put("multiUserWhiteboardEnabled", m.getMultiUserWhiteboardEnabled());
+    logData.put("meetingCameraCap", m.getMeetingCameraCap());
+    logData.put("userCameraCap", m.getUserCameraCap());
+    logData.put("maxPinnedCameras", m.getMaxPinnedCameras());
+    logData.put("cameraBridge", m.getCameraBridge());
+    logData.put("screenShareBridge", m.getScreenShareBridge());
+    logData.put("audioBridge", m.getAudioBridge());
+    logData.put("record", m.isRecord());
+    logData.put("logCode", "create_meeting");
+    logData.put("description", "Create meeting.");
+
+    logData.put("meetingKeepEvents", m.getMeetingKeepEvents());
+    logData.put("meetingLayout", m.getMeetingLayout());
+
+    Gson gson = new Gson();
+    String logStr = gson.toJson(logData);
+
+    log.info(" --analytics-- data={}", logStr);
+
+    gw.createMeeting(m.getInternalId(), m.getExternalId(), m.getParentMeetingId(), m.getName(), m.isRecord(),
+            m.getTelVoice(), m.getDuration(), m.getAutoStartRecording(), m.getAllowStartStopRecording(),
+            m.getSharedNotesInitialContentJson(), m.getSharedNotesInitialContentMarkdown(), m.getRecordFullDurationMedia(),
+            m.getWebcamsOnlyForModerator(), m.getMultiUserWhiteboardEnabled(), m.getMeetingCameraCap(), m.getUserCameraCap(), m.getMaxPinnedCameras(),
+            m.getCameraBridge(),
+            m.getScreenShareBridge(),
+            m.getAudioBridge(),
+            m.getModeratorPassword(), m.getViewerPassword(),
+            m.getLearningDashboardAccessToken(), m.getCreateTime(),
+            formatPrettyDate(m.getCreateTime()), m.isBreakout(), m.getSequence(), m.isFreeJoin(), m.getMetadata(),
+            m.getGuestPolicy(), m.getAuthenticatedGuest(), m.getAllowPromoteGuestToModerator(), m.getWaitingGuestUsersTimeout(), m.getMeetingLayout(), m.getWelcomeMessageTemplate(), m.getWelcomeMessage(),
+            m.getWelcomeMsgForModerators(), m.getDialNumber(), m.getMaxUsers(), m.getMaxUserConcurrentAccesses(),
+            m.getMeetingExpireIfNoUserJoinedInMinutes(), m.getMeetingExpireWhenLastUserLeftInMinutes(),
+            m.getUserInactivityInspectTimerInMinutes(), m.getUserInactivityThresholdInMinutes(),
+            m.getUserActivitySignResponseDelayInMinutes(), m.getEndWhenNoModerator(), m.getEndWhenNoModeratorDelayInMinutes(),
+            m.getMuteOnStart(), m.getAllowModsToUnmuteUsers(), m.getRequireUserConsentBeforeUnmuting(), m.getAllowModsToEjectCameras(), m.getMeetingKeepEvents(),
+            m.breakoutRoomsParams, m.lockSettingsParams, m.getLoginUrl(), m.getLogoutUrl(), m.getCustomLogoURL(), m.getCustomDarkLogoURL(),
+            m.getBannerText(), m.getBannerColor(), m.getGroups(), m.getDisabledFeatures(), m.getNotifyRecordingIsOn(),
+            m.getNotifyRecordingAppend(), m.getPresentationUploadExternalDescription(), m.getPresentationUploadExternalUrl(), m.getPlugins(),
+            m.getHtml5PluginSdkVersion(), m.getOverrideClientSettings());
+  }
+
+  private String formatPrettyDate(Long timestamp) {
+    return new Date(timestamp).toString();
+  }
+
+  private void processCreateMeeting(CreateMeeting message) {
+    handleCreateMeeting(message.meeting);
+  }
+
+  private void processRegisterUser(RegisterUser message) {
+    gw.registerUser(message.meetingID,
+      message.internalUserId, message.fullname, message.firstName, message.lastName, message.role,
+      message.externUserID, message.authToken, message.sessionToken, message.avatarURL, message.webcamBackgroundURL, message.bot,
+      message.guest, message.authed, message.guestStatus, message.excludeFromDashboard, message.enforceLayout, message.logoutUrl,
+      message.joinRequestMetadata, message.userMetadata);
+  }
+
+  private void processRegisterUserSessionToken(RegisterUserSessionToken message) {
+    gw.registerUserSessionToken(message.meetingID, message.internalUserId, message.sessionToken, message.sessionName,
+            message.replaceSessionToken, message.enforceLayout, message.userSessionMetadata);
+  }
+
+    public Meeting getMeeting(String meetingId) {
+        if (meetingId == null)
+            return null;
+        for (Map.Entry<String, Meeting> entry : meetings.entrySet()) {
+            String key = entry.getKey();
+            if (key.startsWith(meetingId))
+                return entry.getValue();
+        }
+
+        return null;
+    }
+
+  public Collection<Meeting> getMeetingsWithId(String meetingId) {
+    if (meetingId == null)
+      return Collections.<Meeting>emptySet();
+
+    Collection<Meeting> m = new HashSet<>();
+
+    for (Map.Entry<String, Meeting> entry : meetings.entrySet()) {
+        String key = entry.getKey();
+        if (key.startsWith(meetingId))
+            m.add(entry.getValue());
+    }
+
+    return m;
+  }
+
+  public Meeting getNotEndedMeetingWithId(String meetingId) {
+      if (meetingId == null)
+          return null;
+      for (Map.Entry<String, Meeting> entry : meetings.entrySet()) {
+          String key = entry.getKey();
+          if (key.startsWith(meetingId)) {
+              Meeting m = entry.getValue();
+              if (!m.isForciblyEnded())
+                  return m;
+          }
+      }
+      return null;
+  }
+
+  public Meeting getNotEndedMeetingWithTelVoice(String telVoice) {
+      if (telVoice == null)
+          return null;
+      for (Map.Entry<String, Meeting> entry : meetings.entrySet()) {
+          Meeting m = entry.getValue();
+          if (telVoice.equals(m.getTelVoice())) {
+              if (!m.isForciblyEnded())
+                  return m;
+          }
+      }
+      return null;
+  }
+
+  public Boolean validateTextTrackSingleUseToken(String recordId, String caption, String token) {
+    return recordingService.validateTextTrackSingleUseToken(recordId, caption, token);
+  }
+
+  public String getRecordingTextTracks(String recordId) {
+    return recordingService.getRecordingTextTracks(recordId);
+  }
+
+  public String putRecordingTextTrack(String recordId, String kind, String lang, File file, String label,
+          String origFilename, String trackId, String contentType, String tempFilename) {
+
+    Map<String, Object> logData = new HashMap<>();
+    logData.put("recordId", recordId);
+    logData.put("kind", kind);
+    logData.put("lang", lang);
+    logData.put("label", label);
+    logData.put("origFilename", origFilename);
+    logData.put("contentType", contentType);
+    logData.put("tempFilename", tempFilename);
+    logData.put("logCode", "recording_captions_uploaded");
+    logData.put("description", "Captions for recording uploaded.");
+
+    Gson gson = new Gson();
+    String logStr = gson.toJson(logData);
+    log.info(" --analytics-- data={}", logStr);
+
+      UploadedTrack track = new UploadedTrack(recordId, kind, lang, label, origFilename, file, trackId,
+              getCaptionTrackInboxDir(), contentType, tempFilename);
+      return recordingService.putRecordingTextTrack(track);
+  }
+
+  public String getCaptionTrackInboxDir() {
+  	return recordingService.getCaptionTrackInboxDir();
+  }
+
+  public String getCaptionsDir() {
+    return recordingService.getCaptionsDir();
+  }
+
+  public boolean isRecordingExist(String recordId) {
+    return recordingService.isRecordingExist(recordId);
+  }
+
+  public boolean isMeetingWithDisabledPresentation(String meetingId) {
+    Meeting m = getMeeting(meetingId);
+    return m.getDisabledFeatures().contains("presentation");
+  }
+
+  public String getRecordings2x(List<String> idList, List<String> states, Map<String, String> metadataFilters, String offset, String limit) {
+    Pageable pageable = null;
+    int o = -1;
+    int l = -1;
+
+    try {
+      o = Integer.parseInt(offset);
+      if(o < 0) o = 0;
+    } catch(NumberFormatException e) {
+      log.info("Invalid offset parameter {}", offset);
+      o = 0;
+    }
+
+    try {
+      l = Integer.parseInt(limit);
+      if(l < 1) l = 1;
+      else if(l > 100) l = 100;
+    } catch(NumberFormatException e) {
+      log.info("Invalid limit parameter {}", limit);
+    }
+
+    if(l != -1) pageable = PageRequest.ofSize(l);
+    return recordingService.getRecordings2x(idList, states, metadataFilters, o, pageable);
+  }
+
+  public boolean existsAnyRecording(List<String> idList) {
+    return recordingService.existAnyRecording(idList);
+  }
+
+  public void setPublishRecording(List<String> idList, boolean publish) {
+    for (String id : idList) {
+      if (publish) {
+        if (recordingService.changeState(id, Recording.STATE_PUBLISHED)) {
+          gw.publishedRecording(new PublishedRecordingMessage(id));
+        }
+      } else {
+        if (recordingService.changeState(id, Recording.STATE_UNPUBLISHED)) {
+          gw.unpublishedRecording(new UnpublishedRecordingMessage(id));
+        }
+      }
+    }
+  }
+
+  public void deleteRecordings(List<String> idList) {
+    for (String id : idList) {
+      if (recordingService.changeState(id, Recording.STATE_DELETED)) {
+        gw.deletedRecording(new DeletedRecordingMessage(id));
+      }
+    }
+  }
+
+  public void updateRecordings(List<String> idList, Map<String, String> metaParams) {
+    recordingService.updateMetaParams(idList, metaParams);
+  }
+
+  public void processRecording(Meeting m) {
+    if (m.isRecord()) {
+      Map<String, Object> logData = new HashMap<String, Object>();
+      logData.put("meetingId", m.getInternalId());
+      logData.put("externalMeetingId", m.getExternalId());
+      logData.put("name", m.getName());
+      logData.put("logCode", "kick_off_ingest_and_processing");
+      logData.put("description", "Start processing of recording.");
+
+      Gson gson = new Gson();
+      String logStr = gson.toJson(logData);
+
+      log.info(" --analytics-- data={}", logStr);
+      recordingService.startIngestAndProcessing(m.getInternalId());
+    }
+  }
+
+  public void endMeeting(String meetingId) {
+    handle(new EndMeeting(meetingId));
+  }
+
+  private void processCreateBreakoutRoom(CreateBreakoutRoom message) {
+    Meeting parentMeeting = getMeeting(message.parentMeetingId);
+    if (parentMeeting != null) {
+
+      Map<String, String> params = new HashMap<>();
+      params.put(ApiParams.NAME, message.name);
+      params.put(ApiParams.MEETING_ID, message.meetingId);
+      params.put(ApiParams.PARENT_MEETING_ID, message.parentMeetingId);
+      params.put(ApiParams.IS_BREAKOUT, "true");
+      params.put(ApiParams.SEQUENCE, message.sequence.toString());
+      params.put(ApiParams.FREE_JOIN, message.freeJoin.toString());
+      params.put(ApiParams.BREAKOUT_ROOMS_CAPTURE_SLIDES, message.captureSlides.toString());
+      params.put(ApiParams.BREAKOUT_ROOMS_CAPTURE_NOTES, message.captureNotes.toString());
+      params.put(ApiParams.BREAKOUT_ROOMS_CAPTURE_NOTES_FILENAME, message.captureNotesFilename.toString());
+      params.put(ApiParams.BREAKOUT_ROOMS_CAPTURE_SLIDES_FILENAME, message.captureSlidesFilename.toString());
+      params.put(ApiParams.ATTENDEE_PW, message.viewerPassword);
+      params.put(ApiParams.MODERATOR_PW, message.moderatorPassword);
+      params.put(ApiParams.DIAL_NUMBER, message.dialNumber);
+      params.put(ApiParams.VOICE_BRIDGE, message.voiceConfId);
+      int durationInMinutes = message.durationInSeconds > 0 ? ((message.durationInSeconds + 59) / 60) : 0;
+      params.put(ApiParams.DURATION, Integer.toString(durationInMinutes));
+      params.put(ApiParams.RECORD, message.record.toString());
+      params.put(ApiParams.AUTO_START_RECORDING, message.autoStartRecording.toString());
+      params.put(ApiParams.ALLOW_START_STOP_RECORDING, message.allowStartStopRecording.toString());
+      params.put(ApiParams.MEETING_KEEP_EVENTS, parentMeeting.getMeetingKeepEvents().toString());
+      params.put(ApiParams.WELCOME, getMeeting(message.parentMeetingId).getWelcomeMessageTemplate());
+      params.put(ApiParams.AUDIO_BRIDGE, message.audioBridge);
+      params.put(ApiParams.CAMERA_BRIDGE, message.cameraBridge);
+      params.put(ApiParams.SCREEN_SHARE_BRIDGE, message.screenShareBridge);
+      params.put(ApiParams.NOTIFY_RECORDING_IS_ON,parentMeeting.getNotifyRecordingIsOn().toString());
+      params.put(ApiParams.NOTIFY_RECORDING_APPEND, parentMeeting.getNotifyRecordingAppend());
+      params.put(ApiParams.DISABLED_FEATURES,String.join(",", message.disabledFeatures));
+      params.put(ApiParams.GUEST_POLICY, GuestPolicy.ALWAYS_ACCEPT);
+
+      // Apply lock settings from parent meeting to breakout room
+      params.put(ApiParams.LOCK_SETTINGS_DISABLE_PRIVATE_CHAT, message.disablePrivChat.toString());
+      params.put(ApiParams.LOCK_SETTINGS_DISABLE_CAM, message.disableCam.toString());
+      params.put(ApiParams.LOCK_SETTINGS_DISABLE_MIC, message.disableMic.toString());
+      params.put(ApiParams.LOCK_SETTINGS_DISABLE_PUBLIC_CHAT, message.disablePubChat.toString());
+      params.put(ApiParams.LOCK_SETTINGS_DISABLE_NOTES, message.disableNotes.toString());
+      params.put(ApiParams.LOCK_SETTINGS_HIDE_USER_LIST, message.hideUserList.toString());
+      params.put(ApiParams.LOCK_SETTINGS_LOCK_ON_JOIN, message.lockOnJoin.toString());
+      params.put(ApiParams.LOCK_SETTINGS_LOCK_ON_JOIN_CONFIGURABLE, message.lockOnJoinConfigurable.toString());
+      params.put(ApiParams.LOCK_SETTINGS_HIDE_VIEWERS_CURSOR, message.hideViewersCursor.toString());
+      params.put(ApiParams.LOCK_SETTINGS_HIDE_VIEWERS_ANNOTATION, message.hideViewersAnnotation.toString());
+      params.put(ApiParams.WEBCAMS_ONLY_FOR_MODERATOR, message.webcamsOnlyForModerator.toString());
+
+      Map<String, String> parentMeetingMetadata = parentMeeting.getMetadata();
+
+      String metaPrefix = "meta_";
+      for (String key : parentMeetingMetadata.keySet()) {
+        String metaName = metaPrefix + key;
+        // Inject metadata from parent meeting into the breakout room.
+        params.put(metaName, parentMeetingMetadata.get(key));
+      }
+
+      Meeting breakout = paramsProcessorUtil.processCreateParams(params);
+
+      // breakout rooms inherit client settings override from the parent
+      breakout.setOverrideClientSettings(parentMeeting.getOverrideClientSettings());
+
+      createMeeting(breakout, message.pluginProp);
+
+      presDownloadService.extractPresentationPage(message.parentMeetingId,
+        message.sourcePresentationId,
+        message.sourcePresentationSlide, breakout.getInternalId(), false);
+    } else {
+      Map<String, Object> logData = new HashMap<String, Object>();
+      logData.put("meetingId", message.meetingId);
+      logData.put("parentMeetingId", message.parentMeetingId);
+      logData.put("name", message.name);
+      logData.put("logCode", "create_breakout_failed");
+      logData.put("reason", "Parent not found.");
+      logData.put("description", "Create breakout failed.");
+
+      Gson gson = new Gson();
+      String logStr = gson.toJson(logData);
+
+      log.error(" --analytics-- data={}", logStr);
+    }
+  }
+
+  private void processUpdateRecordingStatus(UpdateRecordingStatus message) {
+    Meeting m = getMeeting(message.meetingId);
+      // Set only once
+      if (m != null && message.recording && !m.haveRecordingMarks()) {
+          m.setHaveRecordingMarks(message.recording);
+      }
+  }
+
+  private void processEndMeeting(EndMeeting message) {
+    gw.endMeeting(new EndMeetingMessage(message.meetingId));
+  }
+
+  private void processRemoveEndedMeeting(MeetingEnded message) {
+    Meeting m = getMeeting(message.meetingId);
+    if (m != null) {
+      m.setForciblyEnded(true);
+      processRecording(m);
+      if (m.getMeetingKeepEvents()) {
+        // The creation of the ended tag must occur after the creation of the
+        // recorded tag to avoid concurrency issues at the recording scripts
+        recordingService.markAsEnded(m.getInternalId());
+      }
+      destroyMeeting(m.getInternalId());
+      meetings.remove(m.getInternalId());
+      removeUserSessionsFromMeeting(m.getInternalId());
+
+      Map<String, Object> logData = new HashMap<>();
+      logData.put("meetingId", m.getInternalId());
+      logData.put("externalMeetingId", m.getExternalId());
+      logData.put("name", m.getName());
+      logData.put("duration", m.getDuration());
+      logData.put("record", m.isRecord());
+      logData.put("logCode", "meeting_removed_from_running");
+      logData.put("description", "Meeting removed from list of running meetings.");
+
+      Gson gson = new Gson();
+      String logStr = gson.toJson(logData);
+
+      log.info(" --analytics-- data={}", logStr);
+    }
+  }
+
+  private void processGuestStatusChangedEventMsg(GuestStatusChangedEventMsg message) {
+    Meeting m = getMeeting(message.meetingId);
+    if (m != null) {
+      for (GuestsStatus guest : message.guests) {
+        m.setGuestStatusWithId(guest.userId, guest.status);
+      }
+    }
+
+    for (GuestsStatus guest : message.guests) {
+      UserSession userSession = getUserSessionWithUserId(guest.userId);
+      if (userSession != null) userSession.guestStatus = guest.status;
+    }
+
+  }
+
+  private void processPresentationUploadToken(PresentationUploadToken message) {
+    uploadAuthzTokens.put(message.authzToken, message);
+  }
+
+  public void expirePresentationUploadToken(String usedToken) {
+    if (usedToken != null) uploadAuthzTokens.remove(usedToken);
+  }
+
+  public void addUserCustomData(String meetingId, String userID,
+                                Map<String, String> userCustomData) {
+    Meeting m = getMeeting(meetingId);
+    if (m != null) {
+      m.addUserCustomData(userID, userCustomData);
+    }
+  }
+
+  public Map<String, String> getUserCustomData(
+      Meeting meeting,
+      String externUserID,
+      Map<String, String> params) {
+    Map<String, String> resp = paramsProcessorUtil.getUserCustomData(params);
+
+    // If is breakout room, merge with user's parent meeting userdata
+    if (meeting.isBreakout()) {
+      String parentMeetingId = meeting.getParentMeetingId();
+      Meeting parentMeeting = getMeeting(parentMeetingId);
+
+      if (parentMeeting != null) {
+        // Get parent meeting user's internal id from it's breakout external id
+        // parentUserInternalId-breakoutRoomNumber
+        String parentUserId = externUserID.split("-")[0];
+        User parentUser = parentMeeting.getUserById(parentUserId);
+
+        if (parentUser != null) {
+          // Custom data is stored indexed by user's external id
+          Map<String, String> customData = parentMeeting.getUserCustomData(parentUser.getExternalUserId());
+
+          if (customData != null) {
+            for (String key : customData.keySet()) {
+              if (!resp.containsKey(key)) {
+                resp.put(key, customData.get(key));
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return resp;
+  }
+
+  private void meetingStarted(MeetingStarted message) {
+    Meeting m = getMeeting(message.meetingId);
+    if (m != null) {
+      if (m.getStartTime() == 0) {
+        long now = System.currentTimeMillis();
+        m.setStartTime(now);
+
+        Map<String, Object> logData = new HashMap<>();
+        logData.put("meetingId", m.getInternalId());
+        logData.put("externalMeetingId", m.getExternalId());
+        if (m.isBreakout()) {
+          logData.put("parentMeetingId", m.getParentMeetingId());
+        }
+        logData.put("name", m.getName());
+        logData.put("duration", m.getDuration());
+        logData.put("record", m.isRecord());
+        logData.put("isBreakout", m.isBreakout());
+        logData.put("logCode", "meeting_started");
+        logData.put("description", "Meeting has started.");
+
+        Gson gson = new Gson();
+        String logStr = gson.toJson(logData);
+
+        log.info(" --analytics-- data={}", logStr);
+      } else {
+        Map<String, Object> logData = new HashMap<>();
+        logData.put("meetingId", m.getInternalId());
+        logData.put("externalMeetingId", m.getExternalId());
+        if (m.isBreakout()) {
+          logData.put("parentMeetingId", m.getParentMeetingId());
+        }
+        logData.put("name", m.getName());
+        logData.put("duration", m.getDuration());
+        logData.put("record", m.isRecord());
+        logData.put("isBreakout", m.isBreakout());
+        logData.put("logCode", "meeting_restarted");
+        logData.put("description", "Meeting has restarted.");
+
+        Gson gson = new Gson();
+        String logStr = gson.toJson(logData);
+
+        log.info(" --analytics-- data={}", logStr);
+      }
+    }
+  }
+
+  private void meetingDestroyed(MeetingDestroyed message) {
+    Meeting m = getMeeting(message.meetingId);
+    if (m != null) {
+      long now = System.currentTimeMillis();
+      m.setEndTime(now);
+
+      Map<String, Object> logData = new HashMap<>();
+      logData.put("meetingId", m.getInternalId());
+      logData.put("externalMeetingId", m.getExternalId());
+      logData.put("name", m.getName());
+      logData.put("duration", m.getDuration());
+      logData.put("record", m.isRecord());
+      logData.put("logCode", "meeting_destroyed");
+      logData.put("description", "Meeting has been destroyed.");
+
+      Gson gson = new Gson();
+      String logStr = gson.toJson(logData);
+
+      log.info(" --analytics-- data={}", logStr);
+    }
+  }
+
+  private void meetingEnded(MeetingEnded message) {
+    Meeting m = getMeeting(message.meetingId);
+    if (m != null) {
+      long now = System.currentTimeMillis();
+      m.setEndTime(now);
+
+      Map<String, Object> logData = new HashMap<>();
+      logData.put("meetingId", m.getInternalId());
+      logData.put("externalMeetingId", m.getExternalId());
+      logData.put("name", m.getName());
+      logData.put("duration", m.getDuration());
+      logData.put("record", m.isRecord());
+      logData.put("logCode", "meeting_ended");
+      logData.put("description", "Meeting has ended.");
+
+      Gson gson = new Gson();
+      String logStr = gson.toJson(logData);
+
+      log.info(" --analytics-- data={}", logStr);
+
+      String endCallbackUrl = "endCallbackUrl".toLowerCase();
+      Map<String, String> metadata = m.getMetadata();
+      if (!m.isBreakout()) {
+        if (metadata.containsKey(endCallbackUrl)) {
+          String callbackUrl = metadata.get(endCallbackUrl);
+          try {
+            callbackUrl = new URIBuilder(new URI(callbackUrl))
+              .addParameter("recordingmarks", m.haveRecordingMarks() ? "true" : "false")
+              .addParameter("meetingID", m.getExternalId()).build().toURL().toString();
+            MeetingEndedEvent event = new MeetingEndedEvent(m.getInternalId(), m.getExternalId(), m.getName(), callbackUrl);
+            processMeetingEndedCallback(event);
+          } catch (Exception e) {
+            log.error("Error in callback url=[{}]", callbackUrl, e);
+          }
+        }
+
+        if (! StringUtils.isEmpty(m.getMeetingEndedCallbackURL())) {
+          String meetingEndedCallbackURL = m.getMeetingEndedCallbackURL();
+          callbackUrlService.handleMessage(new MeetingEndedEvent(m.getInternalId(), m.getExternalId(), m.getName(), meetingEndedCallbackURL));
+        }
+      }
+
+      //Remove Learning Dashboard files
+      //Breakout rooms don't get their data cleaned up on their own end: it's scheduled here, when the
+      //parent meeting ends, so moderators can still check a breakout's dashboard while the parent meeting
+      //is ongoing even after that breakout itself has closed.
+      if (!m.isBreakout() && !m.getDisabledFeatures().contains("learningDashboard") && m.getLearningDashboardCleanupDelayInMinutes() > 0) {
+        List<String> meetingIdsToClean = new ArrayList<>();
+        meetingIdsToClean.add(message.meetingId);
+        meetingIdsToClean.addAll(m.getBreakoutRoomsInternalIds());
+        learningDashboardService.removeJsonDataFiles(meetingIdsToClean, m.getLearningDashboardCleanupDelayInMinutes());
+      }
+
+      processRemoveEndedMeeting(message);
+    }
+  }
+
+  private void processMeetingEndedCallback(MeetingEndedEvent event) {
+    try {
+      callbackUrlService.handleMessage(event);
+    } catch (Exception e) {
+      log.error("Error in callback url=[{}]", event.getCallbackUrl(), e);
+    }
+  }
+
+  private void userJoined(UserJoined message) {
+    Meeting m = getMeeting(message.meetingId);
+    if (m != null) {
+      if (m.getNumUsers() == 0) {
+        // First user joins the meeting. Reset the end time to zero
+        // in case the meeting has been rejoined.
+        m.setEndTime(0);
+      }
+
+      User user = new User(message.userId, message.externalUserId,
+        message.name, message.role, message.locked, message.avatarURL, message.webcamBackgroundURL, message.bot,
+        message.guest, message.guestStatus, message.clientType);
+
+      if(m.getMaxUsers() > 0 && m.countUniqueExtIds() >= m.getMaxUsers() && !user.isBot()) {
+        return;
+      }
+
+      m.userJoined(user);
+      m.setGuestStatusWithId(user.getInternalUserId(), message.guestStatus);
+      UserSession userSession = getUserSessionWithUserId(user.getInternalUserId());
+      if (userSession != null) {
+        userSession.guestStatus = message.guestStatus;
+      }
+
+      Map<String, Object> logData = new HashMap<>();
+      logData.put("meetingId", m.getInternalId());
+      logData.put("externalMeetingId", m.getExternalId());
+      logData.put("name", m.getName());
+      logData.put("userId", message.userId);
+      logData.put("externalUserId", user.getExternalUserId());
+      logData.put("username", user.getFullname());
+      logData.put("role", user.getRole());
+      logData.put("bot", user.isBot());
+      logData.put("guest", user.isGuest());
+      logData.put("guestStatus", user.getGuestStatus());
+      logData.put("logCode", "user_joined_message");
+      logData.put("description", "User joined the meeting.");
+      logData.put("clientType", user.getClientType());
+
+      Gson gson = new Gson();
+      String logStr = gson.toJson(logData);
+      log.info(" --analytics-- data={}", logStr);
+    }
+  }
+
+  private void userLeft(UserLeft message) {
+    Meeting m = getMeeting(message.meetingId);
+    if (m != null) {
+      User user = m.userLeft(message.userId);
+      if (user != null) {
+
+        Map<String, Object> logData = new HashMap<>();
+        logData.put("meetingId", m.getInternalId());
+        logData.put("externalMeetingId", m.getExternalId());
+        logData.put("name", m.getName());
+        logData.put("userId", message.userId);
+        logData.put("externalUserId", user.getExternalUserId());
+        logData.put("username", user.getFullname());
+        logData.put("role", user.getRole());
+        logData.put("guest", user.isGuest());
+        logData.put("guestStatus", user.getGuestStatus());
+        logData.put("logCode", "user_left_message");
+        logData.put("description", "User left the meeting.");
+
+        Gson gson = new Gson();
+        String logStr = gson.toJson(logData);
+
+        log.info(" --analytics-- data={}", logStr);
+
+        if (m.getNumUsers() == 0) {
+          // Last user the meeting. Mark this as the time
+          // the meeting ended.
+          m.setEndTime(System.currentTimeMillis());
+        }
+      }
+    }
+  }
+
+  private void updatedStatus(UserStatusChanged message) {
+    Meeting m = getMeeting(message.meetingId);
+    if (m != null) {
+      User user = m.getUserById(message.userId);
+      if (user != null) {
+        user.setStatus(message.status, message.value);
+      }
+    }
+  }
+
+  public void processLearningDashboard(LearningDashboard message) {
+    //Get all data from Json instead of getMeeting(message.meetingId), to process messages received even after meeting ended
+    JsonObject activityJsonObject = new Gson().fromJson(message.activityJson, JsonObject.class).getAsJsonObject();
+
+    Map<String, Object> logData = new HashMap<String, Object>();
+    logData.put("meetingId", activityJsonObject.get("intId").getAsString());
+    logData.put("externalMeetingId", activityJsonObject.get("extId").getAsString());
+    logData.put("name", activityJsonObject.get("name").getAsString());
+    logData.put("logCode", "update_activity_json");
+    logData.put("description", "Updating activities json.");
+
+    Gson gson = new Gson();
+    String logStr = gson.toJson(logData);
+
+    log.info(" --analytics-- data={}", logStr);
+
+    learningDashboardService.writeJsonDataFile(message.meetingId, message.learningDashboardAccessToken, message.activityJson);
+  }
+
+  @Override
+  public void handle(IMessage message) {
+    receivedMessages.add(message);
+  }
+
+  public void setParamsProcessorUtil(ParamsProcessorUtil util) {
+    this.paramsProcessorUtil = util;
+  }
+
+  public void setPresDownloadService(
+    PresentationUrlDownloadService presDownloadService) {
+    this.presDownloadService = presDownloadService;
+  }
+
+  public void userJoinedVoice(UserJoinedVoice message) {
+    Meeting m = getMeeting(message.meetingId);
+    if (m != null) {
+      User user = m.getUserById(message.userId);
+      if (user != null) {
+        user.setVoiceJoined(true);
+      } else {
+        if (message.userId.startsWith("v_")) {
+          Boolean bot = false;
+          // A dial-in user joined the meeting. Dial-in users by convention has userId that starts with "v_".
+                    User vuser = new User(message.userId, message.userId, message.name, "DIAL-IN-USER", true, "", "",
+                            bot, true, GuestPolicy.ALLOW, "DIAL-IN");
+          vuser.setVoiceJoined(true);
+          m.userJoined(vuser);
+        }
+      }
+    }
+  }
+
+  public void userLeftVoice(UserLeftVoice message) {
+    Meeting m = getMeeting(message.meetingId);
+    if (m != null) {
+      User user = m.getUserById(message.userId);
+      if (user != null) {
+        if (message.userId.startsWith("v_")) {
+          // A dial-in user left the meeting. Dial-in users by convention has userId that starts with "v_".
+          User vuser = m.userLeft(message.userId);
+        } else {
+          user.setVoiceJoined(false);
+          // userLeftVoice is also used when user leaves Global (listenonly)
+          // audio. Also tetting listenOnly to false is not a problem,
+          // once user can't join both voice/mic and global/listenonly
+          // at the same time.
+          user.setListeningOnly(false);
+        }
+      }
+    }
+  }
+
+  public void userListeningOnly(UserListeningOnly message) {
+    Meeting m = getMeeting(message.meetingId);
+    if (m != null) {
+      User user = m.getUserById(message.userId);
+      if (user != null) {
+        user.setListeningOnly(message.listenOnly);
+      }
+    }
+  }
+
+  public void userSharedWebcam(UserSharedWebcam message) {
+    Meeting m = getMeeting(message.meetingId);
+    if (m != null) {
+      User user = m.getUserById(message.userId);
+      if (user != null) {
+        user.addStream(message.stream);
+      }
+    }
+  }
+
+  public void userUnsharedWebcam(UserUnsharedWebcam message) {
+    Meeting m = getMeeting(message.meetingId);
+    if (m != null) {
+      User user = m.getUserById(message.userId);
+      if (user != null) {
+        user.removeStream(message.stream);
+      }
+    }
+  }
+
+  private void userRoleChanged(UserRoleChanged message) {
+    Meeting m = getMeeting(message.meetingId);
+    if (m != null) {
+      User user = m.getUserById(message.userId);
+      if (user != null) {
+        user.setRole(message.role);
+        String sessionToken = getTokenByUserId(user.getInternalUserId());
+        if (sessionToken != null) {
+            UserSession userSession = getUserSessionWithSessionToken(sessionToken);
+            userSession.role = message.role;
+            sessions.replace(sessionToken, userSession);
+        }
+        log.debug("Setting new role in meeting {} for participant: {}", message.meetingId, user.getFullname());
+        return;
+      }
+      log.warn("The participant {} doesn't exist in the meeting {}", message.userId, message.meetingId);
+      return;
+    }
+    log.warn("The meeting {} doesn't exist", message.meetingId);
+  }
+
+  private void userLockedInMeeting(UserLockedInMeeting message) {
+    Meeting m = getMeeting(message.meetingId);
+    if (m != null) {
+      User user = m.getUserById(message.userId);
+      if (user != null) {
+        user.setLocked(message.locked);
+        log.debug("Setting locked flag in meeting {} for participant: {}", message.meetingId, user.getFullname());
+        return;
+      }
+      log.warn("The participant {} doesn't exist in the meeting {}", message.userId, message.meetingId);
+      return;
+    }
+    log.warn("The meeting {} doesn't exist", message.meetingId);
+  }
+
+  private void processMessage(final IMessage message) {
+    Runnable task = new Runnable() {
+      public void run() {
+        if (message instanceof MeetingStarted) {
+          meetingStarted((MeetingStarted) message);
+        } else if (message instanceof MeetingDestroyed) {
+          meetingDestroyed((MeetingDestroyed) message);
+        } else if (message instanceof MeetingEnded) {
+          meetingEnded((MeetingEnded) message);
+        } else if (message instanceof UserJoined) {
+          userJoined((UserJoined) message);
+        } else if (message instanceof UserLeft) {
+          userLeft((UserLeft) message);
+        } else if (message instanceof UserStatusChanged) {
+          updatedStatus((UserStatusChanged) message);
+        } else if (message instanceof UserRoleChanged) {
+          userRoleChanged((UserRoleChanged) message);
+        } else if (message instanceof UserLockedInMeeting) {
+          userLockedInMeeting((UserLockedInMeeting) message);
+        } else if (message instanceof UserJoinedVoice) {
+          userJoinedVoice((UserJoinedVoice) message);
+        } else if (message instanceof UserLeftVoice) {
+          userLeftVoice((UserLeftVoice) message);
+        } else if (message instanceof UserListeningOnly) {
+          userListeningOnly((UserListeningOnly) message);
+        } else if (message instanceof UserSharedWebcam) {
+          userSharedWebcam((UserSharedWebcam) message);
+        } else if (message instanceof UserUnsharedWebcam) {
+          userUnsharedWebcam((UserUnsharedWebcam) message);
+        } else if (message instanceof CreateMeeting) {
+          processCreateMeeting((CreateMeeting) message);
+        } else if (message instanceof EndMeeting) {
+          processEndMeeting((EndMeeting) message);
+        } else if (message instanceof RegisterUser) {
+          processRegisterUser((RegisterUser) message);
+        } else if (message instanceof RegisterUserSessionToken) {
+          processRegisterUserSessionToken((RegisterUserSessionToken) message);
+        } else if (message instanceof CreateBreakoutRoom) {
+          processCreateBreakoutRoom((CreateBreakoutRoom) message);
+        } else if (message instanceof PresentationUploadToken) {
+          processPresentationUploadToken((PresentationUploadToken) message);
+        } else if (message instanceof PositionInWaitingQueueUpdated) {
+          processPositionInWaitingQueueUpdated((PositionInWaitingQueueUpdated) message);
+        } else if (message instanceof GuestStatusChangedEventMsg) {
+          processGuestStatusChangedEventMsg((GuestStatusChangedEventMsg) message);
+        } else if (message instanceof GuestPolicyChanged) {
+          processGuestPolicyChanged((GuestPolicyChanged) message);
+        } else if (message instanceof LockSettingsChanged) {
+          processLockSettingsChanged((LockSettingsChanged) message);
+        } else if (message instanceof WebcamsOnlyForModeratorChanged) {
+          processWebcamsOnlyForModeratorChanged((WebcamsOnlyForModeratorChanged) message);
+        } else if (message instanceof GuestLobbyMessageChanged) {
+          processGuestLobbyMessageChanged((GuestLobbyMessageChanged) message);
+        } else if (message instanceof PrivateGuestLobbyMessageChanged) {
+          processPrivateGuestLobbyMessageChanged((PrivateGuestLobbyMessageChanged) message);
+        } else if (message instanceof RecordChapterBreak) {
+          processRecordingChapterBreak((RecordChapterBreak) message);
+        } else if (message instanceof MakePresentationDownloadableMsg) {
+          processMakePresentationDownloadableMsg((MakePresentationDownloadableMsg) message);
+        } else if (message instanceof UpdateRecordingStatus) {
+          processUpdateRecordingStatus((UpdateRecordingStatus) message);
+        } else if (message instanceof LearningDashboard) {
+          processLearningDashboard((LearningDashboard) message);
+        }
+      }
+    };
+
+    runExec.execute(task);
+  }
+
+  public void processGuestPolicyChanged(GuestPolicyChanged msg) {
+    Meeting m = getMeeting(msg.meetingId);
+    if (m != null) {
+      m.setGuestPolicy(msg.policy);
+    }
+  }
+
+  public void processLockSettingsChanged(LockSettingsChanged msg) {
+    Meeting m = getMeeting(msg.meetingId);
+    if (m != null) {
+      m.setLockSettings(
+              new LockSettingsParams(
+                msg.disableCam,
+                msg.disableMic,
+                msg.disablePrivateChat,
+                msg.disablePublicChat,
+                msg.disableNotes,
+                msg.hideUserList,
+                msg.lockOnJoin,
+                msg.lockOnJoinConfigurable,
+                msg.hideViewersCursor,
+                msg.hideViewersAnnotation,
+                msg.presenterPolicy)
+      );
+    }
+  }
+
+  public void processWebcamsOnlyForModeratorChanged(WebcamsOnlyForModeratorChanged msg) {
+    Meeting m = getMeeting(msg.meetingId);
+    if (m != null) {
+      m.setWebcamsOnlyForModerator(msg.webcamsOnlyForModerator);
+    }
+  }
+
+  public void processPositionInWaitingQueueUpdated(PositionInWaitingQueueUpdated msg) {
+    Meeting m = getMeeting(msg.meetingId);
+    HashMap<String,String> guestUsers = msg.guests;
+    if (m != null) {
+      m.setWaitingPositionsInWaitingQueue(guestUsers);
+    }
+  }
+
+  public void processGuestLobbyMessageChanged(GuestLobbyMessageChanged msg) {
+    Meeting m = getMeeting(msg.meetingId);
+    if (m != null) {
+      m.setGuestLobbyMessage(msg.message);
+    }
+  }
+
+  public void processPrivateGuestLobbyMessageChanged(PrivateGuestLobbyMessageChanged msg) {
+    Meeting m = getMeeting(msg.meetingId);
+    if (m != null) {
+      m.setPrivateGuestLobbyMessage(msg.guestId, msg.message);
+    }
+  }
+
+  public void processRecordingChapterBreak(RecordChapterBreak msg) {
+    recordingService.kickOffRecordingChapterBreak(msg.meetingId, msg.timestamp);
+  }
+
+  private void processMakePresentationDownloadableMsg(MakePresentationDownloadableMsg msg) {
+    recordingService.processMakePresentationDownloadableMsg(msg);
+  }
+
+  public File getDownloadablePresentationFile(String meetingId, String presId, String presFilename) {
+    return recordingService.getDownloadablePresentationFile(meetingId, presId, presFilename);
+  }
+
+  public void start() {
+    log.info("Starting Meeting Service.");
+    try {
+      processMessage = true;
+      Process p = Runtime.getRuntime().exec(new String[]{"/bin/sh", "-c", "cat /etc/bigbluebutton/bigbluebutton-release | cut -d '=' -f2"});
+
+      BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
+
+      String apiVersionFromFile = reader.readLine();
+
+      paramsProcessorUtil.setBbbVersion(apiVersionFromFile);
+      PluginUtils.setBbbVersion(apiVersionFromFile);
+      Runnable messageReceiver = new Runnable() {
+        public void run() {
+          while (processMessage) {
+            try {
+              IMessage msg = receivedMessages.take();
+              processMessage(msg);
+            } catch (InterruptedException e) {
+              log.error("InterruptedException while starting Meeting Service", e);
+            } catch (Exception e) {
+              log.error("Handling unexpected exception", e);
+            }
+          }
+        }
+      };
+
+      msgProcessorExec.execute(messageReceiver);
+    } catch (Exception e) {
+      log.error("Error PRocessing Message");
+    }
+  }
+
+  public void stop() {
+    processMessage = false;
+    userCleaner.stop();
+  }
+
+  public void setRecordingService(RecordingService s) {
+    recordingService = s;
+  }
+
+  public void setLearningDashboardService(LearningDashboardService s) {
+    learningDashboardService = s;
+  }
+
+  public void setRedisStorageService(RedisStorageService mess) {
+    storeService = mess;
+  }
+
+  public void setCallbackUrlService(CallbackUrlService service) {
+    callbackUrlService = service;
+  }
+
+  public void setGw(IBbbWebApiGWApp gw) {
+    this.gw = gw;
+  }
+
+  public void setUserCleanupTimerTask(UserCleanupTimerTask c) {
+    userCleaner = c;
+    userCleaner.setMeetingService(this);
+    userCleaner.start();
+  }
+
+  public void setStunTurnService(StunTurnService s) {
+    stunTurnService = s;
+  }
+
+  public void setUsersTimeout(long value) {
+    usersTimeout = value;
+  }
+
+  public void setWaitingGuestUsersTimeout(long value) {
+    waitingGuestUsersTimeout = value;
+  }
+
+  public void setNumPluginManifestsFetchingThreads(int value) {
+    numPluginManifestsFetchingThreads = value;
+  }
+
+  public void setPluginManifestFetchTimeout(long value) {
+    pluginManifestFetchTimeout = value;
+  }
+
+  public void setSessionsCleanupDelayInMinutes(int value) {
+    sessionsCleanupDelayInMinutes = value;
+  }
+
+  public void setSlidesGenerationProgressNotifier(SlidesGenerationProgressNotifier notifier) {
+    this.notifier = notifier;
+  }
+
+  public void setPluginUtils(PluginUtils pluginUtils) {
+    this.pluginUtils = pluginUtils;
+  }
+
+  public void setRedirectFollower(RedirectFollowerService redirectFollower) {
+    this.redirectFollower = redirectFollower;
+  }
+
+  public void setSharedNotesRedirectValidator(SharedNotesRedirectValidatorService sharedNotesRedirectValidator) {
+    this.sharedNotesRedirectValidator = sharedNotesRedirectValidator;
+  }
+
+  public void setSecureUrlDownloader(SecureUrlDownloader secureUrlDownloader) {
+    this.secureUrlDownloader = secureUrlDownloader;
+  }
+
+  public void setMaxSharedNotesInitialContentUrlPayloadSize(int maxSharedNotesInitialContentUrlPayloadSize) {
+    this.maxSharedNotesInitialContentUrlPayloadSize = maxSharedNotesInitialContentUrlPayloadSize;
+  }
+
+}

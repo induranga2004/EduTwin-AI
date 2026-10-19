@@ -1,0 +1,258 @@
+package org.bigbluebutton.core.apps.users
+
+import org.apache.pekko.actor.ActorContext
+import org.apache.pekko.event.Logging
+import org.bigbluebutton.Boot.eventBus
+import org.bigbluebutton.ClientSettings.getConfigPropertyValueByPathAsBooleanOrElse
+import org.bigbluebutton.common2.msgs._
+import org.bigbluebutton.core.api.SetPresenterInDefaultPodInternalMsg
+import org.bigbluebutton.core.apps.ExternalVideoModel
+import org.bigbluebutton.core.apps.groupchats.GroupChatApp
+import org.bigbluebutton.core.bus.{BigBlueButtonEvent, InternalEventBus}
+import org.bigbluebutton.core.models._
+import org.bigbluebutton.core.running.{LiveMeeting, OutMsgRouter}
+import org.bigbluebutton.core2.message.senders.{MsgBuilder, Sender}
+import org.bigbluebutton.core.apps.screenshare.ScreenshareApp2x
+import org.bigbluebutton.core.apps.webcam.CameraHdlrHelpers
+import org.bigbluebutton.core.db.{ChatMessageDAO, MediaGroupUserDAO, UserDAO, UserStateDAO}
+import org.bigbluebutton.core2.MeetingStatus2x
+import org.bigbluebutton.core.graphql.GraphqlMiddleware
+
+object UsersApp {
+  def broadcastAddUserToPresenterGroup(meetingId: String, userId: String, requesterId: String,
+                                       outGW: OutMsgRouter): Unit = {
+    val routing = Routing.addMsgToClientRouting(MessageTypes.BROADCAST_TO_MEETING, meetingId, userId)
+    val envelope = BbbCoreEnvelope(UserAddedToPresenterGroupEvtMsg.NAME, routing)
+    val header = BbbClientMsgHeader(UserAddedToPresenterGroupEvtMsg.NAME, meetingId, userId)
+    val body = UserAddedToPresenterGroupEvtMsgBody(userId, requesterId)
+    val event = UserAddedToPresenterGroupEvtMsg(header, body)
+    val msgEvent = BbbCommonEnvCoreMsg(envelope, event)
+
+    outGW.send(msgEvent)
+  }
+
+  def guestWaitingLeft(liveMeeting: LiveMeeting, userId: String, outGW: OutMsgRouter): Unit = {
+    for {
+      u <- RegisteredUsers.findWithUserId(userId, liveMeeting.registeredUsers)
+    } yield {
+      RegisteredUsers.setUserLoggedOutFlag(liveMeeting.registeredUsers, u)
+
+      val event = MsgBuilder.buildGuestWaitingLeftEvtMsg(liveMeeting.props.meetingProp.intId, u.id)
+      outGW.send(event)
+    }
+  }
+
+  def approveOrRejectGuest(liveMeeting: LiveMeeting, outGW: OutMsgRouter,
+                           guest: GuestApprovedVO, approvedBy: String): Unit = {
+    for {
+      u <- RegisteredUsers.findWithUserId(guest.guest, liveMeeting.registeredUsers)
+    } yield {
+      RegisteredUsers.setWaitingForApproval(liveMeeting.registeredUsers, u, guest.status)
+      UserStateDAO.updateGuestStatus(liveMeeting.props.meetingProp.intId, guest.guest, guest.status, approvedBy)
+      // send message to user that he has been approved
+
+      val event = MsgBuilder.buildGuestApprovedEvtMsg(
+        liveMeeting.props.meetingProp.intId,
+        guest.guest, guest.status, approvedBy
+      )
+
+      outGW.send(event)
+
+    }
+  }
+
+  def automaticallyAssignPresenter(outGW: OutMsgRouter, liveMeeting: LiveMeeting): Unit = {
+    // Stop external video if it's running
+    ExternalVideoModel.stop(outGW, liveMeeting)
+    // Request a screen broadcast stop (goes to SFU, comes back through
+    // ScreenshareRtmpBroadcastStoppedVoiceConfEvtMsg)
+    ScreenshareApp2x.requestBroadcastStop(outGW, liveMeeting)
+
+    val meetingId = liveMeeting.props.meetingProp.intId
+    val presenterCandidate = if (liveMeeting.props.meetingProp.isBreakout) {
+      Users2x.findModerator(liveMeeting.users2x).orElse(Users2x.findAll(liveMeeting.users2x).headOption)
+    } else {
+      Users2x.findModerator(liveMeeting.users2x)
+    }
+    for {
+      moderator <- presenterCandidate
+      regUser <- RegisteredUsers.findWithUserId(moderator.intId, liveMeeting.registeredUsers)
+      newPresenter <- Users2x.makePresenter(liveMeeting.users2x, moderator.intId)
+    } yield {
+      sendPresenterAssigned(outGW, meetingId, newPresenter.intId, newPresenter.name, newPresenter.intId)
+      sendPresenterInPodReq(meetingId, newPresenter.intId)
+
+      // Force reconnection with graphql to refresh permissions (if user already joined)
+      if(regUser.joined) {
+        GraphqlMiddleware.requestGraphqlReconnection(regUser.sessionToken, "assigned_presenter_automatically")
+    }
+
+      //Update dabatase
+      UserStateDAO.update(newPresenter)
+
+      //Chat message to announce new presenter
+      sendChatMessageAnnouncingNewPresenter(liveMeeting, newPresenter)
+    }
+  }
+
+  def sendPresenterAssigned(outGW: OutMsgRouter, meetingId: String, intId: String, name: String, assignedBy: String): Unit = {
+    def event = MsgBuilder.buildPresenterAssignedEvtMsg(meetingId, intId, name, assignedBy)
+    outGW.send(event)
+  }
+
+  def sendPresenterInPodReq(meetingId: String, newPresenterIntId: String): Unit = {
+    eventBus.publish(BigBlueButtonEvent(meetingId, SetPresenterInDefaultPodInternalMsg(newPresenterIntId)))
+  }
+
+  def sendUserLeftMeetingToAllClients(outGW: OutMsgRouter, meetingId: String,
+                                      userId: String, eject: Boolean = false, ejectedBy: String = "", reason: String = "",  reasonCode: String = ""): Unit = {
+    // send a user left event for the clients to update
+    val userLeftMeetingEvent = MsgBuilder.buildUserLeftMeetingEvtMsg(meetingId, userId, eject, ejectedBy, reason, reasonCode)
+    outGW.send(userLeftMeetingEvent)
+  }
+
+  def sendEjectUserFromVoiceToFreeswitch(
+      outGW:       OutMsgRouter,
+      meetingId:   String,
+      voiceConf:   String,
+      voiceUserId: String
+  ): Unit = {
+    val ejectFromVoiceEvent = MsgBuilder.buildEjectUserFromVoiceConfSysMsg(
+      meetingId,
+      voiceConf,
+      voiceUserId
+    )
+    outGW.send(ejectFromVoiceEvent)
+  }
+
+  def sendEjectUserFromSfuSysMsg(
+    outGW: OutMsgRouter,
+    meetingId: String,
+    userId: String
+  ): Unit = {
+    val event = MsgBuilder.buildEjectUserFromSfuSysMsg(
+      meetingId,
+      userId,
+    )
+    outGW.send(event)
+  }
+
+  def removeUserLiveKitMemberships(
+    liveMeeting: LiveMeeting,
+    meetingId: String,
+    userId: String,
+    outGW: OutMsgRouter
+  ): Unit = {
+    LiveKitMemberships.removeByUser(liveMeeting.liveKitMemberships, userId).foreach { m =>
+      if (m.purpose != "primary") {
+        // Explicit-return parity: without loggedOut the transferred row keeps
+        // currentlyInMeeting=true (ghost user in the breakout) and the
+        // media-group back-fill re-picks it. Enqueued before the media-group
+        // delete so a concurrent back-fill cannot re-insert the reaped row.
+        UserDAO.logOutTransferredUser(m.roomName, userId)
+        // Clear every media-group enrollment this transferred listener holds in the breakout.
+        MediaGroupUserDAO.deleteAllForUser(m.roomName, userId)
+        outGW.send(MsgBuilder.buildRemoveLiveKitParticipantSysMsg(meetingId, m.roomName, m.userId))
+      }
+    }
+  }
+
+  def ejectUserFromMeeting(outGW: OutMsgRouter, liveMeeting: LiveMeeting,
+                           userId: String, ejectedBy: String, reason: String,
+                           reasonCode: String, ban: Boolean): Unit = {
+    val ejectedRegUser = for {
+      regUser <- RegisteredUsers.eject(userId, liveMeeting.registeredUsers, ban)
+      user <- Users2x.ejectFromMeeting(liveMeeting.users2x, userId)
+    } yield {
+      // Update database
+      UserDAO.update(regUser)
+
+      val meetingId = liveMeeting.props.meetingProp.intId
+      sendUserLeftMeetingToAllClients(outGW, meetingId, userId, eject = true, ejectedBy, reason, reasonCode)
+      sendEjectUserFromSfuSysMsg(outGW, meetingId, userId)
+      if (user.presenter) {
+        // println(s"ejectUserFromMeeting will cause a automaticallyAssignPresenter for user=${user}")
+        automaticallyAssignPresenter(outGW, liveMeeting)
+      }
+      UserStateDAO.updateEjected(meetingId, userId, reason, reasonCode, ejectedBy)
+      removeUserLiveKitMemberships(liveMeeting, meetingId, userId, outGW)
+      Webcams.findWebcamsForUser(liveMeeting.webcams, userId) foreach { webcam =>
+        CameraHdlrHelpers.stopBroadcastedCam(liveMeeting, meetingId, userId, webcam.streamId, outGW)
+      }
+
+      regUser
+    }
+
+    for {
+      vu <- VoiceUsers.findWithIntId(liveMeeting.voiceUsers, userId)
+    } yield {
+      sendEjectUserFromVoiceToFreeswitch(
+        outGW,
+        liveMeeting.props.meetingProp.intId,
+        liveMeeting.props.voiceProp.voiceConf, vu.voiceUserId
+      )
+    }
+
+    // Signal the membership change to bbb-graphql-middleware, which re-reads the user's session
+    // state on this request. Every path that ends a user's membership sends it.
+    //
+    // Last, after the voice ejection too: the request blocks until it times out when the
+    // middleware is unreachable, and no part of the removal should wait on it.
+    for {
+      regUser <- ejectedRegUser
+    } yield {
+      GraphqlMiddleware.requestGraphqlReconnection(regUser.sessionToken, reason)
+    }
+  }
+
+  def sendChatMessageAnnouncingNewPresenter(liveMeeting: LiveMeeting, newPresenter: UserState): Unit = {
+    val announcePresenterChangeInChat = getConfigPropertyValueByPathAsBooleanOrElse(
+      liveMeeting.clientSettings,
+      "public.chat.announcePresenterChangeInChat",
+      alternativeValue = true
+    )
+
+    if (announcePresenterChangeInChat) {
+      val hideUserList = MeetingStatus2x.getPermissions(liveMeeting.status).hideUserList
+      val shouldSkip = hideUserList && newPresenter.role == Roles.VIEWER_ROLE
+
+      if (!shouldSkip) {
+        ChatMessageDAO.insertSystemMsg(liveMeeting.props.meetingProp.intId, GroupChatApp.MAIN_PUBLIC_CHAT, "", "", GroupChatMessageType.USER_IS_PRESENTER_MSG, Map(), newPresenter.name)
+      }
+    }
+  }
+
+}
+
+class UsersApp(
+    val liveMeeting: LiveMeeting,
+    val outGW:       OutMsgRouter,
+    val eventBus:    InternalEventBus
+)(implicit val context: ActorContext)
+
+  extends RegisterUserReqMsgHdlr
+  with RegisterUserSessionTokenReqMsgHdlr
+  with GetUserApiMsgHdlr
+  with ChangeUserRoleCmdMsgHdlr
+  with SetUserSpeechLocaleMsgHdlr
+  with SetUserCaptionLocaleMsgHdlr
+  with SetUserClientSettingsReqMsgHdlr
+  with SetUserEchoTestRunningReqMsgHdlr
+  with SetUserSpeechOptionsMsgHdlr
+  with LogoutAndEndMeetingCmdMsgHdlr
+  with SetRecordingStatusCmdMsgHdlr
+  with RecordAndClearPreviousMarkersCmdMsgHdlr
+  with GetRecordingStatusReqMsgHdlr
+  with AssignPresenterReqMsgHdlr
+  with ChangeUserPinStateReqMsgHdlr
+  with UserConnectionAliveReqMsgHdlr
+  with ChangeUserReactionEmojiReqMsgHdlr
+  with SetUserWhiteboardWriteAccessReqMsgHdlr
+  with ChangeUserRaiseHandReqMsgHdlr
+  with ChangeUserAwayReqMsgHdlr
+  with EjectUserFromMeetingCmdMsgHdlr
+  with EjectUserFromMeetingSysMsgHdlr
+  with MuteUserCmdMsgHdlr {
+
+  val log = Logging(context.system, getClass)
+}

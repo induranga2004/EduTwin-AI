@@ -1,0 +1,221 @@
+import React, { useState } from 'react';
+import { defineMessages, useIntl } from 'react-intl';
+import BBBMenu from '/imports/ui/components/common/menu/component';
+import Trigger from '/imports/ui/components/common/control-header/right/component';
+import useCurrentUser from '/imports/ui/core/hooks/useCurrentUser';
+import { uniqueId } from '/imports/utils/string-utils';
+import { layoutSelect } from '/imports/ui/components/layout/context';
+import {
+  Presentation,
+  PRESENTATIONS_SUBSCRIPTION,
+  PresentationsSubscriptionResponse,
+} from '/imports/ui/components/whiteboard/queries';
+import Service from './service';
+import useDeduplicatedSubscription from '/imports/ui/core/hooks/useDeduplicatedSubscription';
+import { useIsPresentationEnabled } from '/imports/ui/services/features';
+import { NOTES_ARE_PINNABLE } from '../service';
+import Auth from '/imports/ui/services/auth';
+import { useSharedNotesImport } from '../../bn-shared-notes/import-context';
+
+const DEBOUNCE_TIMEOUT = 15000;
+
+const intlMessages = defineMessages({
+  convertAndUploadLabel: {
+    id: 'app.notes.notesDropdown.covertAndUpload',
+    description: 'Export shared notes as a PDF and upload to the main room',
+  },
+  exportAsPDFLabel: {
+    id: 'app.notes.notesDropdown.exportAsPDF',
+    description: 'Export shared notes as a PDF file',
+  },
+  exportAsMarkdownLabel: {
+    id: 'app.notes.notesDropdown.exportAsMarkdown',
+    description: 'Export shared notes as a Markdown file',
+  },
+  importFromMarkdownLabel: {
+    id: 'app.notes.notesDropdown.importFromMarkdown',
+    description: 'Import shared notes content from Markdown',
+  },
+  pinNotes: {
+    id: 'app.notes.notesDropdown.pinNotes',
+    description: 'Label for pin shared notes button',
+  },
+  options: {
+    id: 'app.notes.notesDropdown.notesOptions',
+    description: 'Label for shared notes options',
+  },
+});
+
+interface NotesDropdownContainerGraphqlProps {
+  handlePinSharedNotes: (pinned: boolean) => void;
+  padId: string;
+  isPinned: boolean;
+}
+
+interface NotesDropdownGraphqlProps extends NotesDropdownContainerGraphqlProps {
+  amIPresenter: boolean;
+  presentations: Presentation[];
+  isRTL: boolean;
+  padId: string;
+  presentationEnabled: boolean;
+}
+
+const NotesDropdownGraphql: React.FC<NotesDropdownGraphqlProps> = (props) => {
+  const {
+    amIPresenter, presentations, handlePinSharedNotes, isRTL, padId, presentationEnabled, isPinned,
+  } = props;
+  const [converterButtonDisabled, setConverterButtonDisabled] = useState(false);
+  const intl = useIntl();
+  const { openImportModal } = useSharedNotesImport();
+  // meetingClientSettings is augmented onto Window; globalThis needs the cast to see it.
+  const clientSettings = (globalThis as unknown as Window).meetingClientSettings;
+  const IMPORT_MARKDOWN_ENABLED = clientSettings.public.sharedNotes.importMarkdownEnabled;
+  const EXPORT_MARKDOWN_ENABLED = clientSettings.public.sharedNotes.exportMarkdownEnabled;
+
+  const getAvailableActions = () => {
+    const uploadIcon = 'upload';
+    const pinIcon = 'presentation';
+    const downloadIcon = 'download';
+    const importIcon = 'copy';
+
+    const menuItems = [];
+
+    if (amIPresenter) {
+      if (IMPORT_MARKDOWN_ENABLED) {
+        menuItems.push(
+          {
+            key: uniqueId('notes-option-'),
+            icon: importIcon,
+            dataTest: 'importNotesFromMarkdown',
+            label: intl.formatMessage(intlMessages.importFromMarkdownLabel),
+            onClick: () => openImportModal(),
+          },
+        );
+      }
+
+      menuItems.push(
+        {
+          key: uniqueId('notes-option-'),
+          icon: uploadIcon,
+          dataTest: 'moveNotesToWhiteboard',
+          label: intl.formatMessage(intlMessages.convertAndUploadLabel),
+          disabled: converterButtonDisabled,
+          onClick: () => {
+            setConverterButtonDisabled(true);
+            setTimeout(() => setConverterButtonDisabled(false), DEBOUNCE_TIMEOUT);
+            return Service.convertAndUpload(presentations, padId, presentationEnabled);
+          },
+        },
+      );
+    }
+
+    const { sessionToken } = Auth;
+    const hocuspocusServerHostname = window.meetingClientSettings.public.sharedNotes.serverHostname
+      || window.location.hostname;
+
+    menuItems.push(
+      {
+        key: uniqueId('notes-option-'),
+        icon: downloadIcon,
+        dataTest: 'exportNotesAsPDF',
+        label: intl.formatMessage(intlMessages.exportAsPDFLabel),
+        onClick: () => {
+          window.open(`https://${hocuspocusServerHostname}/hocuspocus/api/documents/${padId}/export/pdf?sessionToken=${sessionToken}`);
+        },
+      },
+    );
+
+    if (EXPORT_MARKDOWN_ENABLED) {
+      menuItems.push(
+        {
+          key: uniqueId('notes-option-'),
+          icon: downloadIcon,
+          dataTest: 'exportNotesAsMarkdown',
+          label: intl.formatMessage(intlMessages.exportAsMarkdownLabel),
+          onClick: () => {
+            window.open(`https://${hocuspocusServerHostname}/hocuspocus/api/documents/${padId}/export/md?sessionToken=${sessionToken}`);
+          },
+        },
+      );
+    }
+
+    if (amIPresenter && !isPinned && NOTES_ARE_PINNABLE()) {
+      menuItems.push(
+        {
+          key: uniqueId('notes-option-'),
+          icon: pinIcon,
+          dataTest: 'pinNotes',
+          label: intl.formatMessage(intlMessages.pinNotes),
+          onClick: () => {
+            handlePinSharedNotes(true);
+          },
+        },
+      );
+    }
+
+    return menuItems;
+  };
+
+  const actions = getAvailableActions();
+
+  if (actions.length === 0) return null;
+
+  return (
+    <BBBMenu
+      trigger={(
+        <Trigger
+          data-test="notesOptionsMenu"
+          icon="more"
+          label={intl.formatMessage(intlMessages.options)}
+          aria-label={intl.formatMessage(intlMessages.options)}
+          onClick={() => null}
+        />
+        )}
+      opts={{
+        id: 'notes-options-dropdown',
+        keepMounted: true,
+        transitionDuration: 0,
+        elevation: 3,
+        getcontentanchorel: null,
+        fullwidth: 'true',
+        anchorOrigin: { vertical: 'bottom', horizontal: isRTL ? 'right' : 'left' },
+        transformOrigin: { vertical: 'top', horizontal: isRTL ? 'right' : 'left' },
+      }}
+      actions={actions}
+    />
+  );
+};
+
+const NotesDropdownContainerGraphql: React.FC<NotesDropdownContainerGraphqlProps> = (props) => {
+  const {
+    handlePinSharedNotes, padId, isPinned,
+  } = props;
+  const { data: currentUserData } = useCurrentUser((user) => ({
+    presenter: user.presenter,
+  }));
+  const amIPresenter = !!currentUserData?.presenter;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const isRTL = layoutSelect((i: any) => i.isRTL);
+  const isPresentationEnabled = useIsPresentationEnabled();
+
+  const { data: presentationData } = useDeduplicatedSubscription<
+    PresentationsSubscriptionResponse
+  >(PRESENTATIONS_SUBSCRIPTION);
+  const presentations = presentationData?.pres_presentation || [];
+
+  if (!padId) return null;
+
+  return (
+    <NotesDropdownGraphql
+      amIPresenter={amIPresenter}
+      isRTL={isRTL}
+      presentations={presentations.filter((p) => p && p.uploadCompleted)}
+      handlePinSharedNotes={handlePinSharedNotes}
+      presentationEnabled={isPresentationEnabled}
+      padId={padId}
+      isPinned={isPinned}
+    />
+  );
+};
+
+export default NotesDropdownContainerGraphql;

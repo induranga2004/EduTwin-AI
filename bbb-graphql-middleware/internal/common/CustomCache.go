@@ -1,0 +1,65 @@
+package common
+
+import (
+	"sync"
+)
+
+var GlobalCacheLocks = NewCacheLocks()
+
+type refMutex struct {
+	mutex    *sync.Mutex
+	refCount int
+}
+
+type CacheLocks struct {
+	locks map[uint64]*refMutex
+	mutex sync.Mutex // Protects the 'locks' map
+}
+
+func NewCacheLocks() *CacheLocks {
+	return &CacheLocks{
+		locks: make(map[uint64]*refMutex),
+	}
+}
+
+func (c *CacheLocks) Lock(id uint64) {
+	var rm *refMutex
+
+	c.mutex.Lock()
+	if existingRm, exists := c.locks[id]; !exists {
+		rm = &refMutex{
+			mutex:    &sync.Mutex{},
+			refCount: 1,
+		}
+		c.locks[id] = rm
+	} else {
+		rm = existingRm
+		rm.refCount++
+	}
+	c.mutex.Unlock()
+
+	// Lock rm.mutex outside of c.mutex to avoid deadlocks
+	rm.mutex.Lock()
+}
+
+func (c *CacheLocks) Unlock(id uint64) {
+	var rm *refMutex
+
+	c.mutex.Lock()
+	if existingRm, exists := c.locks[id]; exists {
+		rm = existingRm
+		rm.refCount--
+		if rm.refCount == 0 {
+			delete(c.locks, id)
+		}
+	} else {
+		// Handle the case where Unlock is called without a corresponding Lock
+		c.mutex.Unlock()
+		return
+	}
+	// Unlock rm.mutex before releasing c.mutex to prevent a new goroutine
+	// from acquiring a fresh refMutex for the same id and entering the
+	// critical section before the previous holder has actually unlocked.
+	rm.mutex.Unlock()
+	c.mutex.Unlock()
+}

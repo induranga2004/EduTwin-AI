@@ -1,0 +1,84 @@
+package org.bigbluebutton.core.running
+
+import org.apache.pekko.actor.ActorContext
+import org.bigbluebutton.ClientSettings
+import org.bigbluebutton.common2.domain.DefaultProps
+import org.bigbluebutton.common2.util.YamlUtil
+import org.bigbluebutton.core.apps._
+import org.bigbluebutton.core.bus._
+import org.bigbluebutton.core.models._
+import org.bigbluebutton.core.OutMessageGateway
+import org.bigbluebutton.core2.MeetingStatus2x
+
+object RunningMeeting {
+  def apply(props: DefaultProps, outGW: OutMessageGateway,
+            eventBus: InternalEventBus)(implicit context: ActorContext) =
+    new RunningMeeting(props, outGW, eventBus)(context)
+}
+
+class RunningMeeting(val props: DefaultProps, outGW: OutMessageGateway,
+                     eventBus: InternalEventBus)(implicit val context: ActorContext) {
+  private val externalVideoModel = new ExternalVideoModel()
+  private val chatModel = new ChatModel()
+  private val layouts = new Layouts()
+  private val pads = new Pads()
+  private val wbModel = new WhiteboardModel()
+  private val presModel = new PresentationModel()
+  private val registeredUsers = new RegisteredUsers
+  private val meetingStatux2x = new MeetingStatus2x
+  private val webcams = new Webcams
+  private val voiceUsers = new VoiceUsers
+  private val liveKitMemberships = new LiveKitMemberships(props.meetingProp.intId)
+  private val users2x = new Users2x
+  private val polls2x = new Polls
+  private val guestsWaiting = new GuestsWaiting
+  private val deskshareModel = new ScreenshareModel
+  private val audioCaptions = new AudioCaptions
+  private val timerModel = new TimerModel
+  private val clientSettingsBeforePluginValidation: Map[String, Object] = ClientSettings.getClientSettingsWithOverride(props.overrideClientSettings, props.meetingProp.intId)
+  private val (plugins, pluginSettings) = PluginModel.createPluginModelFromJson(props.pluginProp, props.systemProps.html5PluginSdkVersion, clientSettingsBeforePluginValidation)
+  val clientSettings: Map[String, Object] = {
+    val merged = ClientSettings.mergePluginSettingsIntoClientSettings(
+      clientSettingsBeforePluginValidation, pluginSettings)
+
+    if (props.meetingProp.disabledFeatures.contains("slidePreloading")) {
+      YamlUtil.mergeImmutableMaps(merged, Map[String, Object](
+        "public" -> Map[String, Object](
+          "app" -> Map[String, Object](
+            "preloadNextSlides" -> Int.box(0)
+          )
+        )
+      ))
+    } else {
+      merged
+    }
+  }
+
+  // meetingModel.setGuestPolicy(props.usersProp.guestPolicy)
+
+  // We extract the meeting handlers into this class so it is
+  // easy to test.
+  private val liveMeeting = new LiveMeeting(props, meetingStatux2x, deskshareModel, audioCaptions, timerModel,
+    chatModel, externalVideoModel, layouts, pads, registeredUsers, polls2x, wbModel, presModel,
+    webcams, voiceUsers, liveKitMemberships, users2x, guestsWaiting, clientSettings, plugins)
+
+  GuestsWaiting.setGuestPolicy(
+    liveMeeting.props.meetingProp.intId,
+    liveMeeting.guestsWaiting,
+    GuestPolicy(props.usersProp.guestPolicy, SystemUser.ID)
+  )
+
+  Layouts.setCurrentLayout(
+    liveMeeting.layouts,
+    props.usersProp.meetingLayout,
+  )
+
+  // Set initial multiUserWhiteboardEnabled state
+  MeetingStatus2x.setMultiUserWhiteboardEnabled(liveMeeting.status, liveMeeting.props.usersProp.multiUserWhiteboardEnabled)
+
+  private val recordEvents = props.recordProp.record || props.recordProp.keepEvents
+  val outMsgRouter = new OutMsgRouter(recordEvents, outGW)
+
+  val actorRef = context.actorOf(MeetingActor.props(props, eventBus, outMsgRouter, liveMeeting), props.meetingProp.intId)
+
+}

@@ -1,0 +1,18 @@
+- comment: ""
+  definition:
+    query:
+      collection_name: allowed-queries
+      query_name: meetingStaticData
+  methods:
+    - GET
+  name: meetingStaticData
+  url: meetingStaticData
+- comment: ""
+  definition:
+    query:
+      collection_name: allowed-queries
+      query_name: userMetadata
+  methods:
+    - GET
+  name: userMetadata
+  url: userMetadata

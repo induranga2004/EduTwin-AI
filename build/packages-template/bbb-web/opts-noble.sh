@@ -1,0 +1,5 @@
+#!/bin/bash
+
+. ./opts-global.sh
+
+OPTS="$OPTS -t deb -d zip,unzip,imagemagick,libmagickcore-extra,redis-server,xpdf-utils,bbb-libreoffice-docker,psmisc,fonts-crosextra-carlito,fonts-crosextra-caladea,fonts-noto,openjdk-21-jdk,file,potrace"
