@@ -1,3 +1,4 @@
+# Windows users without `just` can use scripts\dev.ps1 instead (same tasks, PowerShell only).
 set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
 
 default:

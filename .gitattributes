@@ -7,3 +7,4 @@ run-dev.sh text eol=lf
 *.toml text eol=lf
 Dockerfile text eol=lf
 justfile text eol=lf
+*.ps1 text eol=crlf
