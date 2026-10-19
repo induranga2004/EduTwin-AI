@@ -1,0 +1,9 @@
+# Large lecture recordings
+**/data/recordings/
+*.mp4
+
+# Python generated files
+__pycache__/
+*.py[cod]
+.venv/
+.env
