@@ -1,0 +1,252 @@
+import React, {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import { defineMessages, useIntl } from 'react-intl';
+import { useMutation, useQuery } from '@apollo/client';
+import injectWbResizeEvent from '/imports/ui/components/presentation/resize-wrapper/component';
+import PanelHeader from '/imports/ui/components/common/panel-header/component';
+import NotesDropdown from './notes-dropdown/component';
+import {
+  PANELS, ACTIONS,
+} from '/imports/ui/components/layout/enums';
+import {
+  layoutSelectInput,
+  layoutDispatch,
+  layoutSelectOutput,
+} from '/imports/ui/components/layout/context';
+import useCurrentUser from '/imports/ui/core/hooks/useCurrentUser';
+import useMeeting from '/imports/ui/core/hooks/useMeeting';
+import Styled from './styles';
+import { PIN_NOTES } from './mutations';
+import { EXTERNAL_VIDEO_STOP } from '/imports/ui/components/external-video-player/mutations';
+import {
+  screenshareHasEnded,
+  useIsScreenBroadcasting,
+} from '/imports/ui/components/screenshare/service';
+import { useStorageKey } from '/imports/ui/services/storage/hooks';
+import {
+  SharedNotes,
+  Output,
+  Input,
+} from '/imports/ui/components/layout/layoutTypes';
+import { NotesRenderMode, sidebarContentToIgnoreDelay } from './constants';
+import { NotesRenderModeType } from './types';
+import { NOTES_UNMOUNT_DELAY } from './service';
+import { GET_PAD_ID, GetPadIdQueryResponse } from './queries';
+import BlockNoteContainer from '../bn-shared-notes/component';
+import { SharedNotesImportContext } from '../bn-shared-notes/import-context';
+
+const intlMessages = defineMessages({
+  title: {
+    id: 'app.notes.title',
+    description: 'Title for the shared notes',
+  },
+  unpinNotes: {
+    id: 'app.notes.notesDropdown.unpinNotes',
+    description: 'Label for unpin shared notes button',
+  },
+});
+
+interface NotesContainerGraphqlProps {
+  renderMode: NotesRenderModeType;
+  isVisible: boolean;
+}
+
+interface NotesGraphqlProps {
+  isOnMediaArea: boolean;
+  isVisible: boolean;
+  padId: string;
+  sharedNotesOutput: SharedNotes;
+  amIPresenter: boolean;
+  ignoreDelayforUnmount: boolean;
+  handlePinSharedNotes: (pinned: boolean) => void;
+  shouldShowSharedNotesOnPresentationArea: boolean;
+}
+
+const NotesGraphql: React.FC<NotesGraphqlProps> = (props) => {
+  const {
+    isOnMediaArea,
+    isVisible,
+    padId,
+    sharedNotesOutput,
+    amIPresenter,
+    ignoreDelayforUnmount,
+    handlePinSharedNotes,
+    shouldShowSharedNotesOnPresentationArea,
+  } = props;
+  const [shouldRenderNotes, setShouldRenderNotes] = useState(isVisible);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const intl = useIntl();
+
+  const isHidden = (isOnMediaArea && (sharedNotesOutput.width === 0 || sharedNotesOutput.height === 0))
+    || (!isVisible && !ignoreDelayforUnmount);
+
+  // Shared between the kebab menu (opens the modal) and the BlockNote editor
+  // (renders the modal and applies the import). See import-context.tsx.
+  const importContextValue = React.useMemo(() => ({
+    isImportModalOpen,
+    openImportModal: () => setIsImportModalOpen(true),
+    closeImportModal: () => setIsImportModalOpen(false),
+  }), [isImportModalOpen]);
+
+  const timeoutRef = useRef<NodeJS.Timeout>();
+  useEffect(() => {
+    if (isVisible) {
+      setShouldRenderNotes(true);
+      clearTimeout(timeoutRef.current);
+    } else if (ignoreDelayforUnmount) {
+      setShouldRenderNotes(false);
+    } else {
+      timeoutRef.current = setTimeout(() => {
+        setShouldRenderNotes(false);
+      }, NOTES_UNMOUNT_DELAY());
+    }
+    return () => clearTimeout(timeoutRef.current);
+  }, [isVisible]);
+
+  const renderHeaderOnMedia = () => (
+    <Styled.Header
+      data-test="pinnedNotesHeader"
+      title={intl.formatMessage(intlMessages.title)}
+      customRightButton={(
+        <NotesDropdown
+          handlePinSharedNotes={handlePinSharedNotes}
+          padId={padId}
+          isPinned
+        />
+      )}
+      rightButtonProps={amIPresenter ? {
+        'aria-label': intl.formatMessage(intlMessages.unpinNotes),
+        'data-test': 'unpinNotes',
+        icon: 'close',
+        label: intl.formatMessage(intlMessages.unpinNotes),
+        onClick: () => {
+          handlePinSharedNotes(false);
+        },
+      } : undefined}
+    />
+  );
+
+  const {
+    height,
+    width,
+    top,
+    left,
+    right,
+    zIndex,
+  } = sharedNotesOutput;
+
+  const cssProps = {
+    height,
+    width,
+    top,
+    left,
+    right,
+    zIndex,
+  };
+
+  return (shouldRenderNotes || shouldShowSharedNotesOnPresentationArea) && (
+    <SharedNotesImportContext.Provider value={importContextValue}>
+      <Styled.PanelContent
+        data-test="notes"
+        isOnMediaArea={isOnMediaArea}
+        isHidden={isHidden}
+        style={isOnMediaArea ? cssProps : {}}
+      >
+        {!isOnMediaArea ? (
+          <>
+            <PanelHeader
+              panelId={PANELS.SHARED_NOTES}
+              title={intl.formatMessage(intlMessages.title)}
+              dataTest="notesHeader"
+              closeButtonDataTest="hideNotesLabel"
+              customRightButton={(
+                <NotesDropdown
+                  handlePinSharedNotes={handlePinSharedNotes}
+                  padId={padId}
+                  isPinned={false}
+                />
+              )}
+            />
+            <Styled.Separator />
+          </>
+        ) : renderHeaderOnMedia()}
+        <BlockNoteContainer isVisible={isVisible} isOnMediaArea={isOnMediaArea} />
+      </Styled.PanelContent>
+    </SharedNotesImportContext.Provider>
+  );
+};
+
+const NotesContainerGraphql: React.FC<NotesContainerGraphqlProps> = (props) => {
+  const { renderMode, isVisible = true } = props;
+
+  const { data: currentUserData } = useCurrentUser((user) => ({
+    presenter: user.presenter,
+  }));
+
+  const { data: currentMeeting } = useMeeting((meeting) => ({
+    componentsFlags: meeting.componentsFlags,
+  }));
+
+  const sharedNotesOutput = layoutSelectOutput((i: Output) => i.sharedNotes);
+  const sidebarContent = layoutSelectInput((i: Input) => i.sidebarContent);
+  const NOTES_CONFIG = window.meetingClientSettings.public.notes;
+  const { data: padIdData } = useQuery<GetPadIdQueryResponse>(
+    GET_PAD_ID,
+    { variables: { externalId: NOTES_CONFIG.id } },
+  );
+  const padId = padIdData?.sharedNotes?.[0]?.padId;
+
+  const layoutContextDispatch = layoutDispatch();
+  const amIPresenter = !!currentUserData?.presenter;
+
+  const { isOpen: isSidebarContentOpen } = sidebarContent;
+  const isOnMediaArea = renderMode === NotesRenderMode.PINNED;
+  const isGridLayout = useStorageKey('isGridEnabled');
+
+  const shouldShowSharedNotesOnPresentationArea = isGridLayout ? !!currentMeeting?.componentsFlags?.isSharedNotesPinned
+    && isSidebarContentOpen : !!currentMeeting?.componentsFlags?.isSharedNotesPinned;
+
+  const [pinSharedNotes] = useMutation(PIN_NOTES);
+  const [stopExternalVideoShare] = useMutation(EXTERNAL_VIDEO_STOP);
+  const isScreenBroadcasting = useIsScreenBroadcasting();
+
+  const handlePinSharedNotes = useCallback((pinned: boolean) => {
+    if (pinned) {
+      stopExternalVideoShare();
+      if (isScreenBroadcasting) screenshareHasEnded();
+    }
+    pinSharedNotes({ variables: { pinned } });
+    layoutContextDispatch({
+      type: ACTIONS.SET_NOTES_IS_PINNED,
+      value: pinned,
+    });
+  }, [
+    stopExternalVideoShare,
+    isScreenBroadcasting,
+    screenshareHasEnded,
+    pinSharedNotes,
+    layoutContextDispatch,
+  ]);
+
+  if (!padId) return null;
+
+  return (
+    <NotesGraphql
+      isOnMediaArea={isOnMediaArea}
+      isVisible={isOnMediaArea && isGridLayout ? isVisible && isSidebarContentOpen : isVisible}
+      padId={padId}
+      ignoreDelayforUnmount={sidebarContentToIgnoreDelay.includes(sidebarContent.sidebarContentPanel)
+        || (isOnMediaArea && !!isGridLayout)}
+      sharedNotesOutput={sharedNotesOutput}
+      amIPresenter={amIPresenter}
+      handlePinSharedNotes={handlePinSharedNotes}
+      shouldShowSharedNotesOnPresentationArea={shouldShowSharedNotesOnPresentationArea}
+    />
+  );
+};
+
+export default injectWbResizeEvent(NotesContainerGraphql);

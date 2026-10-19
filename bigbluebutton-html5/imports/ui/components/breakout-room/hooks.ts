@@ -1,0 +1,157 @@
+import React, { useCallback } from 'react';
+import logger from '/imports/startup/client/logger';
+import { useExitVideo, useStreams } from '/imports/ui/components/video-provider/hooks';
+import {
+  finishScreenShare,
+  forceExitAudio,
+  stopVideo,
+} from '/imports/ui/components/breakout-room/breakout-room/service';
+import VideoService from '/imports/ui/components/video-provider/service';
+import KEYS from '/imports/utils/keys';
+
+export const useStopMediaOnMainRoom = () => {
+  const exitVideo = useExitVideo(true);
+  const streams = useStreams();
+
+  const stop = useCallback((presenter: boolean) => {
+    try {
+      forceExitAudio();
+      VideoService.storeDeviceIds(streams);
+      stopVideo(exitVideo, streams);
+      logger.info({
+        logCode: 'breakoutroom_join_stop_media',
+        extraInfo: { logType: 'user_action' },
+      }, 'Joining breakout room closed audio in the main room');
+      if (presenter) finishScreenShare();
+    } catch (error) {
+      const err = error as Error;
+      const errorMessage = err.message || 'Error stopping media';
+      const errorStack = err.stack || 'No stack trace available';
+
+      logger.error({
+        logCode: 'breakoutroom_stop_media_error',
+        extraInfo: { errorMessage, errorStack },
+      }, 'Failed to stop media while joining breakout room');
+    }
+  }, [exitVideo, streams]);
+
+  return stop;
+};
+
+type MoveUserFn = (userId: string, from: number, to: number) => void;
+type SetSelectedIdFn = (id: string) => void;
+
+export const useDragAndDrop = (
+  moveUser: MoveUserFn,
+  setSelectedId: SetSelectedIdFn,
+  afterDrop?: () => void,
+) => {
+  const dragStart = useCallback((ev: React.DragEvent<HTMLElement>) => {
+    const el = ev.currentTarget as HTMLElement;
+    ev.dataTransfer.setData('text', el.id);
+    setSelectedId(el.id);
+    const ghost = document.createElement('div');
+    ghost.textContent = el.textContent || '';
+    ghost.style.cssText = 'position:absolute;top:-9999px;padding:4px 8px;background:#fff;border:1px solid #ccc;border-radius:4px;font-size:0.85rem;white-space:nowrap;';
+    document.body.appendChild(ghost);
+    ev.dataTransfer.setDragImage(ghost, 0, 0);
+    requestAnimationFrame(() => ghost.remove());
+  }, [setSelectedId]);
+
+  const dragEnd = useCallback(() => {
+    setSelectedId('');
+  }, [setSelectedId]);
+
+  const allowDrop = useCallback((ev: React.DragEvent) => {
+    ev.preventDefault();
+  }, []);
+
+  const drop = useCallback((roomNumber: number) => (ev: React.DragEvent) => {
+    ev.preventDefault();
+    const data = ev.dataTransfer.getData('text');
+    const separatorIndex = data.lastIndexOf('-');
+    if (separatorIndex <= 0) {
+      setSelectedId('');
+      return;
+    }
+    const userId = data.substring(0, separatorIndex);
+    const from = data.substring(separatorIndex + 1);
+    if (!userId || Number.isNaN(Number(from))) {
+      setSelectedId('');
+      return;
+    }
+    moveUser(userId, Number(from), roomNumber);
+    setSelectedId('');
+    if (afterDrop) afterDrop();
+  }, [moveUser, setSelectedId, afterDrop]);
+
+  return {
+    dragStart,
+    dragEnd,
+    allowDrop,
+    drop,
+  };
+};
+export const useRoverNavigation = (
+  userItemSelector: string,
+  moveUser: MoveUserFn,
+  numberOfRooms: number,
+  afterMove?: () => void,
+) => {
+  const rover = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    const element = e.target as HTMLElement;
+
+    if (element.id.includes('breakoutBox')) {
+      if (e.key === KEYS.ENTER || e.key === KEYS.ARROW_DOWN) {
+        e.preventDefault();
+        e.stopPropagation();
+        const firstChild = element.querySelector(
+          `[data-test="${userItemSelector}"]`,
+        ) as HTMLElement;
+        if (firstChild) firstChild.focus();
+      }
+      return;
+    }
+
+    if (element?.dataset?.test === userItemSelector) {
+      const splitted = element.id.split('-');
+      const [userId, stringFrom] = splitted;
+      const from = Number(stringFrom);
+
+      if (e.key === KEYS.ARROW_DOWN || e.key === KEYS.ARROW_UP) {
+        e.preventDefault();
+        e.stopPropagation();
+        const nextElement = e.key === KEYS.ARROW_DOWN
+          ? element.nextElementSibling
+          : element.previousElementSibling;
+        if (nextElement) (nextElement as HTMLElement).focus();
+      }
+
+      if (e.key === KEYS.ARROW_RIGHT) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (from + 1 <= numberOfRooms) {
+          moveUser(userId, from, from + 1);
+          if (afterMove) afterMove();
+        }
+      }
+
+      if (e.key === KEYS.ARROW_LEFT) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (from - 1 >= 0) {
+          moveUser(userId, from, from - 1);
+          if (afterMove) afterMove();
+        }
+      }
+    }
+  }, [userItemSelector, moveUser, numberOfRooms, afterMove]);
+
+  return rover;
+};
+
+export default {
+  useStopMediaOnMainRoom,
+  useDragAndDrop,
+  useRoverNavigation,
+};

@@ -1,0 +1,200 @@
+/* Visually hides text
+ * see: yaccessibilityblog.com/library/css-clip-hidden-content.html
+ */
+.visually-hidden {
+	position: absolute !important;
+	clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
+	clip: rect(1px, 1px, 1px, 1px);
+	padding: 0 !important;
+	border: 0 !important;
+	height: 1px !important;
+	width: 1px !important;
+	overflow: hidden;
+}
+
+html {
+  height: 100%;
+}
+body {
+  display: flex;
+  flex-flow: column;
+  height: 100%;
+  line-height: 1.5;
+}
+header {
+  background: white;
+  border-bottom: 1px solid #e2e2e2;
+  padding: 0 10px;
+  flex: 0 0 auto;
+}
+main {
+  -ms-flex: 1 0 16rem;
+  flex: 1 0 16rem;
+  display: flex;
+  flex-flow: row;
+  min-height: 16rem;
+}
+#error-area {
+  padding: 0 0.5rem;
+}
+#main-area {
+  flex: 1 1 auto;
+  display: flex;
+  flex-flow: column;
+  justify-content: center;
+  align-items: stretch;
+  background: white;
+}
+#chat-area {
+  flex: 0 0 20rem;
+  border-left: 1px solid #e2e2e2;
+  background: white;
+  position: relative;
+}
+footer {
+  flex: 0 0 auto;
+  background: white;
+  border-top: 1px solid #e2e2e2;
+  padding: 0.5rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+header > h1 {
+  font-size: 1.45rem;
+  line-height: 2rem;
+  padding: 0;
+  margin: 8px 0;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#main-area > #video-area {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  position: relative;
+}
+.video-js {
+  background-color: white;
+  position: absolute;
+}
+.video-js .vjs-current-time, .video-js .vjs-duration, .video-js .vjs-time-divider {
+  display: block;
+}
+.video-js .vjs-time-divider {
+  padding: 0;
+  min-width: 0;
+}
+.video-js .vjs-remaining-time {
+  display: none;
+}
+/* Chat style */
+#chat {
+  padding: 0 10px;
+  overflow-y: auto;
+  background: #fff;
+  color: #4e5a66;
+
+  /* we use borders here instead of padding because the top/bottom
+     padding doesn't really work with a vertical scrollbar */
+  border-top: 5px solid #fff;
+  border-bottom: 5px solid #fff;
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+}
+.chat-message {
+  margin-bottom: 0.75em;
+}
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 2em;
+  margin-bottom: 0.25em;
+  gap: 0.5em;
+  color: #06172a;
+}
+.chat-user {
+  font-weight: bold;
+  word-wrap: break-word;
+}
+.chat-timestamp {
+  font-size: 0.875em;
+}
+.chat-text {
+  background-color: #f4f6fa;
+  border-radius: 0.5em;
+  padding: 0.5em 1em;
+  margin-bottom: 0.25em;
+  word-wrap: break-word;
+}
+.chat-reply {
+  padding: 0.25em 1em;
+  position: relative;
+  max-height: 1.5em;
+  border-radius: 0.5em 0.5em 0 0;
+  border: 1px solid #d4d9df;
+  overflow: hidden;
+}
+.chat-reply::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 0.5em;
+  background-color: #0f70d7;
+}
+.chat-reply + .chat-text {
+  border-radius: 0 0 0.5em 0.5em;
+}
+.chat-emphasized-text {
+  font-weight: bold;
+}
+.chat-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25em;
+}
+.chat-reaction {
+  background-color: #f4f6fa;
+  /*border: 1px solid #d4d9df;*/
+  color: #06172a;
+  border-radius: 2em;
+  padding: 0.25em 0.75em;
+}
+
+@media all and (max-width: 48rem) {
+  main {
+    -ms-flex: 1 0 auto;
+    flex: 1 0 auto;
+    -ms-flex-direction: column;
+    flex-direction: column;
+  }
+  #main-area {
+    -ms-flex: 1 1 10rem;
+    flex: 1 1 10rem;
+    min-height: 10rem;
+  }
+  #main-area > #video-area {
+    min-height: 10rem;
+    position: relative;
+  }
+  #chat-area {
+    -ms-flex: 1 0 10rem;
+    flex: 1 0 10rem;
+    min-height: 10rem;
+    border-left: none;
+    border-top: 1px solid #e2e2e2;
+  }
+  .video-js {
+    position: absolute;
+  }
+}

@@ -1,4 +1,3 @@
-@"
 # EduSync AI — C1 Backend
 
 This component provides the backend for:
@@ -9,4 +8,38 @@ This component provides the backend for:
 
 Research component: C1 — Curriculum Alignment and Lecture Navigation Intelligence.
 Related GitHub issue: #1
-"@ | Set-Content README.md
+
+---
+
+# Research Fork — BigBlueButton 4.0 (Web Stack Base)
+
+This repository is a trimmed copy of BigBlueButton v4.0.x used as the base for a university research project (AI/ML-based monitoring, in progress).
+
+**Removed from upstream** (not needed to build or run the web stack): the Docusaurus docs site (`docs/` — developer docs kept in [`docs/development/`](docs/development/)), Playwright/gns3 tests (`bigbluebutton-tests/`), `bbb-graphql-client-test/`, `labs/`, `scripts/`, upstream CI (`.github/`, `.gitlab-ci.yml`), `publiccode.yml`, `transifex.yml`.
+
+**Kept:** HTML5 client, bbb-web, akka-apps/fsesl, GraphQL server (Postgres/Hasura), middleware, actions, audio/video stack, recording, learning dashboard, shared notes, export annotations, and `build/` packaging.
+
+Developer setup: see [`docs/development/dev-guide.md`](docs/development/dev-guide.md).
+
+---
+
+BigBlueButton
+=============
+BigBlueButton is an open-source virtual classroom designed to help teachers teach and learners learn.  
+
+BigBlueButton supports real-time sharing of audio, video, slides (with whiteboard annotations), chat, and the screen.  Instructors can engage remote students with polling, emojis, multi-user whiteboards, shared notes, and breakout rooms.  During the session, BigBlueButton generates analytics that are visible to moderators in the Learning Analytics Dashboard.
+
+Presenters can record and playback content for later sharing with others.
+
+We designed BigBlueButton for online learning, it can be used for many other applications as well.  The educational use cases for BigBlueButton are
+
+  * Online tutoring (one-to-one)
+  * Flipped classrooms (recording content ahead of your session)
+  * Group collaboration (many-to-many)
+  * Online classes (one-to-many)
+
+The latest version is BigBlueButton 4.0.  You can install BigBlueButton it on Ubuntu 24.04 using [bbb-install.sh](https://github.com/bigbluebutton/bbb-install) within 30 minutes (or your money back 😉).
+
+For full technical documentation of BigBlueButton -- including architecture, features, API, and GreenLight (the default front-end) -- see [https://docs.bigbluebutton.org/](https://docs.bigbluebutton.org/).
+
+BigBlueButton and the BigBlueButton Logo are trademarks of [BigBlueButton Inc](https://bigbluebutton.org).

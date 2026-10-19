@@ -1,0 +1,58 @@
+// AvatarContent.tsx
+import React from 'react';
+import Icon from '/imports/ui/components/common/icon/icon-ts/component';
+import { AvatarContentProps, EmojiProps } from './types';
+import { useIsReactionsEnabled } from '/imports/ui/services/features';
+import useRemInPixels from '/imports/ui/hooks/useRemInPixels';
+
+const Emoji: React.FC<EmojiProps> = ({ emoji, native, size }) => (
+  <em-emoji emoji={emoji} native={native} size={size} />
+);
+
+const AvatarContent: React.FC<AvatarContentProps> = ({ user }) => {
+  const isReactionsEnabled = useIsReactionsEnabled();
+  const emojiSize = useRemInPixels(1.3);
+  const emojiIcons = [
+    {
+      id: 'clock7',
+      native: '⏰',
+    },
+  ];
+
+  const getIconUser = () => {
+    if (user.isDialIn) {
+      return <Icon iconName="volume_level_2" />;
+    }
+    if (user.away === true) {
+      return isReactionsEnabled
+        ? (
+          <Emoji
+            key="away"
+            emoji={emojiIcons[0]}
+            native={emojiIcons[0].native}
+            size={emojiSize}
+          />
+        ) : <Icon iconName="time" />;
+    }
+    if (user.reactionEmoji && user.reactionEmoji !== 'none') {
+      return user.reactionEmoji;
+    }
+    if (user.name && user.avatar.length === 0) {
+      return user.name.toLowerCase().slice(0, 2);
+    }
+    return '';
+  };
+
+  const userAvatarFiltered = (user.away === true || (user.reactionEmoji && user.reactionEmoji !== 'none')) ? '' : user.avatar;
+  const avatarContent = user.lastBreakoutRoom?.isUserCurrentlyInRoom && userAvatarFiltered.length === 0
+    ? user.lastBreakoutRoom?.sequence
+    : getIconUser();
+
+  return (
+    <>
+      {avatarContent}
+    </>
+  );
+};
+
+export default AvatarContent;

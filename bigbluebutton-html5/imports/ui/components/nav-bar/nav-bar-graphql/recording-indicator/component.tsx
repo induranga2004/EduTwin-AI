@@ -1,0 +1,517 @@
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import useMeeting from '/imports/ui/core/hooks/useMeeting';
+import KEYS from '/imports/utils/keys';
+import deviceInfo, { isMobile } from '/imports/utils/deviceInfo';
+import { defineMessages, useIntl } from 'react-intl';
+import {
+  GET_MEETING_RECORDING_DATA,
+  getMeetingRecordingData,
+  meetingRecordingAssertion,
+} from './queries';
+import useCurrentUser from '/imports/ui/core/hooks/useCurrentUser';
+import Tooltip from '/imports/ui/components/common/tooltip/component';
+import humanizeSeconds from '/imports/utils/humanizeSeconds';
+import { notify } from '/imports/ui/services/notification';
+import Styled, { HOVER_CAPABLE_QUERY, LABEL_COLLAPSE_MS } from './styles';
+import { User } from '/imports/ui/Types/user';
+import useTimeSync from '/imports/ui/core/local-states/useTimeSync';
+import RecordingNotify from './notify/component';
+import RecordingContainer from '/imports/ui/components/recording/container';
+import useDeduplicatedSubscription from '/imports/ui/core/hooks/useDeduplicatedSubscription';
+import { getSettingsSingletonInstance } from '/imports/ui/services/settings';
+import useSettings from '/imports/ui/services/settings/hooks/useSettings';
+import { SETTINGS } from '/imports/ui/services/settings/enums';
+import logger from '/imports/startup/client/logger';
+import SvgIcon from '/imports/ui/components/common/icon-svg/component';
+import { layoutSelect } from '/imports/ui/components/layout/context';
+import Service from './service';
+import { Layout } from '../../../layout/layoutTypes';
+import { useModalRegistration } from '/imports/ui/core/singletons/modalController';
+import { smallOnly } from '/imports/ui/stylesheets/styled-components/breakpoints';
+
+const intlMessages = defineMessages({
+  notificationRecordingStart: {
+    id: 'app.notification.recordingStart',
+    description: 'Notification for when the recording starts',
+  },
+  notificationRecordingStop: {
+    id: 'app.notification.recordingStop',
+    description: 'Notification for when the recording stops',
+  },
+  recordingAriaLabel: {
+    id: 'app.notification.recordingAriaLabel',
+    description: 'Notification for when the recording stops',
+  },
+  startTitle: {
+    id: 'app.recording.startTitle',
+    description: 'start recording title',
+  },
+  stopTitle: {
+    id: 'app.recording.stopTitle',
+    description: 'stop recording title',
+  },
+  resumeTitle: {
+    id: 'app.recording.resumeTitle',
+    description: 'resume recording title',
+  },
+  resumeViewTitle: {
+    id: 'app.recording.resumeViewTitle',
+    description: 'warning for viewer when recording is paused',
+  },
+  recordingTitle: {
+    id: 'app.recording.recordingTitle',
+    description: 'recording in progress title',
+  },
+  recordingIndicatorOn: {
+    id: 'app.navBar.recording.on',
+    description: 'label for indicator when the session is being recorded',
+  },
+  recordingIndicatorOff: {
+    id: 'app.navBar.recording.off',
+    description: 'label for indicator when the session is not being recorded',
+  },
+  emptyAudioBrdige: {
+    id: 'app.navBar.emptyAudioBrdige',
+    description: 'message for notification when recording starts with no users in audio bridge',
+  },
+  errorDescription: {
+    id: 'app.recording.errorDescription',
+    description: 'recording data error',
+  },
+  loadingDescription: {
+    id: 'app.recording.loadingDescription',
+    description: 'recording data is loading',
+  },
+  unavailableTitle: {
+    id: 'app.navBar.recording.unavailable',
+    description: 'recording data is either loading or failed to load',
+  },
+});
+
+const useMediaQuery = (query: string) => {
+  const [matches, setMatches] = useState(() => globalThis.matchMedia(query).matches);
+
+  useEffect(() => {
+    const mediaQuery = globalThis.matchMedia(query);
+    const handleChange = (event: MediaQueryListEvent) => setMatches(event.matches);
+    setMatches(mediaQuery.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [query]);
+
+  return matches;
+};
+
+interface RecordingIndicatorProps {
+  allowStartStopRecording: boolean;
+  // eslint-disable-next-line react/no-unused-prop-types
+  autoStartRecording: boolean;
+  record: boolean;
+  recording: boolean;
+  micUser: boolean;
+  isPhone: boolean;
+  recordingNotificationEnabled: boolean;
+  notifyRecordingAppend: string;
+  serverTime: number;
+  isModerator: boolean;
+  hasError: boolean;
+  isLoading: boolean;
+}
+
+const RecordingIndicator: React.FC<RecordingIndicatorProps> = ({
+  isPhone,
+  recording,
+  micUser,
+  serverTime,
+  allowStartStopRecording,
+  isModerator,
+  record,
+  recordingNotificationEnabled,
+  notifyRecordingAppend,
+  hasError,
+  isLoading,
+}) => {
+  const intl = useIntl();
+  const [shouldNotify, setShouldNotify] = useState(true);
+  const [time, setTime] = useState(serverTime);
+  const setIntervalRef = React.useRef<ReturnType<typeof setTimeout>>();
+  const disabled = hasError || isLoading;
+  const showButton = Service.mayIRecord(isModerator, allowStartStopRecording);
+  const isRTL = layoutSelect((i: Layout) => i.isRTL);
+  // Reactive, so flipping either toggle in the settings modal is reflected at once.
+  // The collapse honours the same animations setting as this component's own spinner.
+  const {
+    animations,
+    recordingIndicatorAutoCollapse,
+  } = useSettings(SETTINGS.APPLICATION) as {
+    animations: boolean; recordingIndicatorAutoCollapse: boolean;
+  };
+
+  const isHoverCapable = useMediaQuery(HOVER_CAPABLE_QUERY);
+  const isSmallViewport = useMediaQuery(smallOnly);
+
+  // Open from the moment the confirmation shows until one of its buttons is
+  // clicked; the button stays expanded for that whole time.
+  const [isRecordingModalOpen, setIsRecordingModalOpen] = useState(false);
+
+  const closeRecordingConfirmation = useCallback(() => {
+    setIsRecordingModalOpen(false);
+  }, [setIsRecordingModalOpen]);
+
+  const {
+    isOpen: isRecordingNotifyModalOpen,
+    open: openRecordingNotifyModal,
+    close: closeRecordingNotifyModal,
+  } = useModalRegistration({
+    id: 'recordingNotifyModal',
+    priority: 'high',
+  });
+
+  const setIsRecordingNotifyModalOpen = useCallback((isOpen: boolean) => {
+    if (isOpen) {
+      openRecordingNotifyModal();
+    } else {
+      closeRecordingNotifyModal();
+    }
+  }, [openRecordingNotifyModal, closeRecordingNotifyModal]);
+
+  const recordingToggle = useCallback((hasMicUser: boolean, isRecording: boolean) => {
+    if (!hasMicUser && !isRecording) {
+      notify(intl.formatMessage(intlMessages.emptyAudioBrdige), 'error', 'warning');
+    }
+    setIsRecordingModalOpen(true);
+    const focusedElement = document.activeElement as HTMLElement;
+    focusedElement.blur();
+  }, []);
+
+  useEffect(() => {
+    if (recording) {
+      setTime(serverTime);
+      clearInterval(setIntervalRef.current);
+      setIntervalRef.current = setInterval(() => {
+        setTime((currentTime) => currentTime + 1);
+      }, 1000);
+    }
+    if (!recording) {
+      clearInterval(setIntervalRef.current);
+    }
+    return () => {
+      clearInterval(setIntervalRef.current);
+    };
+  }, [recording]);
+
+  useEffect(() => {
+    if (recordingNotificationEnabled && recording) {
+      setShouldNotify(true);
+    }
+  }, [recordingNotificationEnabled, recording]);
+
+  useEffect(() => {
+    if (recordingNotificationEnabled) {
+      // should only display notification modal when other modals are closed
+      if (shouldNotify && recording) {
+        setIsRecordingNotifyModalOpen(true);
+      }
+    }
+  }, [shouldNotify, recordingNotificationEnabled, recording]);
+
+  // Also the button's aria-label, so it is computed on phones too even though
+  // no visible label is rendered there.
+  const recordTitle = useMemo(() => {
+    if (disabled) return intl.formatMessage(intlMessages.unavailableTitle);
+
+    if (!recording) {
+      if (!showButton && time > 0) {
+        return intl.formatMessage(intlMessages.resumeViewTitle);
+      }
+
+      return time > 0
+        ? intl.formatMessage(intlMessages.resumeTitle)
+        : intl.formatMessage(intlMessages.startTitle);
+    }
+
+    // Read-only viewers cannot stop anything, so the pill states what is
+    // happening instead of offering the moderator's action.
+    return showButton
+      ? intl.formatMessage(intlMessages.stopTitle)
+      : intl.formatMessage(intlMessages.recordingTitle);
+  }, [recording, disabled, showButton, time, intl.locale]);
+
+  const isLabelCollapsible = !isPhone && recordingIndicatorAutoCollapse && showButton;
+  const [collapsingTitle, setCollapsingTitle] = useState<string | null>(null);
+  const wasRecordingModalOpen = useRef(false);
+  const presentationTitleRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const released = wasRecordingModalOpen.current && !isRecordingModalOpen;
+    wasRecordingModalOpen.current = isRecordingModalOpen;
+    if (!released || !isLabelCollapsible) {
+      setCollapsingTitle(null);
+      return undefined;
+    }
+    setCollapsingTitle(recordTitle);
+    const presentationTitle = presentationTitleRef.current;
+    const release = (event: TransitionEvent) => {
+      if (event.target === presentationTitle && event.propertyName === 'opacity') {
+        setCollapsingTitle(null);
+      }
+    };
+    presentationTitle?.addEventListener('transitionend', release);
+    presentationTitle?.addEventListener('transitioncancel', release);
+    const timeout = setTimeout(() => setCollapsingTitle(null), LABEL_COLLAPSE_MS * 2);
+    return () => {
+      clearTimeout(timeout);
+      presentationTitle?.removeEventListener('transitionend', release);
+      presentationTitle?.removeEventListener('transitioncancel', release);
+    };
+  }, [isRecordingModalOpen]);
+
+  const tooltipTitle = useMemo(() => {
+    if (!recording) {
+      // Phones keep their empty idle tooltip; only a custom one shows there.
+      const idleTitle = isPhone ? '' : recordTitle;
+      return !showButton
+        ? Service.getCustomRecordTooltip(idleTitle)
+        : idleTitle;
+    }
+
+    return showButton
+      ? intl.formatMessage(intlMessages.stopTitle)
+      : intl.formatMessage(intlMessages.recordingTitle);
+  }, [recording, isPhone, isModerator, recordTitle]);
+
+  const recordingIndicatorIcon = useMemo(() => (
+    <Styled.RecordingIndicatorIcon
+      // While recording, the timer sits right after the dot and owns that gap.
+      titleMargin={!isPhone && !recording}
+      data-test="mainWhiteboard"
+      isRTL={isRTL}
+    >
+      <SvgIcon iconName="recording" />
+    </Styled.RecordingIndicatorIcon>
+  ), [isPhone, recording, isRTL]);
+
+  const title = useMemo(() => intl.formatMessage(
+    recording
+      ? intlMessages.recordingIndicatorOn
+      : intlMessages.recordingIndicatorOff,
+  ), [recording]);
+
+  let recordMeetingButton = (
+    <Styled.RecordingControl
+      aria-label={recordTitle}
+      aria-describedby="recording-description"
+      recording={recording}
+      disabled={!showButton}
+      isPhone={isPhone}
+      animations={animations}
+      autoCollapse={recordingIndicatorAutoCollapse}
+      $expanded={isRecordingModalOpen}
+      time={time}
+      tabIndex={0}
+      key="recording-toggle"
+      onClick={() => {
+        recordingToggle(micUser, recording);
+      }}
+      onKeyDown={(ev) => {
+        if (ev.key !== KEYS.TAB) {
+          ev.preventDefault();
+        }
+        if (ev.key === KEYS.ENTER) {
+          recordingToggle(micUser, recording);
+        }
+      }}
+    >
+      {recordingIndicatorIcon}
+      {recording && (
+        <Styled.RecordingTimer aria-hidden>
+          {humanizeSeconds(time)}
+        </Styled.RecordingTimer>
+      )}
+      {/* Outside the phone guard: aria-describedby above points at it. */}
+      <Styled.VisuallyHidden id="recording-description">
+        {`${title} ${recording ? `${intl.formatMessage(intlMessages.recordingTitle)} ${humanizeSeconds(time)}` : ''}`}
+      </Styled.VisuallyHidden>
+      {!isPhone && (
+        <Styled.PresentationTitle ref={presentationTitleRef}>
+          <span aria-hidden>{collapsingTitle ?? recordTitle}</span>
+        </Styled.PresentationTitle>
+      )}
+    </Styled.RecordingControl>
+  );
+
+  // Where the label is drawn: never on phones, not in the idle circle of small
+  // viewports, and with the collapse on only under a real pointer's hover or
+  // while the confirmation holds the button open.
+  const isLabelVisible = !isPhone
+    && (recording || !isSmallViewport)
+    && (
+      !recordingIndicatorAutoCollapse
+      || !showButton
+      || isHoverCapable
+      || isRecordingModalOpen
+    );
+
+  // A visible label already says what the tooltip would, so the tooltip is
+  // dropped; a custom viewer tooltip that says something else is kept.
+  const recordingButtonWithTooltip = (
+    <Tooltip title={isLabelVisible && tooltipTitle === recordTitle ? '' : tooltipTitle}>
+      <span>{recordMeetingButton}</span>
+    </Tooltip>
+  );
+
+  if (disabled) {
+    recordMeetingButton = (
+      <Tooltip
+        title={
+          isLoading
+            ? intl.formatMessage(intlMessages.loadingDescription)
+            : intl.formatMessage(intlMessages.errorDescription)
+        }
+      >
+        <span>
+          {recordMeetingButton}
+        </span>
+      </Tooltip>
+    );
+  }
+
+  if (!record) return null;
+  return (
+    <>
+      <Styled.RecordingIndicator
+        data-test="recordingIndicator"
+        isPhone={isMobile}
+        recording={recording}
+        time={time}
+        disabled={!showButton}
+      >
+        {recordingButtonWithTooltip}
+      </Styled.RecordingIndicator>
+      {isRecordingNotifyModalOpen ? (
+        <RecordingNotify
+          toggleShouldNotify={() => {
+            setShouldNotify((prev) => !prev);
+          }}
+          priority="high"
+          isOpen={isRecordingNotifyModalOpen}
+          notifyRecordingAppend={notifyRecordingAppend}
+          closeModal={() => {
+            setIsRecordingNotifyModalOpen(false);
+            setShouldNotify(false);
+          }}
+        />
+      ) : null}
+      {isRecordingModalOpen ? (
+        <RecordingContainer
+          amIModerator={isModerator}
+          onRequestClose={closeRecordingConfirmation}
+          setIsOpen={setIsRecordingModalOpen}
+        />
+      ) : null}
+    </>
+  );
+};
+
+const RecordingIndicatorContainer: React.FC = () => {
+  const { isMobile } = deviceInfo;
+
+  const {
+    data: meetingRecordingData,
+    loading: meetingRecordingLoading,
+    error: meetingRecordingError,
+  } = useDeduplicatedSubscription<getMeetingRecordingData>(GET_MEETING_RECORDING_DATA);
+
+  const { data: currentUser } = useCurrentUser((user: Partial<User>) => ({
+    userId: user.userId,
+    isModerator: user.isModerator,
+    voice: user.voice
+      ? {
+        joined: user.voice.joined,
+        listenOnly: user.voice.listenOnly,
+      }
+      : null,
+  } as Partial<User>));
+
+  const {
+    data: currentMeeting,
+    errors: currentMeetingErrors,
+    loading: currentMeetingLoading,
+  } = useMeeting((meeting) => ({
+    meetingId: meeting.meetingId,
+    notifyRecordingIsOn: meeting.notifyRecordingIsOn,
+    notifyRecordingAppend: meeting.notifyRecordingAppend,
+    recordingPolicies: meeting.recordingPolicies,
+  }));
+
+  const [timeSync] = useTimeSync();
+  const Settings = getSettingsSingletonInstance();
+  const animations = Settings?.application?.animations;
+
+  if (meetingRecordingLoading) {
+    return (
+      <>
+        <div>
+          <Styled.SpinnerOverlay animations={animations}>
+            <Styled.Bounce1 animations={animations} />
+            <Styled.Bounce2 animations={animations} />
+          </Styled.SpinnerOverlay>
+        </div>
+      </>
+    );
+  }
+
+  if (meetingRecordingError) {
+    logger.error({
+      logCode: 'meeting_recording_sub_error',
+      extraInfo: {
+        errorName: meetingRecordingError.name,
+        errorMessage: meetingRecordingError.message,
+      },
+    }, 'Meeting recording subscription failed.');
+  }
+
+  const meetingRecording = meetingRecordingData?.meeting_recording[0] || {
+    isRecording: false,
+    previousRecordedTimeInSeconds: 0,
+    startedAt: '',
+    startedBy: '',
+  };
+  meetingRecordingAssertion(meetingRecording);
+
+  const currentDate: Date = new Date();
+  const startedAt: Date = new Date(meetingRecording?.startedAt ?? '');
+  const adjustedCurrent: Date = new Date(currentDate.getTime() + timeSync);
+  const timeDifferenceMs: number = adjustedCurrent.getTime() - startedAt.getTime();
+  const totalPassedTime: number = timeDifferenceMs / 1000 + (meetingRecording?.previousRecordedTimeInSeconds ?? 0);
+  const passedTime = Math.floor(totalPassedTime);
+
+  return (
+    <RecordingIndicator
+      allowStartStopRecording={currentMeeting?.recordingPolicies?.allowStartStopRecording ?? false}
+      autoStartRecording={currentMeeting?.recordingPolicies?.autoStartRecording ?? false}
+      record={currentMeeting?.recordingPolicies?.record ?? false}
+      recording={meetingRecording?.isRecording ?? false}
+      micUser={(currentUser?.voice && !currentUser?.voice.listenOnly) ?? false}
+      isPhone={isMobile}
+      recordingNotificationEnabled={
+        (meetingRecording?.startedBy !== currentUser?.userId
+          && currentMeeting?.notifyRecordingIsOn)
+        ?? false
+      }
+      notifyRecordingAppend={currentMeeting?.notifyRecordingAppend ?? ''}
+      serverTime={passedTime > 0 ? passedTime : 0}
+      isModerator={currentUser?.isModerator ?? false}
+      hasError={Boolean(currentMeetingErrors || meetingRecordingError)}
+      isLoading={currentMeetingLoading || meetingRecordingLoading}
+    />
+  );
+};
+
+export default RecordingIndicatorContainer;

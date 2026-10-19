@@ -1,0 +1,459 @@
+package org.bigbluebutton.api2
+
+import scala.collection.JavaConverters._
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.event.Logging
+import org.bigbluebutton.api.domain.{BreakoutRoomsParams, Group, LockSettingsParams}
+import org.bigbluebutton.api.messaging.converters.messages._
+import org.bigbluebutton.api.messaging.messages.{ChatMessageFromApi, RegisterUserSessionToken}
+import org.bigbluebutton.api.service.ServiceUtils
+import org.bigbluebutton.api2.bus._
+import org.bigbluebutton.api2.endpoint.redis.WebRedisSubscriberActor
+import org.bigbluebutton.common2.redis.MessageSender
+import org.bigbluebutton.api2.meeting.{OldMeetingMsgHdlrActor, RegisterUser}
+import org.bigbluebutton.common2.domain._
+import org.bigbluebutton.common2.util.JsonUtil
+import org.bigbluebutton.presentation.messages._
+
+import scala.concurrent.duration._
+import org.bigbluebutton.common2.redis._
+import org.bigbluebutton.common2.bus._
+
+import java.util
+
+class BbbWebApiGWApp(
+    val oldMessageReceivedGW: OldMessageReceivedGW,
+    redisHost:                String,
+    redisPort:                Int,
+    redisPassword:            String,
+    redisExpireKey:           Int,
+    val pageTokenSecret:      String = ""
+) extends IBbbWebApiGWApp with SystemConfiguration {
+
+  implicit val system = ActorSystem("bbb-web-common")
+
+  implicit val timeout = org.apache.pekko.util.Timeout(3 seconds)
+
+  val log = Logging(system, getClass)
+
+  private val jsonMsgToAkkaAppsBus = new JsonMsgToAkkaAppsBus
+
+  val redisPass = if (redisPassword != "") Some(redisPassword) else None
+  val redisConfig = RedisConfig(redisHost, redisPort, redisPass, redisExpireKey)
+
+  var redisStorage = new RedisStorageService()
+  redisStorage.setHost(redisConfig.host)
+  redisStorage.setPort(redisConfig.port)
+  val redisPassStr = redisConfig.password match {
+    case Some(pass) => pass
+    case None       => ""
+  }
+  redisStorage.setPassword(redisPassStr)
+  redisStorage.setExpireKey(redisConfig.expireKey)
+  redisStorage.setClientName("BbbWebRedisStore")
+  redisStorage.start()
+
+  private val redisPublisher = new RedisPublisher(system, "BbbWebPub", redisConfig)
+
+  private val msgSender: MessageSender = new MessageSender(redisPublisher)
+  private val messageSenderActorRef = system.actorOf(MessageSenderActor.props(msgSender), "messageSenderActor")
+
+  jsonMsgToAkkaAppsBus.subscribe(messageSenderActorRef, toAkkaAppsJsonChannel)
+
+  private val receivedJsonMsgBus = new JsonMsgFromAkkaAppsBus
+  private val oldMessageEventBus = new OldMessageEventBus
+  private val msgFromAkkaAppsEventBus = new MsgFromAkkaAppsEventBus
+  private val msgToAkkaAppsEventBus = new MsgToAkkaAppsEventBus
+
+  /**
+   * Not used for now as we will still user MeetingService for 2.0 (ralam july 4, 2017)
+   */
+  //private val meetingManagerActorRef = system.actorOf(
+  //  MeetingsManagerActor.props(msgToAkkaAppsEventBus), "meetingManagerActor")
+  //msgFromAkkaAppsEventBus.subscribe(meetingManagerActorRef, fromAkkaAppsChannel)
+
+  private val oldMeetingMsgHdlrActor = system.actorOf(
+    OldMeetingMsgHdlrActor.props(oldMessageReceivedGW), "oldMeetingMsgHdlrActor"
+  )
+  msgFromAkkaAppsEventBus.subscribe(oldMeetingMsgHdlrActor, fromAkkaAppsChannel)
+
+  private val msgToAkkaAppsToJsonActor = system.actorOf(
+    MsgToAkkaAppsToJsonActor.props(jsonMsgToAkkaAppsBus), "msgToAkkaAppsToJsonActor"
+  )
+
+  msgToAkkaAppsEventBus.subscribe(msgToAkkaAppsToJsonActor, toAkkaAppsChannel)
+
+  // Not used but needed by internal class (ralam april 4, 2019)
+  val incomingJsonMessageBus = new IncomingJsonMessageBus
+
+  val channelsToSubscribe = Seq(fromAkkaAppsRedisChannel)
+  private val appsRedisSubscriberActor = system.actorOf(
+    WebRedisSubscriberActor.props(
+      system,
+      receivedJsonMsgBus,
+      oldMessageEventBus,
+      incomingJsonMessageBus,
+      redisConfig,
+      channelsToSubscribe,
+      Nil,
+      fromAkkaAppsJsonChannel,
+      fromAkkaAppsOldJsonChannel
+    ),
+    "appsRedisSubscriberActor"
+  )
+
+  private val receivedJsonMsgHdlrActor = system.actorOf(
+    ReceivedJsonMsgHdlrActor.props(msgFromAkkaAppsEventBus), "receivedJsonMsgHdlrActor"
+  )
+
+  receivedJsonMsgBus.subscribe(receivedJsonMsgHdlrActor, fromAkkaAppsJsonChannel)
+
+  private val oldMessageJsonReceiverActor = system.actorOf(
+    OldMessageJsonReceiverActor.props(oldMessageReceivedGW), "oldMessageJsonReceiverActor"
+  )
+
+  oldMessageEventBus.subscribe(oldMessageJsonReceiverActor, fromAkkaAppsOldJsonChannel)
+
+/*****
+    * External APIs for Gateway
+    */
+  def send(channel: String, json: String): Unit = {
+    log.debug("Sending msg. channel={} msg={}", channel, json)
+    jsonMsgToAkkaAppsBus.publish(JsonMsgToAkkaAppsBusMsg(toAkkaAppsJsonChannel, new JsonMsgToSendToAkkaApps(channel, json)))
+  }
+
+  def createMeeting(meetingId: String, extMeetingId: String, parentMeetingId: String, meetingName: String,
+                    recorded: java.lang.Boolean, voiceBridge: String, duration: java.lang.Integer,
+                    autoStartRecording:      java.lang.Boolean,
+                    allowStartStopRecording: java.lang.Boolean,
+                    sharedNotesInitialContentJson: java.util.ArrayList[AnyRef],
+                    sharedNotesInitialContentMarkdown: java.lang.String,
+                    recordFullDurationMedia: java.lang.Boolean,
+                    webcamsOnlyForModerator: java.lang.Boolean,
+                    multiUserWhiteboardEnabled: java.lang.Boolean,
+                    meetingCameraCap: java.lang.Integer,
+                    userCameraCap:    java.lang.Integer,
+                    maxPinnedCameras: java.lang.Integer,
+                    cameraBridge:       String,
+                    screenShareBridge:  String,
+                    audioBridge:    String,
+                    moderatorPass:    String, viewerPass: String, learningDashboardAccessToken: String,
+                    createTime: java.lang.Long, createDate: String, isBreakout: java.lang.Boolean,
+                    sequence: java.lang.Integer,
+                    freeJoin: java.lang.Boolean,
+                    metadata: java.util.Map[String, String],
+                    guestPolicy: String,
+                    authenticatedGuest: java.lang.Boolean,
+                    allowPromoteGuestToModerator: java.lang.Boolean,
+                    waitingGuestUsersTimeout: java.lang.Long,
+                    meetingLayout: String,
+                    welcomeMsgTemplate: String, welcomeMsg: String, welcomeMsgForModerators: String,
+                    dialNumber:                             String,
+                    maxUsers:                               java.lang.Integer,
+                    maxUserConcurrentAccesses:              java.lang.Integer,
+                    meetingExpireIfNoUserJoinedInMinutes:   java.lang.Integer,
+                    meetingExpireWhenLastUserLeftInMinutes: java.lang.Integer,
+                    userInactivityInspectTimerInMinutes:    java.lang.Integer,
+                    userInactivityThresholdInMinutes:       java.lang.Integer,
+                    userActivitySignResponseDelayInMinutes: java.lang.Integer,
+                    endWhenNoModerator:                     java.lang.Boolean,
+                    endWhenNoModeratorDelayInMinutes:       java.lang.Integer,
+                    muteOnStart:                            java.lang.Boolean,
+                    allowModsToUnmuteUsers:                 java.lang.Boolean,
+                    requireUserConsentBeforeUnmuting:       java.lang.Boolean,
+                    allowModsToEjectCameras:                java.lang.Boolean,
+                    keepEvents:                             java.lang.Boolean,
+                    breakoutParams:                         BreakoutRoomsParams,
+                    lockSettingsParams:                     LockSettingsParams,
+                    loginUrl:                               String,
+                    logoutUrl:                              String,
+                    customLogoURL:                          String,
+                    customDarkLogoURL:                      String,
+                    bannerText:                             String,
+                    bannerColor:                            String,
+                    groups:                                 java.util.ArrayList[Group],
+                    disabledFeatures:                       java.util.ArrayList[String],
+                    notifyRecordingIsOn:                    java.lang.Boolean,
+                    notifyRecordingAppend:                  String,
+                    presentationUploadExternalDescription:  String,
+                    presentationUploadExternalUrl:          String,
+                    plugins:                                util.Map[String, AnyRef],
+                    html5PluginSdkVersion:                   String,
+                    overrideClientSettings:                 String): Unit = {
+
+    val disabledFeaturesAsVector: Vector[String] = disabledFeatures.asScala.toVector
+
+    val sharedNotesInitialContentJsonVector: Vector[AnyRef] = sharedNotesInitialContentJson.asScala.toVector
+    val meetingProp = MeetingProp(
+      name = meetingName,
+      extId = extMeetingId,
+      intId = meetingId,
+      meetingCameraCap = meetingCameraCap.intValue(),
+      sharedNotesInitialContentJson = sharedNotesInitialContentJsonVector,
+      sharedNotesInitialContentMarkdown = sharedNotesInitialContentMarkdown,
+      maxPinnedCameras = maxPinnedCameras.intValue(),
+      cameraBridge,
+      screenShareBridge,
+      audioBridge,
+      isBreakout = isBreakout.booleanValue(),
+      disabledFeaturesAsVector,
+      notifyRecordingIsOn,
+      notifyRecordingAppend,
+      presentationUploadExternalDescription,
+      presentationUploadExternalUrl
+    )
+
+    val durationProps = DurationProps(
+      duration = duration.intValue(),
+      createdTime = createTime.longValue(), createDate,
+      meetingExpireIfNoUserJoinedInMinutes = meetingExpireIfNoUserJoinedInMinutes.intValue(),
+      meetingExpireWhenLastUserLeftInMinutes = meetingExpireWhenLastUserLeftInMinutes.intValue(),
+      userInactivityInspectTimerInMinutes = userInactivityInspectTimerInMinutes.intValue(),
+      userInactivityThresholdInMinutes = userInactivityThresholdInMinutes.intValue(),
+      userActivitySignResponseDelayInMinutes = userActivitySignResponseDelayInMinutes.intValue(),
+      endWhenNoModerator = endWhenNoModerator.booleanValue(),
+      endWhenNoModeratorDelayInMinutes.intValue()
+    )
+
+    val password = PasswordProp(moderatorPass = moderatorPass, viewerPass = viewerPass, learningDashboardAccessToken = learningDashboardAccessToken)
+    val recordProp = RecordProp(record = recorded.booleanValue(), autoStartRecording = autoStartRecording.booleanValue(),
+      allowStartStopRecording = allowStartStopRecording.booleanValue(),
+      recordFullDurationMedia = recordFullDurationMedia.booleanValue(),
+      keepEvents = keepEvents.booleanValue())
+
+    val breakoutProps = BreakoutProps(
+      parentId = parentMeetingId,
+      sequence = sequence.intValue(),
+      freeJoin = freeJoin.booleanValue(),
+      breakoutRooms = Vector(),
+      record = breakoutParams.record.booleanValue(),
+      privateChatEnabled = breakoutParams.privateChatEnabled.booleanValue(),
+      captureNotes = breakoutParams.captureNotes.booleanValue(),
+      captureSlides = breakoutParams.captureSlides.booleanValue(),
+      captureNotesFilename = breakoutParams.captureNotesFilename,
+      captureSlidesFilename = breakoutParams.captureSlidesFilename,
+    )
+
+    val welcomeProp = WelcomeProp(welcomeMsg = welcomeMsg, welcomeMsgForModerators = welcomeMsgForModerators)
+    val voiceProp = VoiceProp(telVoice = voiceBridge, voiceConf = voiceBridge, dialNumber = dialNumber, muteOnStart = muteOnStart.booleanValue())
+    val usersProp = UsersProp(
+      maxUsers = maxUsers.intValue(),
+      maxUserConcurrentAccesses = maxUserConcurrentAccesses,
+      webcamsOnlyForModerator = webcamsOnlyForModerator.booleanValue(),
+      multiUserWhiteboardEnabled = multiUserWhiteboardEnabled,
+      userCameraCap = userCameraCap.intValue(),
+      guestPolicy = guestPolicy, meetingLayout = meetingLayout, allowModsToUnmuteUsers = allowModsToUnmuteUsers.booleanValue(),
+      requireUserConsentBeforeUnmuting = requireUserConsentBeforeUnmuting.booleanValue(), allowModsToEjectCameras = allowModsToEjectCameras.booleanValue(),
+      authenticatedGuest = authenticatedGuest.booleanValue(),
+      allowPromoteGuestToModerator = allowPromoteGuestToModerator.booleanValue(),
+      waitingGuestUsersTimeout = waitingGuestUsersTimeout.longValue()
+    )
+    val metadataProp = MetadataProp(mapAsScalaMap(metadata).toMap)
+
+    val lockSettingsProps = LockSettingsProps(
+      disableCam = lockSettingsParams.disableCam.booleanValue(),
+      disableMic = lockSettingsParams.disableMic.booleanValue(),
+      disablePrivateChat = lockSettingsParams.disablePrivateChat.booleanValue(),
+      disablePublicChat = lockSettingsParams.disablePublicChat.booleanValue(),
+      disableNotes = lockSettingsParams.disableNotes.booleanValue(),
+      hideUserList = lockSettingsParams.hideUserList.booleanValue(),
+      lockOnJoin = lockSettingsParams.lockOnJoin.booleanValue(),
+      lockOnJoinConfigurable = lockSettingsParams.lockOnJoinConfigurable.booleanValue(),
+      hideViewersCursor = lockSettingsParams.hideViewersCursor.booleanValue(),
+      hideViewersAnnotation = lockSettingsParams.hideViewersAnnotation.booleanValue(),
+      presenterPolicy = lockSettingsParams.presenterPolicy
+    )
+
+    val systemProps = SystemProps(
+      loginUrl match {
+        case url: String => url
+        case _ => ""
+      },
+      logoutUrl,
+      customLogoURL,
+      customDarkLogoURL,
+      bannerText match {
+        case t: String => t
+        case _ => ""
+      },
+      bannerColor match {
+        case c: String => c
+        case _ => ""
+      },
+      html5PluginSdkVersion,
+    )
+
+    val groupsAsVector: Vector[GroupProps] = groups.asScala.toVector.map(g => GroupProps(g.getGroupId(), g.getName(), g.getUsersExtId().asScala.toVector))
+
+    val defaultProps = DefaultProps(
+      plugins,
+      meetingProp,
+      breakoutProps,
+      durationProps,
+      password,
+      recordProp,
+      welcomeProp,
+      voiceProp,
+      usersProp,
+      metadataProp,
+      lockSettingsProps,
+      systemProps,
+      groupsAsVector,
+      overrideClientSettings,
+    )
+
+    //meetingManagerActorRef ! new CreateMeetingMsg(defaultProps)
+
+    val event = MsgBuilder.buildCreateMeetingRequestToAkkaApps(defaultProps)
+    msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, event))
+
+  }
+
+  def registerUser(meetingId: String, intUserId: String, name: String, firstName: String, lastName: String,
+                   role: String, extUserId: String, authToken: String, sessionToken: String,
+                   avatarURL: String, webcamBackgroundURL: String, bot: java.lang.Boolean, guest: java.lang.Boolean,
+                   authed: java.lang.Boolean, guestStatus: String, excludeFromDashboard: java.lang.Boolean,
+                   enforceLayout: String, logoutUrl: String, joinRequestMetadata: java.util.Map[String, String],
+                   userMetadata: java.util.Map[String, String]): Unit = {
+
+    //    meetingManagerActorRef ! new RegisterUser(meetingId = meetingId, intUserId = intUserId, name = name,
+    //      role = role, extUserId = extUserId, authToken = authToken, avatarURL = avatarURL,
+    //     guest = guest, authed = authed)
+
+    // Check whether the logout Url is either empty or a valid url.
+    require(logoutUrl.isEmpty || ServiceUtils.getValidationService().isValidURL(logoutUrl), "Invalid logout URL provided")
+
+    val regUser = new RegisterUser(meetingId = meetingId, intUserId = intUserId, name = name, firstName = firstName, lastName = lastName,
+      role = role, extUserId = extUserId, authToken = authToken, sessionToken = sessionToken,
+      avatarURL = avatarURL, webcamBackgroundURL = webcamBackgroundURL, bot = bot.booleanValue(), guest = guest.booleanValue(),
+      authed = authed.booleanValue(), guestStatus = guestStatus, excludeFromDashboard = excludeFromDashboard,
+      enforceLayout = enforceLayout, logoutUrl = logoutUrl, joinRequestMetadata = (joinRequestMetadata).asScala.toMap, userMetadata = (userMetadata).asScala.toMap)
+
+    val event = MsgBuilder.buildRegisterUserRequestToAkkaApps(regUser)
+    msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, event))
+  }
+
+  def registerUserSessionToken(meetingId: String, intUserId: String, sessionToken: String, sessionName: String,
+                               replaceSessionToken: String, enforceLayout: String,
+                               userSessionMetadata: java.util.Map[String, String]): Unit = {
+    val regUserSessionToken = new RegisterUserSessionToken(
+      meetingId,
+      intUserId,
+      sessionToken,
+      sessionName,
+      replaceSessionToken,
+      enforceLayout,
+      userSessionMetadata
+    )
+
+    val event = MsgBuilder.buildRegisterUserSessionTokenRequestToAkkaApps(regUserSessionToken)
+    msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, event))
+  }
+
+  def destroyMeeting(msg: DestroyMeetingMessage): Unit = {
+    val event = MsgBuilder.buildDestroyMeetingSysCmdMsg(msg)
+    msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, event))
+  }
+
+  def endMeeting(msg: EndMeetingMessage): Unit = {
+    val event = MsgBuilder.buildEndMeetingSysCmdMsg(msg)
+    msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, event))
+  }
+
+  def sendKeepAlive(system: String, bbbWebTimestamp: java.lang.Long, akkaAppsTimestamp: java.lang.Long): Unit = {
+    val event = MsgBuilder.buildCheckAlivePingSysMsg(system, bbbWebTimestamp.longValue(), akkaAppsTimestamp.longValue())
+    msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, event))
+  }
+
+  def publishedRecording(msg: PublishedRecordingMessage): Unit = {
+    val event = MsgBuilder.buildPublishedRecordingSysMsg(msg)
+    // Probably violating something here, but a new event bus looks just too much for this
+    msgSender.send(fromBbbWebRedisChannel, JsonUtil.toJson(event))
+  }
+
+  def unpublishedRecording(msg: UnpublishedRecordingMessage): Unit = {
+    val event = MsgBuilder.buildUnpublishedRecordingSysMsg(msg)
+    // Probably violating something here, but a new event bus looks just too much for this
+    msgSender.send(fromBbbWebRedisChannel, JsonUtil.toJson(event))
+  }
+
+  def deletedRecording(msg: DeletedRecordingMessage): Unit = {
+    val event = MsgBuilder.buildDeletedRecordingSysMsg(msg)
+    // Probably violating something here, but a new event bus looks just too much for this
+    msgSender.send(fromBbbWebRedisChannel, JsonUtil.toJson(event))
+  }
+
+  def sendDocConversionMsg(msg: IDocConversionMsg): Unit = {
+    if (msg.isInstanceOf[DocPageGeneratedProgress]) {
+      val event = MsgBuilder.buildPresentationPageGeneratedPubMsg(msg.asInstanceOf[DocPageGeneratedProgress])
+      msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, event))
+
+      // Send new event with page urls
+      val newEvent = MsgBuilder.buildPresentationPageConvertedSysMsg(msg.asInstanceOf[DocPageGeneratedProgress], pageTokenSecret)
+      msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, newEvent))
+    } else if (msg.isInstanceOf[DocConversionProgress]) {
+      val event = MsgBuilder.buildPresentationConversionUpdateSysPubMsg(msg.asInstanceOf[DocConversionProgress])
+      msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, event))
+    } else if (msg.isInstanceOf[OfficeToPdfConversionFailed]) {
+      val event = MsgBuilder.buildOfficeToPdfConversionFailedMsg(msg.asInstanceOf[OfficeToPdfConversionFailed])
+      msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, event))
+    } else if (msg.isInstanceOf[DocPageCompletedProgress]) {
+      val event = MsgBuilder.buildPresentationConversionCompletedSysPubMsg(msg.asInstanceOf[DocPageCompletedProgress], pageTokenSecret)
+      msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, event))
+
+      // Send new event with page urls
+      val newEvent = MsgBuilder.buildPresentationConversionEndedSysMsg(msg.asInstanceOf[DocPageCompletedProgress])
+      msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, newEvent))
+
+    } else if (msg.isInstanceOf[DocPageCountFailed]) {
+      val event = MsgBuilder.buildPresentationPageCountFailedSysPubMsg(msg.asInstanceOf[DocPageCountFailed])
+      msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, event))
+    } else if (msg.isInstanceOf[DocPageCountExceeded]) {
+      val event = MsgBuilder.buildPresentationPageCountExceededSysPubMsg(msg.asInstanceOf[DocPageCountExceeded])
+      msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, event))
+    } else if (msg.isInstanceOf[PdfConversionInvalid]) {
+      val event = MsgBuilder.buildPdfConversionInvalidErrorSysPubMsg(msg.asInstanceOf[PdfConversionInvalid])
+      msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, event))
+    } else if (msg.isInstanceOf[DocConversionRequestReceived]) {
+      val event = MsgBuilder.buildPresentationConversionRequestReceivedSysMsg(msg.asInstanceOf[DocConversionRequestReceived])
+      msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, event))
+    } else if (msg.isInstanceOf[DocPageConversionStarted]) {
+      val event = MsgBuilder.buildPresentationPageConversionStartedSysMsg(msg.asInstanceOf[DocPageConversionStarted])
+      msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, event))
+    } else if (msg.isInstanceOf[UploadFileTooLargeMessage]) {
+      val event = MsgBuilder.buildPresentationUploadedFileTooLargeErrorSysMsg(msg.asInstanceOf[UploadFileTooLargeMessage])
+      msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, event))
+    } else if (msg.isInstanceOf[UploadFileTimedoutMessage]) {
+      val event = MsgBuilder.buildPresentationUploadedFileTimedoutErrorSysMsg(msg.asInstanceOf[UploadFileTimedoutMessage])
+      msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, event))
+    } else if (msg.isInstanceOf[DocInvalidMimeType]) {
+      val event = MsgBuilder.buildPresentationHasInvalidMimeType(msg.asInstanceOf[DocInvalidMimeType])
+      msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, event))
+    } else if (msg.isInstanceOf[UploadFileVirusMessage]) {
+      val event = MsgBuilder.buildPresentationUploadedFileVirusErrorSysPubMsg(msg.asInstanceOf[UploadFileVirusMessage])
+      msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, event))
+    } else if (msg.isInstanceOf[UploadFileScanFailedMessage]) {
+      val event = MsgBuilder.buildPresentationUploadedFileScanFailedErrorSysPubMsg(msg.asInstanceOf[UploadFileScanFailedMessage])
+      msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, event))
+    } else if (msg.isInstanceOf[DocConversionStarted]) {
+      val event = MsgBuilder.buildPresentationConversionStartedSysPubMsg(msg.asInstanceOf[DocConversionStarted])
+      msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, event))
+    }
+  }
+
+  def sendChatMessage(msg: ChatMessageFromApi): Unit ={
+    if (msg.isInstanceOf[ChatMessageFromApi]){
+      val event = MsgBuilder.buildSendChatMessageFromApi(msg.asInstanceOf[ChatMessageFromApi])
+      msgToAkkaAppsEventBus.publish(MsgToAkkaApps(toAkkaAppsChannel, event))
+    }
+  }
+
+/*** Caption API ***/
+  def generateSingleUseCaptionToken(recordId: String, caption: String, expirySeconds: Long): String = {
+    redisStorage.generateSingleUseCaptionToken(recordId, caption, expirySeconds)
+  }
+
+  def validateSingleUseCaptionToken(token: String, meetingId: String, caption: String): Boolean = {
+    redisStorage.validateSingleUseCaptionToken(token, meetingId, caption)
+  }
+}

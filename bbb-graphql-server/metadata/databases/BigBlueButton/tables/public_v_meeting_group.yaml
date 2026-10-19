@@ -1,0 +1,19 @@
+table:
+  name: v_meeting_group
+  schema: public
+configuration:
+  column_config: {}
+  custom_column_names: {}
+  custom_name: meeting_group
+  custom_root_fields: {}
+select_permissions:
+  - role: bbb_client
+    permission:
+      columns:
+        - groupId
+        - groupIndex
+        - name
+        - usersExtId
+      filter:
+        meetingId:
+          _eq: X-Hasura-ModeratorInMeeting

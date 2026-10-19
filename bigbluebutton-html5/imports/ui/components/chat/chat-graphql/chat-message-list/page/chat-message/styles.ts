@@ -1,0 +1,232 @@
+import styled from 'styled-components';
+
+import {
+  smPaddingY,
+  lgPadding,
+  $3xlPadding,
+  xlPadding,
+  mdPadding,
+  smPadding,
+} from '/imports/ui/stylesheets/styled-components/general';
+import {
+  fontSizeBase,
+  fontSizeSmaller,
+} from '/imports/ui/stylesheets/styled-components/typography';
+
+import {
+  colorBlueLightest,
+  colorGrayLight,
+  colorBorder,
+  colorGrayDark,
+  colorWhite,
+  colorSelectedCorrectAnswerText,
+  emphasizedMessageBackgroundColor,
+  highlightedMessageBorderColor,
+  systemMessageBorderColor,
+} from '/imports/ui/stylesheets/styled-components/palette';
+import { ChatTime as ChatTimeBase } from './message-header/styles';
+import { IconWrapper as ReadConfirmationIconWrapper } from './message-read-confirmation/styles';
+import UserAvatar from '/imports/ui/components/user-avatar/component';
+
+interface ChatWrapperProps {
+  sameSender: boolean;
+  messageHighlight: boolean;
+  isPresentationUpload?: boolean;
+  isCustomPluginMessage: boolean;
+}
+
+interface ChatMessageContentWrapperProps {
+  sameSender: boolean;
+  isCustomPluginMessage: boolean;
+  $isSystemSender: boolean;
+  $editing: boolean;
+  $highlight: boolean;
+  $reactionPopoverIsOpen: boolean;
+  $keyboardFocused: boolean;
+  $emphasizedMessage: boolean;
+}
+
+export const FlexColumn = styled.div`
+  display: flex;
+  flex-flow: column;
+  gap: ${smPaddingY};
+`;
+
+export const ChatWrapper = styled.div<ChatWrapperProps>`
+  pointer-events: auto;
+  display: flex;
+  flex-flow: column;
+  gap: ${smPaddingY};
+  position: relative;
+  font-size: ${fontSizeBase};
+  position: relative;
+
+  [dir='rtl'] & {
+    direction: rtl;
+  }
+
+  ${({ isPresentationUpload }) => isPresentationUpload && `
+      border: 1px solid ${systemMessageBorderColor};
+      border-radius: 8px;
+      background-color: ${colorWhite};
+    `}
+  ${({ messageHighlight }) => messageHighlight && `
+    background-color: #fef9f1;
+    border-left: 2px solid ${colorSelectedCorrectAnswerText};
+    border-radius: 0px 3px 3px 0px;
+    padding: 8px 2px;
+  `}
+  ${({ isCustomPluginMessage }) => isCustomPluginMessage && `
+    margin: 0;
+    padding: 0;
+  `}
+`;
+
+export const ChatMessageContentWrapper = styled.div<ChatMessageContentWrapperProps>`
+  display: flex;
+  flex-flow: column;
+  width: 100%;
+  border-radius: 0.5rem;
+  position: relative;
+  border: 1px solid transparent;
+
+  ${({ $isSystemSender, isCustomPluginMessage }) => !$isSystemSender && !isCustomPluginMessage
+  && `
+    background-color: #f4f6fa;
+  `}
+
+  ${({ $highlight, isCustomPluginMessage }) => ($highlight && !isCustomPluginMessage) && `
+    &:hover {
+      border: 1px solid ${highlightedMessageBorderColor};
+    }
+  `}
+
+  ${({
+    $editing, $reactionPopoverIsOpen, $keyboardFocused,
+    isCustomPluginMessage,
+  }) => !isCustomPluginMessage && ($reactionPopoverIsOpen || $editing || $keyboardFocused)
+    && `
+    background-color: ${colorBlueLightest} !important;
+  `}
+
+  .chat-message-container:focus & {
+    background-color: ${colorBlueLightest} !important;
+  }
+
+  ${({ $emphasizedMessage, isCustomPluginMessage }) => (!isCustomPluginMessage && $emphasizedMessage) && `
+    background-color: ${emphasizedMessageBackgroundColor};
+
+    &:hover {
+      border: 1px solid ${highlightedMessageBorderColor};
+    }
+  `}
+`;
+
+export const ChatContentFooter = styled.div`
+  justify-content: flex-end;
+  gap: 0.25rem;
+  position: absolute;
+  bottom: 0.25rem;
+  line-height: 1;
+  font-size: 95%;
+  display: none;
+  background-color: inherit;
+  border-radius: 0.5rem;
+
+  [dir="rtl"] & {
+    left: 0.25rem;
+  }
+
+  [dir="ltr"] & {
+    right: 0.25rem;
+  }
+
+  /* keep clear of the read check: message padding + check (1rem glyph) + gap */
+  [dir="rtl"] .chat-message-content:has(${ReadConfirmationIconWrapper}) & {
+    left: calc(${$3xlPadding} + 1rem + ${smPadding});
+  }
+
+  [dir="ltr"] .chat-message-content:has(${ReadConfirmationIconWrapper}) & {
+    right: calc(${$3xlPadding} + 1rem + ${smPadding});
+  }
+
+  .chat-message-wrapper-focused &,
+  .chat-message-wrapper-keyboard-focused &,
+  .chat-message-content:focus &,
+  .chat-message-content:hover & {
+    display: flex;
+  }
+`;
+
+export const ChatAvatar = styled(UserAvatar)`
+  flex: 0 0 2.25rem;
+  margin: 0px calc(0.5rem) 0px 0px;
+  box-flex: 0;
+  position: relative;
+  text-align: center;
+  font-size: .85rem;
+  border: 2px solid transparent;
+  user-select: none;
+`;
+
+export const Container = styled.div<{ $sequence: number }>`
+  display: flex;
+  flex-direction: column;
+  user-select: text;
+  outline: none;
+
+  &:not(:first-of-type) {
+    margin-top: calc((${fontSizeSmaller} + ${lgPadding} * 2) / 2);
+  }
+
+  &[data-focusable="false"] {
+    pointer-events: none;
+  }
+`;
+
+export const MessageItemWrapper = styled.div`
+  display: flex;
+  flex-direction: row;
+  padding: calc(${lgPadding} + 2px) ${$3xlPadding};
+`;
+
+export const PluginInformationMetadata = styled.div`
+  font-size: 75%;
+  font-style: italic;
+  color: ${colorGrayDark};
+  padding: 0 .25rem 0 0;
+  text-align: end;
+`;
+
+export const DeleteMessage = styled.span`
+  color: ${colorGrayLight};
+  padding: ${mdPadding} ${xlPadding};
+  border: 1px solid ${colorBorder};
+  border-radius: 0.375rem;
+`;
+
+export const ChatHeading = styled.div`
+  display: flex;
+`;
+
+export const EditLabel = styled.span`
+  color: ${colorGrayLight};
+  font-style: italic;
+  font-size: 75%;
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  line-height: 1;
+`;
+
+export const ChatTime = styled(ChatTimeBase)`
+  font-style: italic;
+  color: ${colorGrayDark};
+  display: none;
+
+  .chat-message-container:focus &,
+  .chat-message-container-keyboard-focused &,
+  .chat-message-content:hover & {
+    display: flex;
+  }
+`;
