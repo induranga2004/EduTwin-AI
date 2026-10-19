@@ -94,7 +94,11 @@ jobs:
       - name: Validate compose files (incl. BBB service definition)
         # The BBB dev image is deliberately not started in CI (multi-GB image);
         # we only validate that its service definition is well-formed.
-        run: docker compose --profile bbb --profile edusync config -q
+        run: |
+          docker compose --profile bbb --profile edusync config -q
+          # Sidecar + low-memory overrides must merge cleanly too (uses !reset / !override).
+          COMPOSE_PATH_SEPARATOR=: COMPOSE_FILE=docker-compose.yml:docker-compose.sidecar.yml:docker-compose.lite.yml \
+            docker compose --profile bbb --profile edusync config -q
       - name: Build EduSync image
         run: docker compose --profile edusync build
       - name: Start EduSync

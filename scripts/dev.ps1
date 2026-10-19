@@ -11,6 +11,7 @@ param(
     [ValidateSet('help', 'setup', 'up', 'first-run', 'secret', 'status', 'logs', 'down', 'html5')]
     [string]$Command = 'help',
     [switch]$PythonOnly,
+    [switch]$Lite,
     [switch]$DryRun,
     [switch]$Yes,
     [Parameter(ValueFromRemainingArguments = $true)]
@@ -30,6 +31,8 @@ $script:DockerDesktopExe = @(
     (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\Docker Desktop.exe')
 ) | Where-Object { Test-Path $_ } | Select-Object -First 1
 $script:ComposeFileValue = 'docker-compose.yml:docker-compose.sidecar.yml'
+# -Lite adds the low-memory override (about 6 GB machines): no media, notes or recording.
+if ($Lite) { $script:ComposeFileValue += ':docker-compose.lite.yml' }
 
 # ---------------------------------------------------------------- output helpers
 
@@ -304,7 +307,14 @@ function Get-WslMemoryGb {
 
 function Test-ResourceLimits {
     $gb = Get-WslMemoryGb
-    if ($null -eq $gb -or $gb -lt 8) {
+    $needGb = 8
+    if ($Lite) { $needGb = 3 }
+    if ($Lite -and ($null -eq $gb -or $gb -lt $needGb)) {
+        Write-Warn 'WSL2 memory is capped low. Lite mode needs about 3.5 GB for Docker; on a 6 GB PC use:'
+        Write-Info "    [wsl2]`n    memory=3584MB`n    swap=4GB"
+        Write-Info 'Then run `wsl --shutdown` and restart Docker Desktop.'
+    }
+    elseif (-not $Lite -and ($null -eq $gb -or $gb -lt $needGb)) {
         Write-Warn 'WSL2 memory is capped low (default is about half of RAM); BigBlueButton needs 8 GB or more.'
         Write-Info "Create $(Join-Path $env:USERPROFILE '.wslconfig') with:"
         Write-Info "    [wsl2]`n    memory=10GB`n    swap=4GB"
@@ -500,6 +510,7 @@ Commands:
 
 Options:
   -PythonOnly Run only the Python API (profile edusync), no BBB
+  -Lite       With `setup`: low-memory BBB for ~6 GB PCs (no audio/video, notes or recording)
   -DryRun     Print what would happen without changing anything
   -Yes        Skip confirmation prompts
 
@@ -507,6 +518,7 @@ Examples:
   .\scripts\dev.ps1 setup
   .\scripts\dev.ps1 first-run
   .\scripts\dev.ps1 up -PythonOnly
+  .\scripts\dev.ps1 setup -Lite        (then first-run; re-run `setup` without -Lite to switch back)
   .\scripts\dev.ps1 status
   .\scripts\dev.ps1 setup -DryRun
 '@ | Write-Host
