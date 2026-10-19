@@ -73,8 +73,9 @@ function Invoke-Live([string]$File, [string[]]$Arguments) {
     $previous = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
-        & $File @Arguments
-        return $LASTEXITCODE
+        # Out-Host keeps native stdout out of the function's return value (only the exit code is returned).
+        & $File @Arguments | Out-Host
+        return [int]$LASTEXITCODE
     }
     finally { $ErrorActionPreference = $previous }
 }
