@@ -27,3 +27,20 @@ bbb-presentation-video
 bbb-graphql-actions-adapter-server/
 bigbluebutton-html5/public/locales/index.json
 node_modules
+
+# EduSync (Python)
+__pycache__/
+*.py[cod]
+.venv/
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+edusync/data/*
+!edusync/data/.gitkeep
+.env
+.dev/
+*.joblib
+*.pt
+*.onnx
