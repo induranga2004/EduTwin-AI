@@ -1,0 +1,73 @@
+# Plain `docker compose up` (with .env copied from .env.example, which sets
+# COMPOSE_PROFILES=bbb,edusync) starts BigBlueButton AND the EduSync API.
+services:
+  # ---------------------------------------------------------------------------
+  # BigBlueButton dev server (same approach as bigbluebutton/docker-dev).
+  #
+  # UNVERIFIED (not tested on Docker Desktop / Windows):
+  #  - systemd as PID 1 inside a privileged container. The image's entrypoint
+  #    must boot systemd; this needs `privileged`, `cgroup: host` and a
+  #    cgroup v2 capable Docker Desktop WSL2 backend. May fail or need tweaks.
+  #  - TLS / hostname: BBB expects to be reached as ${BBB_HOSTNAME}. Add
+  #    `127.0.0.1 bbb.test` to the Windows hosts file; certs are expected in
+  #    ./.dev/certs (mkcert-style) and the browser must trust them.
+  #  - WebRTC UDP media: Docker Desktop NATs published UDP ranges and the full
+  #    stock BBB range 16384-32768 is impractical to publish (thousands of
+  #    proxy rules). We publish a small range; FreeSWITCH/mediasoup/ICE
+  #    candidates may need config to advertise the host IP. Audio/video may not
+  #    work from other machines; test from the same host first.
+  #  - The image tag default (imdt/bigbluebutton:4.0.x-develop) is an
+  #    assumption; override with BBB_IMAGE.
+  #  - Mounting this repo at /home/bigbluebutton/src from a Windows bind mount
+  #    is slow; node_modules uses a named volume for that reason.
+  # ---------------------------------------------------------------------------
+  bbb:
+    profiles: ["bbb"]
+    image: ${BBB_IMAGE:-imdt/bigbluebutton:4.0.x-develop}
+    hostname: ${BBB_HOSTNAME:-bbb.test}
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+    cgroup: host # equivalent of docker-dev's --cgroupns=host
+    environment:
+      container: docker
+    tty: true
+    volumes:
+      - ./:/home/bigbluebutton/src
+      - ./.dev/certs:/local/certs:rw
+      - html5_node_modules:/home/bigbluebutton/src/bigbluebutton-html5/node_modules
+      - bbb_data:/var/bigbluebutton
+    ports:
+      - "80:80"
+      - "443:443"
+      - "${BBB_UDP_FROM:-16384}-${BBB_UDP_TO:-16484}:${BBB_UDP_FROM:-16384}-${BBB_UDP_TO:-16484}/udp"
+      - "7882:7882/udp"
+
+  edusync:
+    profiles: ["edusync"]
+    build:
+      context: ./edusync
+    image: edusync-api:local
+    ports:
+      - "${EDUSYNC_PORT:-8100}:8100"
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - edusync_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8100/health', timeout=4).status == 200 else 1)"
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+volumes:
+  html5_node_modules:
+  bbb_data:
+  edusync_data:
