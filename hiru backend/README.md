@@ -73,4 +73,4 @@ Docker Desktop must be running. Add `-DryRun` to preview. BBB needs more memory 
 Desktop; consider moving Docker's disk image off `C:` (Settings > Resources > Advanced). Running BBB in Docker on
 Windows is UNVERIFIED; details in [Docker docs](docs/edusync/docker.md).
 
-Docs: [architecture](docs/edusync/architecture.md), [development](docs/edusync/development.md), [Docker](docs/edusync/docker.md).
+Docs: [architecture](docs/edusync/architecture.md), [development](docs/edusync/development.md), [Docker](docs/edusync/docker.md), [run on a new machine](docs/edusync/new-machine.md).
