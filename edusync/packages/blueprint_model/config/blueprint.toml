@@ -1,0 +1,39 @@
+# Blueprint configuration: MiniLM-L6-v2 fine-tuning (CPU) and INT8 quantization.
+# Copy this file, edit it, and pass it with --config. Relative paths are resolved against THIS file's folder.
+
+[model]
+# Base encoder downloaded from Hugging Face. The revision is pinned so everyone starts from the same weights.
+name = "sentence-transformers/all-MiniLM-L6-v2"
+revision = "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
+max_length = 128          # tokens per text (the model supports up to 256; shorter = faster on CPU)
+
+[data]
+# CSV with one text column and one label column. Replace sample.csv (fake placeholder rows) with your data.
+path = "../data/sample.csv"
+text_column = "text"
+label_column = "label"
+val_fraction = 0.2        # share of rows used for validation (model selection)
+test_fraction = 0.2       # share of rows held out for the final evaluation / quantization comparison
+seed = 42
+
+[train]
+epochs = 4
+batch_size = 16
+encoder_lr = 3e-5         # learning rate for the pretrained MiniLM layers
+head_lr = 1e-3            # learning rate for the new classification layer
+weight_decay = 0.01
+warmup_ratio = 0.1
+dropout = 0.1
+threads = 0               # CPU threads for PyTorch; 0 = library default (all cores)
+seed = 42
+
+[quantize]
+# Post-training dynamic INT8 with ONNX Runtime. See docs/quantization.md.
+weight_type = "qint8"     # "qint8" or "quint8"
+per_channel = false
+op_types = ["MatMul"]     # operator types whose weights are quantized
+benchmark_runs = 50       # timed runs per batch size in the fp32 vs int8 comparison
+
+[paths]
+# Everything the blueprint produces goes here (git-ignored): base/, finetuned/, onnx/, quantized/, reports/.
+artifacts_dir = "../artifacts"
