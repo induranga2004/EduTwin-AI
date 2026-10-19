@@ -1,0 +1,35 @@
+name: Typescript - validate code (eslint)
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "bigbluebutton-html5/**"
+      - ".github/workflows/ts-code-validation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "bigbluebutton-html5/**"
+      - ".github/workflows/ts-code-validation.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  ts-code-validation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: bigbluebutton-html5/package-lock.json
+      - name: install npm dependencies
+        working-directory: bigbluebutton-html5
+        run: npm ci
+      - name: typescript code validation with eslint
+        working-directory: bigbluebutton-html5
+        run: npx eslint . --ext .ts,.tsx
