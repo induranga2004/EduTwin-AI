@@ -1,0 +1,67 @@
+[project]
+name = "edusync-workspace"
+version = "0.1.0"
+description = "EduSync AI backend workspace (C1-C4 components behind one FastAPI app)"
+requires-python = ">=3.12,<3.13"
+dependencies = ["edusync-api"]
+
+[tool.uv.workspace]
+members = ["packages/*", "apps/*"]
+
+[tool.uv.sources]
+edusync-core = { workspace = true }
+edusync-c1 = { workspace = true }
+edusync-c2 = { workspace = true }
+edusync-c3 = { workspace = true }
+edusync-c4 = { workspace = true }
+edusync-api = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.27",
+    "ruff>=0.8",
+    "pre-commit>=4.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["data"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4", "PT", "RUF", "ASYNC"]
+
+[tool.ruff.lint.isort]
+known-first-party = [
+    "edusync_core",
+    "edusync_c1",
+    "edusync_c2",
+    "edusync_c3",
+    "edusync_c4",
+    "edusync_api",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["packages", "apps"]
+addopts = "--strict-markers --import-mode=importlib -m 'not ml'"
+asyncio_mode = "auto"
+markers = ["ml: tests that need real ML models/weights (deselected by default)"]
+
+[tool.coverage.run]
+branch = true
+source = [
+    "packages/core/src",
+    "packages/c1/src",
+    "packages/c2/src",
+    "packages/c3/src",
+    "packages/c4/src",
+    "apps/api/src",
+]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+exclude_also = ["if TYPE_CHECKING:", '^\s*\.\.\.$']
