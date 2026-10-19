@@ -31,7 +31,7 @@ seed = 42
 # Post-training dynamic INT8 with ONNX Runtime. See docs/quantization.md.
 weight_type = "qint8"     # "qint8" or "quint8"
 per_channel = false
-op_types = ["MatMul"]     # operator types whose weights are quantized
+op_types = ["MatMul", "Gather"]  # operators whose weights are quantized; Gather = the embedding table (~half the model)
 benchmark_runs = 50       # timed runs per batch size in the fp32 vs int8 comparison
 
 [paths]
