@@ -1,13 +1,9 @@
 # Sidecar override: EduSync shares the BBB container's network namespace so it
 # reaches Hasura (127.0.0.1:8085) and Redis (127.0.0.1:6379) directly.
-# Requires Docker Compose >= 2.24 (`!reset` tag).
+# Requires Docker Compose >= 2.24 (`!reset` tag). EduSync is then served at https://<BBB_HOSTNAME>/edusync/.
 # Use: docker compose -f docker-compose.yml -f docker-compose.sidecar.yml up
 # (or set COMPOSE_FILE in .env). Enable only after the Phase-0 spike passes.
 services:
-  bbb:
-    ports:
-      # EduSync publishes through bbb because network_mode forbids `ports`.
-      - "${EDUSYNC_PORT:-8100}:8100"
   edusync:
     network_mode: "service:bbb"
     depends_on:
@@ -16,3 +12,5 @@ services:
     environment:
       EDUSYNC_HASURA_URL: http://127.0.0.1:8085/v1/graphql
       EDUSYNC_REDIS_URL: redis://127.0.0.1:6379
+      # Reached through BBB's nginx at /edusync/ (docker/bbb/edusync.nginx), so docs/openapi need the prefix.
+      UVICORN_ROOT_PATH: /edusync

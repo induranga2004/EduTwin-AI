@@ -57,6 +57,7 @@ docker compose up
 curl http://localhost:8100/health    # API docs: http://localhost:8100/docs
 ```
 
+With BBB (sidecar mode) the API is at `https://bbb.test/edusync/` (docs: `/edusync/docs`).
 Python-only (no BBB): set `COMPOSE_PROFILES=edusync` in `.env`. Without Docker: `uv --directory edusync sync`.
 
 Windows (PowerShell only, Docker Desktop with the WSL2 backend; no WSL terminal needed, the repo may stay on `E:`):

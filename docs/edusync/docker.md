@@ -87,8 +87,10 @@ If BBB cannot run, `.\scripts\dev.ps1 up -PythonOnly` starts only the API (profi
 
 BBB services bind to `127.0.0.1` inside the BBB container (Hasura 8085, Redis 6379), so a separate container
 cannot reach them. The sidecar override puts EduSync in the BBB container's network namespace
-(`network_mode: service:bbb`) and sets `EDUSYNC_HASURA_URL` / `EDUSYNC_REDIS_URL` to `127.0.0.1`. Port 8100 is
-then published by the `bbb` service. Requires Docker Compose >= 2.24 (`!reset` tag).
+(`network_mode: service:bbb`) and sets `EDUSYNC_HASURA_URL` / `EDUSYNC_REDIS_URL` to `127.0.0.1`. EduSync is then
+served through BBB's nginx at `https://<BBB_HOSTNAME>/edusync/` (docs: `/edusync/docs`) via
+`docker/bbb/edusync.nginx`, because the BBB image's `ufw` firewall drops port 8100 (verified: the app answered
+inside the container but not from the host). Requires Docker Compose >= 2.24 (`!reset` tag).
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.sidecar.yml up

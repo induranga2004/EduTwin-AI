@@ -37,6 +37,8 @@ services:
       - ./.dev/certs:/local/certs:rw
       - html5_node_modules:/home/bigbluebutton/src/bigbluebutton-html5/node_modules
       - bbb_data:/var/bigbluebutton
+      # EduSync is published at https://${BBB_HOSTNAME}/edusync/ (port 8100 is blocked by the image's ufw).
+      - ./docker/bbb/edusync.nginx:/etc/bigbluebutton/nginx/edusync.nginx:ro
     ports:
       - "80:80"
       - "443:443"

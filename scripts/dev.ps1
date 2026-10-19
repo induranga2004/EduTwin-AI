@@ -158,6 +158,12 @@ function Get-Hostname {
     return $name
 }
 
+# Python-only: published port on localhost. With BBB: through BBB's nginx (docker/bbb/edusync.nginx).
+function Get-EdusyncBaseUrl {
+    if ($PythonOnly) { return "http://localhost:$(Get-EdusyncPort)" }
+    return "https://$(Get-Hostname)/edusync"
+}
+
 function Get-EdusyncPort {
     $port = Get-EnvValue 'EDUSYNC_PORT'
     if ([string]::IsNullOrWhiteSpace($port)) { return '8100' }
@@ -336,9 +342,9 @@ function Invoke-Setup {
 # ---------------------------------------------------------------- run-time tasks
 
 function Write-Urls {
-    if ($PythonOnly) { Write-Info "EduSync API docs: http://localhost:$(Get-EdusyncPort)/docs"; return }
+    if ($PythonOnly) { Write-Info "EduSync API docs: $(Get-EdusyncBaseUrl)/docs"; return }
     Write-Info "BigBlueButton:    https://$(Get-Hostname)"
-    Write-Info "EduSync API docs: http://localhost:$(Get-EdusyncPort)/docs"
+    Write-Info "EduSync API docs: $(Get-EdusyncBaseUrl)/docs"
 }
 
 function Invoke-Up {
@@ -391,7 +397,7 @@ function Wait-BbbSecret {
 
 function Get-Health {
     try {
-        return Invoke-RestMethod -Uri "http://localhost:$(Get-EdusyncPort)/health" -TimeoutSec 5 -UseBasicParsing
+        return Invoke-RestMethod -Uri "$(Get-EdusyncBaseUrl)/health" -TimeoutSec 5 -UseBasicParsing
     }
     catch { return $null }
 }
@@ -426,7 +432,7 @@ function Invoke-FirstRun {
         Set-EnvValue 'EDUSYNC_BBB_URL' '<from bbb-conf>'
         Set-EnvValue 'EDUSYNC_HASURA_ADMIN_SECRET' '<from the bbb container>'
         Write-Step 'docker compose up -d --force-recreate edusync'
-        Write-Step 'Poll http://localhost:<port>/health'
+        Write-Step "Poll $(Get-EdusyncBaseUrl)/health"
         return
     }
     $found = Wait-BbbSecret
