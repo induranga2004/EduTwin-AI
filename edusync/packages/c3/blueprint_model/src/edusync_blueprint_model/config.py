@@ -25,12 +25,31 @@ class ModelConfig(_Section):
 
 
 class DataConfig(_Section):
-    path: Path
+    # Either one CSV (`path`, split by the fractions below) or three pre-split CSVs.
+    path: Path | None = None
+    train_path: Path | None = None
+    val_path: Path | None = None
+    test_path: Path | None = None
     text_column: str = Field(min_length=1)
     label_column: str = Field(min_length=1)
-    val_fraction: float = Field(ge=0.0, lt=1.0)
-    test_fraction: float = Field(ge=0.0, lt=1.0)
+    val_fraction: float = Field(ge=0.0, lt=1.0, default=0.2)
+    test_fraction: float = Field(ge=0.0, lt=1.0, default=0.2)
     seed: int = 42
+
+    @property
+    def presplit(self) -> bool:
+        return self.train_path is not None
+
+    @model_validator(mode="after")
+    def _paths_are_consistent(self) -> "DataConfig":
+        split_paths = (self.train_path, self.val_path, self.test_path)
+        if any(split_paths) and not all(split_paths):
+            raise ValueError("train_path, val_path and test_path must be set together")
+        if all(split_paths) and self.path is not None:
+            raise ValueError("set either path or train_path/val_path/test_path, not both")
+        if not any(split_paths) and self.path is None:
+            raise ValueError("set path, or train_path/val_path/test_path")
+        return self
 
     @model_validator(mode="after")
     def _fractions_leave_room_for_training(self) -> "DataConfig":
@@ -126,6 +145,9 @@ def load_config(path: str | Path | None = None) -> BlueprintConfig:
             f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in exc.errors()
         )
         raise ConfigError(f"Invalid config {cfg_path}: {problems}") from exc
-    cfg.data.path = _resolve(cfg.data.path, folder)
+    for name in ("path", "train_path", "val_path", "test_path"):
+        value = getattr(cfg.data, name)
+        if value is not None:
+            setattr(cfg.data, name, _resolve(value, folder))
     cfg.paths.artifacts_dir = _resolve(cfg.paths.artifacts_dir, folder)
     return cfg

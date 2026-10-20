@@ -94,3 +94,36 @@ def test_load_splits(config_file: Path) -> None:
     labels, splits = load_splits(load_config(config_file))
     assert labels.labels == ["a", "b", "c"]
     assert len(splits.test) == 6
+
+
+def test_load_splits_presplit_keeps_given_files(tmp_path: Path) -> None:
+    for name, n in (("train", 4), ("val", 2), ("test", 2)):
+        make_csv(tmp_path / f"{name}.csv", {"a": n, "b": n})
+    cfg = tmp_path / "c.toml"
+    base = Path(__file__).resolve().parent.parent / "config" / "blueprint.toml"
+    text = base.read_text(encoding="utf-8").replace(
+        'path = "../data/sample.csv"',
+        'train_path = "train.csv"\nval_path = "val.csv"\ntest_path = "test.csv"',
+    )
+    cfg.write_text(text.replace('"../artifacts"', '"artifacts"'), encoding="utf-8")
+    labels, splits = load_splits(load_config(cfg))
+    assert labels.labels == ["a", "b"]
+    assert (len(splits.train), len(splits.val), len(splits.test)) == (8, 4, 4)
+
+
+def test_data_config_path_rules(tmp_path: Path) -> None:
+    from edusync_blueprint_model.config import DataConfig
+
+    cols = {"text_column": "text", "label_column": "label"}
+    with pytest.raises(ValueError, match="set path, or"):
+        DataConfig(**cols)
+    with pytest.raises(ValueError, match="together"):
+        DataConfig(train_path=tmp_path / "t.csv", **cols)
+    with pytest.raises(ValueError, match="not both"):
+        DataConfig(
+            path=tmp_path / "d.csv",
+            train_path=tmp_path / "t.csv",
+            val_path=tmp_path / "v.csv",
+            test_path=tmp_path / "e.csv",
+            **cols,
+        )

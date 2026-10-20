@@ -51,7 +51,9 @@ class Splits:
     test: list[Example]
 
 
-def load_csv(path: Path, text_column: str, label_column: str) -> list[Example]:
+def load_csv(
+    path: Path, text_column: str, label_column: str, min_per_class: int = MIN_PER_CLASS
+) -> list[Example]:
     """Read and validate a labelled CSV."""
     path = Path(path)
     if not path.is_file():
@@ -74,9 +76,9 @@ def load_csv(path: Path, text_column: str, label_column: str) -> list[Example]:
         counts[ex.label] += 1
     if len(counts) < 2:
         raise ValueError(f"Need at least 2 classes, found {len(counts)} in {path.name}")
-    small = {k: v for k, v in counts.items() if v < MIN_PER_CLASS}
+    small = {k: v for k, v in counts.items() if v < min_per_class}
     if small:
-        raise ValueError(f"Each class needs >= {MIN_PER_CLASS} rows; too few: {small}")
+        raise ValueError(f"Each class needs >= {min_per_class} rows; too few: {small}")
     return examples
 
 
@@ -110,8 +112,18 @@ def split_dataset(
 
 
 def load_splits(config: Any) -> tuple[LabelMap, Splits]:
-    """Load the configured CSV and split it; returns the label map and the three splits."""
+    """Load the configured data; returns the label map and the three splits.
+
+    With train/val/test paths the files are used as given (no re-split); otherwise the single
+    CSV is split by the configured fractions.
+    """
     data = config.data
+    if data.presplit:
+        cols = (data.text_column, data.label_column)
+        train = load_csv(data.train_path, *cols)
+        val = load_csv(data.val_path, *cols, min_per_class=1)
+        test = load_csv(data.test_path, *cols, min_per_class=1)
+        return LabelMap([e.label for e in train + val + test]), Splits(train, val, test)
     examples = load_csv(data.path, data.text_column, data.label_column)
     labels = LabelMap([e.label for e in examples])
     return labels, split_dataset(examples, data.val_fraction, data.test_fraction, data.seed)

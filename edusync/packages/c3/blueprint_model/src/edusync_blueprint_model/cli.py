@@ -48,7 +48,10 @@ def cmd_info(config: BlueprintConfig, args: argparse.Namespace) -> int:
     print(f"config folder : {config.config_dir}")
     print(f"base model    : {config.model.name} @ {config.model.revision[:10]}")
     print(f"max_length    : {config.model.max_length}")
-    print(f"dataset       : {config.data.path}")
+    if config.data.presplit:
+        print(f"dataset       : {config.data.train_path.parent} (train/val/test files)")
+    else:
+        print(f"dataset       : {config.data.path}")
     print(f"artifacts dir : {art.root}")
     print("optional modules:")
     for name in OPTIONAL_MODULES:
