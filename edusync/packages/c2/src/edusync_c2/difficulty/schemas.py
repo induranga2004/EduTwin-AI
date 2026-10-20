@@ -182,6 +182,17 @@ class GraphContext(BaseModel):
     source: InputSource
 
 
+class PrerequisiteMetrics(BaseModel):
+    """Graph-derived numbers for one concept (prerequisite edges only, never co-mentions)."""
+
+    direct_count: int = Field(ge=0)
+    chain_depth: int = Field(ge=0)  # longest chain of prerequisites below the concept, in edges
+    transitive_count: int = Field(ge=0)  # distinct concepts reachable through prerequisites
+    mean_confidence: float | None = None  # over direct prerequisite edges that carry a confidence
+    curriculum_defined_share: float | None = None  # share of direct edges with source_type set
+    has_cycle: bool = False  # a cycle was found in the prerequisite chain below the concept
+
+
 # ------------------------------------------------------------------------------- fusion/model
 
 
