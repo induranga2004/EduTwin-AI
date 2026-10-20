@@ -286,10 +286,18 @@ version = "0.1.0"
 source = { editable = "packages/c2" }
 dependencies = [
     { name = "edusync-core" },
+    { name = "pypdf" },
+    { name = "python-multipart" },
+    { name = "python-pptx" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "edusync-core", editable = "packages/core" }]
+requires-dist = [
+    { name = "edusync-core", editable = "packages/core" },
+    { name = "pypdf", specifier = ">=5.1" },
+    { name = "python-multipart", specifier = ">=0.0.12" },
+    { name = "python-pptx", specifier = ">=1.0" },
+]
 
 [[package]]
 name = "edusync-c3"
