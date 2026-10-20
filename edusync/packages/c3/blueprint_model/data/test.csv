@@ -1,0 +1,291 @@
+sentence,label,category
+Restricted: highly sensitive information that should only be available on a need-to-know basis.,1,content_real
+"In computing, the modulo operation finds the remainder of division of one number by another.",1,content_real
+"Some of you are repeatedly coming in late, and it's becoming a pattern.",0,scolding
+The security classes control the manner by which a subject may access an object.,1,content_real
+The potential for users to bypass the authentication mechanism.,1,content_real
+New laws needed to address these problems.,1,content_real
+Program Coordinator: BSc (Hons) in IT (Sp. in Cyber Security),0,admin_real
+"We'll have a short quiz at the start of next week's lecture, so come prepared.",0,admin_spoken
+"The nature, gravity and duration of the contravention;.",1,content_real
+"Controls categorized : By functionality: Preventive Controls, Detective Controls, Deterrent Controls, Corrective Controls, Recovery Controls, and Compensating Controls.",1,content_real
+The late submission penalty policy is outlined in the module handbook.,0,admin_spoken
+"You're all picking this up faster than I expected, well done.",0,praise
+A B C D E F G H I J K L M N O P Q R S T U V W X Y Z A B C.,1,content_real
+"Using A combination of more than one method, such as token and password (or personal identification number [PIN] or token and biometric device)",1,content_real
+"REPERCUSSIONS IF LEAKED: Loss of competitive advantage, loss of brand equity, reputational damage.",1,content_real
+Confidential: domain-specific data that can be shared with specific people or teams and contains sensitive company information.,1,content_real
+"Thus, a user may log onto the system at a level lower than the user’s security clearance.",1,content_real
+We all manage risk consciously or automatically in life.,1,content_real
+National security organizations employ members of both disciplines and put them to work against each other.,1,content_real
+"However, by publicizing a vulnerability, the gray hat hacker may give other hackers the opportunity to exploit it.",1,content_real
+"However, the analyst is free to advise multiple corporations that are not in competition with each other and to draw on market information that is open to the public.",1,content_real
+"National Institute of Standards and Technology (NIST) developed SHA, the algorithm specified in the Secure Hash Standard (SHS).",1,content_real
+The decryption algorithm on the remote end restores ciphertext to clear text.,1,content_real
+Two well-known hash functions are:,1,content_real
+RSA is one of the most common asymmetric algorithms.,1,content_real
+Family Educational Rights and Privacy Act (FERPA),1,content_real
+"Access matrix is usually sparse, and implemented by decomposing it into one or two ways:",1,content_real
+Identification of the information types.,1,content_real
+"Elliptical curve techniques: Elliptic curve cryptography was invented by Neil Koblitz in 1987 and by Victor Miller in 1986. Can be used to adapt many cryptographic algorithms, such as Diffie-Hellman or ElGamal. The main advantage of elliptic curve cryptography is that the keys can be much smaller.",1,content_real
+All 9 combinations of key length and block length are possible.,1,content_real
+"Something the individual is (static biometrics): Examples include recognition by fingerprint, retina, and face.",1,content_real
+"Created by NIST and specifies DSA as the algorithm for digital signatures. DSA is a public key algorithm based on the ElGamal signature scheme. Signature creation speed is similar with RSA, but is 10 to 40 times as slow for verification.",1,content_real
+I'm impressed by how quickly you picked up that formula today.,0,praise
+"Welcome back, I trust everyone managed to catch up on the recording.",0,greeting
+"Public: data that is in, or can be in, the public domain and can be openly shared with anyone outside of the organization.",1,content_real
+"Welcome, I hope everyone found the new lecture hall okay.",0,greeting
+Federal statutes protecting PII include:,1,content_real
+For example: The best way to crack Caesar cipher-encrypted code is to use brute force.,1,content_real
+"False negatives: under various regulatory standards, data might be considered sensitive in a specific context but not in another.",1,content_real
+"Good afternoon, thanks for coming prepared with questions today.",0,greeting
+A B C D E F G H I J K L M N O P Q R S T U V W X Y Z.,1,content_real
+"1: Organizations with over 6M Visa transactions per year OR Any organization that Visa, at its sole discretion, determines should meet the Level 1 requirements to minimize the risk to Visa.",1,content_real
+"Because of the strength of the algorithms involved, administrators can set a very long lifetime for the certificates, typically a lifetime that is measured in years.",1,content_real
+"The categories of the individuals involved (customers, patients, etc.)",1,content_real
+I'm not happy that some of you skipped the lab safety briefing entirely.,0,scolding
+Countermeasures: training in and enforcement of password policies that make passwords difficult to guess.,1,content_real
+"Good evening all, I appreciate you making time for this session.",0,greeting
+"Several of you are clearly multitasking during the online session, please focus.",0,scolding
+"My team switched project management tools last month, still getting used to the new one.",0,off_topic_untied
+No write down: A subject can only write into an object of greater or equal security level.,1,content_real
+This performance problem is the main reason that RSA is typically used only to protect small amounts of data.,1,content_real
+Both the read and write operations satisfy the constraints imposed by access control lists.,1,content_real
+"In their simplest form, substitution ciphers retain the letter frequency of the original message.",1,content_real
+"My accountant's office moved to a new building downtown, it's a lot easier to park near now.",0,off_topic_untied
+"I noticed an app updated its icon recently, looks a bit more modern now.",0,off_topic_untied
+Type is defined by how your organization takes credit cards.,1,content_real
+"Describe Confidentiality, Integrity, and Availability as the key security requirements.",1,content_real
+"A tech company I follow just released a new phone, the reviews have been pretty mixed so far.",0,off_topic_untied
+"Good energy today, I can tell everyone's actually following along.",0,praise
+Loss of confidentiality means unauthorized disclosure of information.,1,content_real
+"Used as a verb, exploit refers to the act of successfully making such an attack (make use of a vulnerability).",1,content_real
+"Authentication, integrity, and data confidentiality are implemented in many ways using various protocols and algorithms.",1,content_real
+Support for fine and coarse specifications.,1,content_real
+BYOD helps companies stay abreast of changing technology as employees using personal devices for work would stay up-to-date as regards technology and would use the same for the company as well.,1,content_real
+"SEAL, the Software-Optimized Encryption Algorithm, was first published in 1994 with its current version 3.0 released in 1997, is a symmetric algorithm with a 160-bit key, has high speed and low resource consumption, and its time to crack is unknown but considered very safe.",1,diagram_real
+Algorithm must process a 128-bit buffer.,1,content_real
+"I back up my laptop to an external drive every weekend, and that's basically what we mean by a disaster recovery and business continuity plan, having a copy ready if the original fails.",1,example_tied
+"Dirk logs in as a student can he create a c1-s file or write to an existing c1-s file, such as f2.",1,content_real
+"A website I visited had a really nice design, I spent way longer browsing than I meant to.",0,off_topic_untied
+A sender and receiver do not share a secret key.,1,content_real
+A quarterly earnings report in advance of reporting date.,1,content_real
+"Where a public authority process personal data as a controller or processor; personal data shall be processed only in Sri Lanka and shall not be processed in a third country, classifies the categories of personal data which may be permitted to be processed in a third country.",1,content_real
+"It is estimated that globally, cyber criminals steal billions of dollars from consumers and businesses.",1,content_real
+"The encrypted hash, known as the signature, is appended to the document.",1,content_real
+The invoke mode is new.,1,content_real
+Dirk creates a new file f1 as c1-t; Carla creates file f2 as c1-s ( Figure 13.2a ).,1,content_real
+PCI DSS compliance requirements include; technical and operational measures designed to alleviate vulnerabilities secure personal consumer financial information like credit and debit card data used in payment card transactions.,1,content_real
+"The protection of information and information systems from unauthorized access, use, disclosure, disruption, modification, or destruction in order to provide confidentiality, integrity, and availability.",1,content_real
+Safeguard Cost/Benefit = ALE before Safeguard - ALE After Safeguard - Annual Cost of Safeguard.,1,content_real
+Dirk must sign in student role c1-s to create f3 so that it can be accessed by Carla ( Figure 13.2b ).,1,content_real
+Inside attack is carried out by an entity inside the security perimeter.,1,content_real
+The algorithm is now in the public domain.,1,content_real
+"It uses keys with a length of 128, 192, or 256 bits to encrypt blocks with a length of 128, 192, or 256 bits.",1,content_real
+Encryption of the same 64-bit plaintext block can result in different ciphertext blocks.,1,content_real
+"In this case, D represents the letter A, and W represents the letter T.",1,content_real
+A number of you clearly didn't attempt the practice problems before coming today.,0,scolding
+Right of withdrawal of the consent and the right to object to processing.,1,content_real
+ISO/IEC 27001 doesn’t specify an exact list of regulated information (each organization is required to do it).,1,content_real
+"My banking app apparently checks that the server's certificate matches one it already trusts, rejecting anything else, a stricter real-world version of the certificate validation we covered under PKI.",1,example_tied
+The invention is not novel.,1,content_real
+The BLP model deals with confidentiality and is concerned with unauthorized disclosure of information.,1,content_real
+Users are assigned roles either statically or dynamically.,1,content_real
+Bob computes (xa mod p) or 86 mod 23 = 2.,1,content_real
+Hacker is a common term used to describe a network attacker.,1,content_real
+"The process involves gathering information about the target before the test, identifying possible entry points, attempting to break in either virtually or for real and reporting back the findings.",1,content_real
+The different key shift is identified using a shared key between sender and receiver.,1,content_real
+"Good effort on the tutorial sheet, the average score was quite high this time.",0,praise
+A more scientific approach is to use the fact that some characters in the English alphabet are used more often than others.,1,content_real
+"Hi all, good to have the whole class present for once.",0,greeting
+"NIST’s Requirement: Preserve authorized restrictions on information access and disclosure, including means for protecting personal privacy and proprietary information.",1,content_real
+"Understanding which data within your organization has the greatest value, and the greatest risk for theft, is where classification delivers value.",1,content_real
+These will be required when there is processing involving:,1,content_real
+Cryptanalysis - Related to the solving or breaking of a cryptographic encryption method.,1,content_real
+"Instead, the history of a subject’s previous access determines access control.",1,content_real
+"My gym's new entry system logs the exact time everyone taps in and out, which is basically an audit trail, useful for accountability if something ever goes wrong.",1,example_tied
+"Therefore, it is not a big effort to try all possible rotations and see which one returns something that makes sense.",1,content_real
+"I returned a product last week, the store was actually pretty easy about it.",0,off_topic_untied
+Boosts productivity: Employees can always work by accessing work using their personal devices and they can even check emails and update presentations while on vacation or while traveling back home.,1,content_real
+"A vendor's software update was tampered with before it even reached customers, letting malware spread through a trusted update channel, exactly the supply chain attack scenario we covered.",1,example_tied
+Limited Retention: Personal information should be kept only as far and as long as necessary for purpose to which it was processed;.,1,content_real
+"Welcome back, I hope you had a good break.",0,greeting
+"Context-based classification looks at application, location, or creator among other variables as indicators of sensitive information.",1,content_real
+"A token can be a large random password, or a cryptographic message authentication code whose value is verified by the corresponding resource when requesting for access.",1,content_real
+The code is authentic and is actually sourced by the publisher.,1,content_real
+"C-VT: Merchants using only web-based virtual terminals, no electronic cardholder data storage.",1,content_real
+"Most systems, e.g., Linux, store hashed passwords and a salt value for better security.",1,content_real
+Carla writes the answers to the exam into a file f5.,1,content_real
+"In essence, sanitized data are data that may be derived from corporate data but that cannot be used to discover the corporation’s identity.",1,content_real
+It involves all levels of personnel within an organization and determines which users have access to what resources and information by such means as:,1,content_real
+Brand damage and loss of reputation.,1,content_real
+"However, such access would violate the ss-property.",1,content_real
+"World Intellectual Property Organization treaty of 1996, an international copyright standard to which lot of countries adhere.",1,content_real
+CWM rules do not apply to such DSs.,1,content_real
+"Alright, welcome, let's dive into today's topic.",0,greeting
+Senior Lecturer - Department of Computer Systems Engineering.,0,admin_real
+A low-integrity process may read low-integrity data but is prevented from contaminating a high integrity file with that data by the simple integrity rule.,1,content_real
+Simple integrity: A subject can modify an object only if the integrity level of the subject dominates the integrity level of the object: I( S ) ≥ I( O ).,1,content_real
+"There are four common ways to respond to a risk: accept it by acknowledging it exists and applying no safeguard, mitigate it by changing the asset's exposure through a safeguard, transfer it by shifting responsibility to a third party such as an ISP or an insurer, or avoid it by eliminating the asset's exposure or the asset altogether.",1,diagram_real
+"Cipher feedback (CFB), which is similar to CBC and can encrypt any number of bits, including single bits or single characters.",1,content_real
+"Every site I visit now shows a cookie consent banner before tracking anything, which is a visible, everyday result of the privacy regulations we discussed in class.",1,example_tied
+Dirk is a teacher (t) in course c1 but may also access the system as a student; thus two roles are assigned to Dirk:,1,content_real
+"Authenticity: Able to verify that the users are who they claim they are, and the system receives data from a trusted source.",1,content_real
+She creates the file at level c1-t so that only Dirk can read the file.,1,content_real
+Alice asks Bob for his public key and Bob sends it to her.,1,content_real
+"My company requires personal phones to install a management app before accessing work email, a direct example of the bring-your-own-device policies we discussed for balancing convenience and control.",1,example_tied
+"Security levels are assigned to subjects at logon on the basis of criteria such as the terminal from which the computer is being accessed and the user involved, as identified by password/ID.",1,content_real
+"Please bring a laptop to next week's session, we'll be doing a hands-on exercise.",0,admin_spoken
+It provides the guidance for information security pros to allocate resources towards defending the crown jewels against all threats.,1,content_real
+"Attackers reportedly compromised a niche industry forum just to infect the specific professionals who visit it regularly, a textbook watering hole attack like the targeted ones we discussed.",1,example_tied
+Dirk must downgrade the classification of f4 from c1-t to c1-s.,1,content_real
+Data controllers are required to carry out extensive personal data protection impact assessments.,1,content_real
+"Get access: Add a triple ( subject , object , access-mode ) to the current access set b .",1,content_real
+Processing of personal information follows the below principles:,1,content_real
+"That's a very mature way to handle disagreement in a group discussion, well done.",0,praise
+"Welcome to today's session, hope the traffic wasn't too bad getting here.",0,greeting
+"A number of submissions were clearly rushed in the last ten minutes, that's obvious.",0,scolding
+"Morning everyone, hope the parking wasn't too much of a nightmare today.",0,greeting
+"However, because the key is generated by a computer, it is not truly random.",1,content_real
+Less attention to obscure high-tech crime.,1,content_real
+"A U.S. copyright now lasts for 70 years beyond the death of the last surviving author, 95 years after the date of publication for organizations.",1,content_real
+"The user must send a correct response f(r’, h(P’)) the host r’=r and P’ is the user’s password.",1,content_real
+There is no need to agree on a common key for both the sender and the receiver.,1,content_real
+"A former employee at a company I read about reported a security flaw to regulators after being ignored internally, a real case of the ethical disclosure dilemmas we discussed around responsible reporting.",1,example_tied
+"Knowledge (underlying protocol, file type, or some characteristic strings) about the plaintext underlying that ciphertext.",1,content_real
+A trusted third-party entity that issues certificates.,1,content_real
+To enable users to access resources in an authorized way.,1,content_real
+Hash functions cannot be used to guard against deliberate changes.,1,content_real
+Annualized Loss Expectancy (ALE) = SLE x ARO.,1,content_real
+"Data that ranks low across all three, (product datasheet), typically falls into the “Public” category.",1,content_real
+Legal system must find ways to place a value on data that is representative of its value to those who use it.,1,content_real
+"RBAC assign rights to the roles, not the users.",1,content_real
+"Alice now induces Bob to invoke the Trojan horse program, perhaps by advertising it as a useful utility.",1,content_real
+4) Attack is a threat that is carried out (threat action),1,content_real
+"One or more factors specific to the physical, physiological, genetic, mental, economic, cultural or social identity of the person.",1,content_real
+An alleged infringer cannot have violated a copyright on source code if the source code was never published.,1,content_real
+"The host also specifies two functions, a hash function h() and f() to be used for the user’s response.",1,content_real
+"On average, a brute-force attack succeeds about 50 percent of the way through the keyspace, which is the set of all possible keys.",1,content_real
+"My company took out a cyber insurance policy last year to cover costs if we're ever breached, a practical example of transferring risk, one of the four risk responses we covered.",1,example_tied
+"Please use the designated group chat for project coordination, not personal messages.",0,admin_spoken
+"I downloaded a software update last week and the installer showed a publisher signature before letting me run it, that's digital signing in action, verifying the code came from who it claims to.",1,example_tied
+"If a private key encrypts data, the matching public key decrypts data.",1,content_real
+"Vectors of Data Loss: Unencrypted Devices, Cloud Storage Devices, Removable Media, Hard Copy, Improper Access Control, Email, and Social Networking.",1,content_real
+I'll circulate the final project groups by end of this week.,0,admin_spoken
+Shorter key lengths mean faster execution.,1,content_real
+"The tutorial sheet for this week is already posted, please go through it before the lab.",0,admin_spoken
+Nations hire the best talent to create the most advanced and stealthy threats.,1,content_real
+"Several submissions ignored the instructions entirely, please read them properly next time.",0,scolding
+We assume a role-based access control system.,1,content_real
+Unauthorized access to a computing system is a crime.,1,content_real
+"That was a genuinely insightful comment, thank you for sharing it.",0,praise
+"CVC2, CVV2 or CID value.",1,content_real
+"Creating random data is challenging and if a key is used more than once, it becomes easier to break.",1,content_real
+Classification algorithms that do not consider the data’s format and context are more likely to generate false classifications.,1,content_real
+Copyright must apply to original work.,1,content_real
+"I read about a zero-day vulnerability being sold on an underground forum before the vendor even knew about it, which is exactly the zero-day exploit risk we talked about, no patch exists yet because no one reported it responsibly.",1,example_tied
+"For our discussion, we may equate this with the condition that the security level of an object must be greater than or equal to its parent.",1,content_real
+The degree of cooperation with the Authority in order to remedy the contravention and mitigate the possible adverse effects of such contravention;.,1,content_real
+The plagiarism check results will be shared individually by email.,0,admin_spoken
+My phone updated overnight and now some of my apps look different.,0,off_topic_untied
+Alice computes (xa mod p) or 196 mod 23 = 2.,1,content_real
+"Protocols, such as Secure Sockets Layer (SSL) or Transport Layer Security (TLS), provide session layer confidentiality.",1,content_real
+"The ID determines the privileges given to the user e.g., superuser has the highest privilege while guest/anonymous has the least privilege.",1,content_real
+The OS must protect and guarantee the integrity of each ticket; the ticket must be unforgeable.,1,content_real
+I bought something online last week and it arrived two days late.,0,off_topic_untied
+"Hi all, apologies for starting a bit late, let's jump right in.",0,greeting
+"Several submissions had the wrong student ID on them, please check before sending.",0,scolding
+The previous non - compliances by such controller or processor under this Act;.,1,content_real
+Web browsers: SSL and TLS.,1,content_real
+OS keeps all tickets for the user in a memory region inaccessible by users.,1,content_real
+This is the second time I've had to ask you to stop side conversations.,0,scolding
+Asymmetric encryption algorithms characteristics include:,1,content_real
+"My company blocked an email I tried to send because it contained what looked like a credit card number, a real case of the data loss prevention systems we talked about.",1,example_tied
+"I found a pair of sunglasses in the parking lot once and just left them on a car, hoping the owner would find them.",0,off_topic_untied
+"Secure email, secure database session (Oracle SQL*net), and secure messaging (Lotus Notes sessions) provide application layer confidentiality.",1,content_real
+The attacker only learns or makes use of information without affecting system resources.,1,content_real
+It is also referred to as an autokey cipher.,1,content_real
+SSO implementations will often require a number of solutions integrated into a total solution for an enterprise's IT architecture.,1,content_real
+"RSA encryption algorithms: Developed by Ron Rivest, Adi Shamir, and Leonard Adleman at MIT in 1977. It is an algorithm for public-key cryptography based on the difficulty of factoring very large numbers. It is the first algorithm known to be suitable for signing and encryption, and is one of the first great advances in public key cryptography. Widely used in electronic commerce protocols, and is believed to be secure given sufficiently long keys and the use of up-to-date implementations.",1,content_real
+Nice work staying engaged through a long topic like this one.,0,praise
+Each user has a number of tickets and they can loan or give the tickets to other users.,1,content_real
+"My company's security team sent out a newsletter last month, mostly about the new parking policy.",0,off_topic_untied
+Size and quality of the key.,1,content_real
+Release of message contents (confidentiality) – Ex: Eavesdropping on Communication Channels.,1,content_real
+"This is primarily a policy issue; separation of duty requires the appropriate power and flexibility in the access control system, including least privilege and fine-grained access control.",1,content_real
+"During an ISO 27001 audit, organizations need to show a good understanding of what their assets are, the value of each, data ownership, and scenarios of internal use of data.",1,content_real
+"I started using tap-to-pay for everything now, it's just more convenient.",0,off_topic_untied
+The patent expired in September 2000.,1,content_real
+"The ciphertext is then decrypted using every key, until one of the results matches one of the stored values.",1,content_real
+Threat agent – the entity that identifies a vulnerability and uses it to attack the victim.,1,content_real
+AN ACT TO PROVIDE FOR THE REGULATION OF PROCESSING OF PERSONAL DATA; TO IDENTIFY AND STRENGTHEN THE RIGHTS OF DATA SUBJECTS IN RELATION TO THE PROTECTION OF PERSONAL DATA; TO PROVIDE FOR THE ESTABLISHMENT OF THE DATA PROTECTION AUTHORITY; AND TO PROVIDE FOR MATTERS CONNECTED THEREWITH OR INCIDENTAL THERETO.,1,content_real
+"It is possible to also add a set of categories or compartments to each security level, so that a subject must be assigned both the appropriate level and category to access an object.",1,content_real
+The international standard is 50 years after the death of the last author or 50 years from publication.,1,content_real
+Thus SMBs can benefit out of BYOD in a very direct manner.,1,content_real
+Please stop interrupting your classmates when they're trying to answer.,0,scolding
+Use a popular password and try it against a wide range of user IDs.,1,content_real
+"My uncle's business got audited for how long they were keeping old customer records, a real case of the data retention and disposal policies we covered under data security standards.",1,example_tied
+Hashing is vulnerable to man-in-the-middle attacks and does not provide security to transmitted data.,1,content_real
+A processing activity taking into consideration the scope and associated risks of that processing.,1,content_real
+Alice transmits the encrypted message to Bob.,1,content_real
+"Welcome, I see everyone's logged in on time today, nice.",0,greeting
+"Please bring your student ID to the midterm, it won't be allowed without one.",0,admin_spoken
+A cipher is a series of well-defined steps that can be followed as a procedure when encrypting and decrypting messages.,1,content_real
+The simple security rule does not prevent an indirect flow of information that would cause a conflict of interest.,1,content_real
+SHA design is very similar to the MD4 and MD5 hash functions that Ron Rivest developed.,1,content_real
+Modify: To write or update information in an object.,1,content_real
+I've opened a new discussion thread for questions about the case study.,0,admin_spoken
+I'll post a consolidated FAQ based on the questions from the forum.,0,admin_spoken
+He also invented the pilot (cow-catcher).,1,content_real
+We use the notation presented in [BELL75].,1,content_real
+"Currently, it is believed that cryptographers have the edge.",1,content_real
+Secure communications necessitates three primary objectives:,1,content_real
+"A few of you came up with some really creative solutions, good work.",0,praise
+"Protecting Computer Objects: Source Code Software, Trade secret, Copyrighted, Documentation, Copyrighted, Web Content, and Copyrighted.",1,content_real
+Use a shift of 6 (ROT6).,1,content_real
+Access rights should follow the least privilege or read-only access.,1,content_real
+I've had to flag the same referencing mistake for the third week running.,0,scolding
+Rules of evidence  How to prove the authenticity?,1,content_real
+It reduces the time taken by users to log into multiple applications and platforms.,1,content_real
+"Cyber criminals target small businesses and consumers, as well as large enterprises and industry verticals.",1,content_real
+Law lags in determining acceptance of definitions of computing terms.,1,content_real
+Four data classification levels in information security:,1,content_real
+Level function f : This function assigns a security level to each subject and object.,1,content_real
+"My banking app had an outage last week, I couldn't check my balance for a few hours.",0,off_topic_untied
+Asymmetric keys that used in secure HTTPS applications.,1,content_real
+"Hash functions are helpful when ensuring data is not changed accidentally, such as by a communication error.",1,content_real
+The Physical control is the implementation of security measures in a defined structure used to deter or prevent unauthorized access to sensitive material.,1,content_real
+"With the growth in outsider threats, classification takes on a new importance.",1,content_real
+Any mitigating actions taken by the controller;.,1,content_real
+"Vulnerability – a system, network or device weakness.",1,content_real
+How much damage could be done if this data reached the wrong hands?,1,content_real
+"Nice work spotting the flaw in that example, that's a common trap.",0,praise
+DH is not typically used to encrypt data.,1,content_real
+Trusted Computing and Multilevel Security.,1,content_real
+Does the algorithm adequately protects against brute-force attacks?,1,content_real
+"Public data — Although public data doesn’t need protection against unauthorized access, it still needs protection against unauthorized modification or destruction.",1,content_real
+"A patent protects an invention, meaning the way something works, requires the design to be filed at the patent office, is very complicated to file and usually needs a specialist lawyer, lasts only 19 years, and lets the holder sue if the invention is copied.",1,diagram_real
+Typical practice is no more than five access attempts.,1,content_real
+"I'm glad to see so many of you participating today, keep it up.",0,praise
+This data requires the highest level of security and controlled access in accordance with the principle of the least privilege.,1,content_real
+"Good catch pointing out that typo in the slide, thank you.",0,praise
+"Modern Hacking Titles: Script Kiddies, Vulnerability Brokers, Cyber Criminals, Hacktivists, and State-Sponsored Hackers.",1,content_real
+"An illustration of this difficulty is the Windows NT operating system, introduced by Microsoft in the early 1990s.",1,content_real
+"A three or four levels of classification are used, such as Restricted, Confidential and Public.",1,content_real
+"(current access set b, access matrix M, level function f, hierarchy H) three BLP properties: ss-property: (Si, Oj, read) has fc(Si) ≥ fo(Oj)",1,content_real
+A user-based classification approach allows them to apply this knowledge to improve classification accuracy.,1,content_real
+It is estimated it would take 149 trillion years to crack an AES key using the same method.,1,content_real
+BYOD is important today since employees would want to deliver their best in today's competitive world and companies too would want to make the most of the manpower they have at hand.,1,content_real
+Integrity confinement: A subject can read an object only if the integrity level of the subject is dominated by the integrity level of the object: I( S ) ≤ I( O ).,1,content_real
+"Address (including street address, city, county or zip code)",1,content_real
+"I've updated the reading list for next week, check the portal before class.",0,admin_spoken
+This attack is possible if the hacker can gain access to the system’s password file and compares the password hash against the hashes of common words.,1,content_real
+"When I travel, I always forget to pack a charger, it happens almost every single time.",0,off_topic_untied
+"Vernam proposed a teletype cipher in which a prepared key consisting of an arbitrarily long, non-repeating sequence of numbers was kept on paper tape.",1,content_real
+"The CIA triad represents the three core security requirements as a triangle: confidentiality, integrity, and availability.",1,diagram_real
+"Hacktivists do not hack for profit, they hack for attention.",1,content_real
+Patent law has expanded to include computer software.,1,content_real
+Data Loss Prevention (DLP) options.,1,content_real
+One Hundred and xx/100 Dollars.,1,content_real
+"When the program detects that it is being executed by Bob, it reads the sensitive character string from Bob’s file and copies it into Alice’s back pocket file ( Figure 13.8b ).",1,content_real
+"A lot of you are clearly not reading the slides before the lecture, which isn't ideal.",0,scolding
