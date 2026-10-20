@@ -1,0 +1,416 @@
+{
+  "lecture_id": "synthetic-lecture-3",
+  "filename": "synthetic-lecture-3.pptx",
+  "page_count": 10,
+  "concept_count": 8,
+  "concepts": [
+    {
+      "name": "Dynamic Encoder",
+      "frequency": 3
+    },
+    {
+      "name": "Stable Scheduler",
+      "frequency": 3
+    },
+    {
+      "name": "Bounded Matrix",
+      "frequency": 4
+    },
+    {
+      "name": "Dynamic Queue",
+      "frequency": 5
+    },
+    {
+      "name": "Cyclic Sampler",
+      "frequency": 6
+    },
+    {
+      "name": "Modular Queue",
+      "frequency": 4
+    },
+    {
+      "name": "Nested Buffer",
+      "frequency": 2
+    },
+    {
+      "name": "Linear Queue",
+      "frequency": 6
+    }
+  ],
+  "graph": {
+    "node_count": 8,
+    "edge_count": 24,
+    "nodes": [
+      {
+        "id": "dynamic encoder",
+        "label": "Dynamic Encoder",
+        "description": "Dynamic Encoder: synthetic concept used for pipeline testing.",
+        "frequency": 3
+      },
+      {
+        "id": "stable scheduler",
+        "label": "Stable Scheduler",
+        "description": "Stable Scheduler: synthetic concept used for pipeline testing.",
+        "frequency": 3
+      },
+      {
+        "id": "bounded matrix",
+        "label": "Bounded Matrix",
+        "description": "Bounded Matrix: synthetic concept used for pipeline testing.",
+        "frequency": 4
+      },
+      {
+        "id": "dynamic queue",
+        "label": "Dynamic Queue",
+        "description": "Dynamic Queue: synthetic concept used for pipeline testing.",
+        "frequency": 5
+      },
+      {
+        "id": "cyclic sampler",
+        "label": "Cyclic Sampler",
+        "description": "Cyclic Sampler: synthetic concept used for pipeline testing.",
+        "frequency": 6
+      },
+      {
+        "id": "modular queue",
+        "label": "Modular Queue",
+        "description": "Modular Queue: synthetic concept used for pipeline testing.",
+        "frequency": 4
+      },
+      {
+        "id": "nested buffer",
+        "label": "Nested Buffer",
+        "description": "Nested Buffer: synthetic concept used for pipeline testing.",
+        "frequency": 2
+      },
+      {
+        "id": "linear queue",
+        "label": "Linear Queue",
+        "description": "Linear Queue: synthetic concept used for pipeline testing.",
+        "frequency": 6
+      }
+    ],
+    "edges": [
+      {
+        "source": "bounded matrix",
+        "target": "dynamic queue",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 5,
+            "sentence": "Bounded Matrix and Dynamic Queue appear together."
+          }
+        ]
+      },
+      {
+        "source": "bounded matrix",
+        "target": "modular queue",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 7,
+            "sentence": "Bounded Matrix and Modular Queue appear together."
+          }
+        ]
+      },
+      {
+        "source": "bounded matrix",
+        "target": "stable scheduler",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 4,
+            "sentence": "Bounded Matrix and Stable Scheduler appear together."
+          }
+        ]
+      },
+      {
+        "source": "cyclic sampler",
+        "target": "dynamic encoder",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 6,
+            "sentence": "Cyclic Sampler and Dynamic Encoder appear together."
+          }
+        ]
+      },
+      {
+        "source": "cyclic sampler",
+        "target": "dynamic queue",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 6,
+            "sentence": "Cyclic Sampler and Dynamic Queue appear together."
+          }
+        ]
+      },
+      {
+        "source": "cyclic sampler",
+        "target": "modular queue",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 7,
+            "sentence": "Cyclic Sampler and Modular Queue appear together."
+          }
+        ]
+      },
+      {
+        "source": "cyclic sampler",
+        "target": "nested buffer",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 8,
+            "sentence": "Cyclic Sampler and Nested Buffer appear together."
+          }
+        ]
+      },
+      {
+        "source": "cyclic sampler",
+        "target": "stable scheduler",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 6,
+            "sentence": "Cyclic Sampler and Stable Scheduler appear together."
+          }
+        ]
+      },
+      {
+        "source": "dynamic encoder",
+        "target": "linear queue",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 9,
+            "sentence": "Dynamic Encoder and Linear Queue appear together."
+          }
+        ]
+      },
+      {
+        "source": "dynamic encoder",
+        "target": "stable scheduler",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 3,
+            "sentence": "Dynamic Encoder and Stable Scheduler appear together."
+          }
+        ]
+      },
+      {
+        "source": "dynamic queue",
+        "target": "linear queue",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 9,
+            "sentence": "Dynamic Queue and Linear Queue appear together."
+          }
+        ]
+      },
+      {
+        "source": "linear queue",
+        "target": "nested buffer",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 9,
+            "sentence": "Linear Queue and Nested Buffer appear together."
+          }
+        ]
+      },
+      {
+        "source": "linear queue",
+        "target": "stable scheduler",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 9,
+            "sentence": "Linear Queue and Stable Scheduler appear together."
+          }
+        ]
+      },
+      {
+        "source": "modular queue",
+        "target": "nested buffer",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 8,
+            "sentence": "Modular Queue and Nested Buffer appear together."
+          }
+        ]
+      },
+      {
+        "source": "dynamic encoder",
+        "target": "stable scheduler",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 0.64,
+        "source_type": "curriculum_defined",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 3,
+            "sentence": "Dynamic Encoder comes before Stable Scheduler."
+          }
+        ]
+      },
+      {
+        "source": "dynamic queue",
+        "target": "cyclic sampler",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 0.91,
+        "source_type": "curriculum_defined",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 6,
+            "sentence": "Dynamic Queue comes before Cyclic Sampler."
+          }
+        ]
+      },
+      {
+        "source": "stable scheduler",
+        "target": "cyclic sampler",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 0.84,
+        "source_type": "curriculum_defined",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 6,
+            "sentence": "Stable Scheduler comes before Cyclic Sampler."
+          }
+        ]
+      },
+      {
+        "source": "dynamic encoder",
+        "target": "cyclic sampler",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 0.84,
+        "source_type": "curriculum_defined",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 6,
+            "sentence": "Dynamic Encoder comes before Cyclic Sampler."
+          }
+        ]
+      },
+      {
+        "source": "cyclic sampler",
+        "target": "modular queue",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 0.54,
+        "source_type": "curriculum_defined",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 7,
+            "sentence": "Cyclic Sampler comes before Modular Queue."
+          }
+        ]
+      },
+      {
+        "source": "bounded matrix",
+        "target": "modular queue",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 0.94,
+        "source_type": "curriculum_defined",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 7,
+            "sentence": "Bounded Matrix comes before Modular Queue."
+          }
+        ]
+      },
+      {
+        "source": "cyclic sampler",
+        "target": "nested buffer",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 0.67,
+        "source_type": "inferred",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 8,
+            "sentence": "Cyclic Sampler comes before Nested Buffer."
+          }
+        ]
+      },
+      {
+        "source": "dynamic queue",
+        "target": "linear queue",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 0.9,
+        "source_type": "curriculum_defined",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 9,
+            "sentence": "Dynamic Queue comes before Linear Queue."
+          }
+        ]
+      },
+      {
+        "source": "dynamic encoder",
+        "target": "linear queue",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 0.95,
+        "source_type": "inferred",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 9,
+            "sentence": "Dynamic Encoder comes before Linear Queue."
+          }
+        ]
+      },
+      {
+        "source": "stable scheduler",
+        "target": "linear queue",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 0.83,
+        "source_type": "inferred",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 9,
+            "sentence": "Stable Scheduler comes before Linear Queue."
+          }
+        ]
+      }
+    ],
+    "note": "Synthetic prerequisite graph."
+  },
+  "message": "Candidate knowledge graph generated successfully."
+}

@@ -1,0 +1,246 @@
+{
+  "lecture_id": "synthetic-lecture-2",
+  "filename": "synthetic-lecture-2.pptx",
+  "page_count": 10,
+  "concept_count": 8,
+  "concepts": [
+    {
+      "name": "Stable Sampler",
+      "frequency": 1
+    },
+    {
+      "name": "Ordered Filter",
+      "frequency": 5
+    },
+    {
+      "name": "Ordered Tensor",
+      "frequency": 3
+    },
+    {
+      "name": "Sparse Queue",
+      "frequency": 2
+    },
+    {
+      "name": "Dense Encoder",
+      "frequency": 7
+    },
+    {
+      "name": "Stable Filter",
+      "frequency": 2
+    },
+    {
+      "name": "Static Encoder",
+      "frequency": 5
+    },
+    {
+      "name": "Modular Buffer",
+      "frequency": 2
+    }
+  ],
+  "graph": {
+    "node_count": 8,
+    "edge_count": 13,
+    "nodes": [
+      {
+        "id": "stable sampler",
+        "label": "Stable Sampler",
+        "frequency": 1
+      },
+      {
+        "id": "ordered filter",
+        "label": "Ordered Filter",
+        "frequency": 5
+      },
+      {
+        "id": "ordered tensor",
+        "label": "Ordered Tensor",
+        "frequency": 3
+      },
+      {
+        "id": "sparse queue",
+        "label": "Sparse Queue",
+        "frequency": 2
+      },
+      {
+        "id": "dense encoder",
+        "label": "Dense Encoder",
+        "frequency": 7
+      },
+      {
+        "id": "stable filter",
+        "label": "Stable Filter",
+        "frequency": 2
+      },
+      {
+        "id": "static encoder",
+        "label": "Static Encoder",
+        "frequency": 5
+      },
+      {
+        "id": "modular buffer",
+        "label": "Modular Buffer",
+        "frequency": 2
+      }
+    ],
+    "edges": [
+      {
+        "source": "dense encoder",
+        "target": "sparse queue",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 6,
+            "sentence": "Dense Encoder and Sparse Queue appear together."
+          }
+        ]
+      },
+      {
+        "source": "dense encoder",
+        "target": "stable filter",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 7,
+            "sentence": "Dense Encoder and Stable Filter appear together."
+          }
+        ]
+      },
+      {
+        "source": "dense encoder",
+        "target": "stable sampler",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 6,
+            "sentence": "Dense Encoder and Stable Sampler appear together."
+          }
+        ]
+      },
+      {
+        "source": "modular buffer",
+        "target": "ordered tensor",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 9,
+            "sentence": "Modular Buffer and Ordered Tensor appear together."
+          }
+        ]
+      },
+      {
+        "source": "modular buffer",
+        "target": "stable filter",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 9,
+            "sentence": "Modular Buffer and Stable Filter appear together."
+          }
+        ]
+      },
+      {
+        "source": "modular buffer",
+        "target": "stable sampler",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 9,
+            "sentence": "Modular Buffer and Stable Sampler appear together."
+          }
+        ]
+      },
+      {
+        "source": "modular buffer",
+        "target": "static encoder",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 9,
+            "sentence": "Modular Buffer and Static Encoder appear together."
+          }
+        ]
+      },
+      {
+        "source": "ordered filter",
+        "target": "ordered tensor",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 4,
+            "sentence": "Ordered Filter and Ordered Tensor appear together."
+          }
+        ]
+      },
+      {
+        "source": "ordered filter",
+        "target": "stable sampler",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 3,
+            "sentence": "Ordered Filter and Stable Sampler appear together."
+          }
+        ]
+      },
+      {
+        "source": "ordered tensor",
+        "target": "sparse queue",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 5,
+            "sentence": "Ordered Tensor and Sparse Queue appear together."
+          }
+        ]
+      },
+      {
+        "source": "ordered tensor",
+        "target": "stable sampler",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 4,
+            "sentence": "Ordered Tensor and Stable Sampler appear together."
+          }
+        ]
+      },
+      {
+        "source": "stable filter",
+        "target": "static encoder",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 8,
+            "sentence": "Stable Filter and Static Encoder appear together."
+          }
+        ]
+      },
+      {
+        "source": "stable sampler",
+        "target": "static encoder",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 8,
+            "sentence": "Stable Sampler and Static Encoder appear together."
+          }
+        ]
+      }
+    ],
+    "note": "Synthetic co-mention graph."
+  },
+  "message": "Candidate knowledge graph generated successfully."
+}
