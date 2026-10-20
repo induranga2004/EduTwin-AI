@@ -54,8 +54,12 @@ SUPPORT_FEATURES: tuple[str, ...] = (
 )
 SUPPORT_CREDIT_MAX = 0.25  # largest amount the support credit can subtract
 MIN_COMPONENTS = 3  # fewer computed difficulty-raising components -> no prediction
-LOW_MAX = 0.33  # score < LOW_MAX -> Low
-MEDIUM_MAX = 0.55  # score < MEDIUM_MAX -> Medium, otherwise High
+# Placeholder thresholds, NOT validated. They sit where the baseline scores of the three synthetic
+# decks separate (Low up to about 0.11, Medium 0.06-0.24, High above 0.24), so the labels spread
+# instead of everything being Low. Matching the synthetic labels is circular (same properties).
+# Phase 3 replaces this rule with a model trained on lecturer labels.
+LOW_MAX = 0.12  # score < LOW_MAX -> Low
+MEDIUM_MAX = 0.25  # score < MEDIUM_MAX -> Medium, otherwise High
 
 
 def _label(score: float) -> DifficultyLabel:

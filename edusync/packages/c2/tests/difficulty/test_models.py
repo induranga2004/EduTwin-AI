@@ -150,7 +150,7 @@ def test_explanation_content():
     assert out.explanation[0].startswith("lang.lexical_score = 0.50 (computed, weight 0.25)")
     assert len(out.explanation) == 3 + 2
     assert "baseline, not trained" in out.explanation[-1]
-    assert "Low < 0.33" in out.explanation[-1]
+    assert f"Low < {LOW_MAX}" in out.explanation[-1]
     assert predict(THREE) == out
 
 
