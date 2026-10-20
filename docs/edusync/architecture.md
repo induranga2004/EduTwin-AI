@@ -129,4 +129,5 @@ planned. Plugin wiring is not built yet.
   testable in CI.
 - **FUTURE**: real STT (faster-whisper, `EDUSYNC_WHISPER_*`), embeddings for concept matching, trained difficulty
   and relevance models. Tests needing real weights use the `ml` marker and are skipped by default.
-- Model weights and datasets are never committed (`edusync/data/` is for local use).
+- Datasets are never committed (`edusync/data/` is for local use). Model files are committed only through Git LFS
+  (see `edusync/packages/blueprint_model/artifacts/README.md`).

@@ -1,0 +1,95 @@
+{
+  "base_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "base_revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+  "max_length": 128,
+  "hyperparameters": {
+    "epochs": 4,
+    "batch_size": 16,
+    "encoder_lr": 3e-05,
+    "head_lr": 0.001,
+    "weight_decay": 0.01,
+    "warmup_ratio": 0.1,
+    "dropout": 0.1,
+    "threads": 0,
+    "seed": 42
+  },
+  "result": {
+    "best_epoch": 1,
+    "best_val_macro_f1": 0.5555555555555555,
+    "test": {
+      "num_examples": 9,
+      "accuracy": 0.6666666666666666,
+      "macro_f1": 0.5555555555555555,
+      "per_class": {
+        "class_a": {
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6666666666666666,
+          "support": 3
+        },
+        "class_b": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 3
+        },
+        "class_c": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 3
+        }
+      },
+      "confusion_matrix": [
+        [
+          3,
+          0,
+          0
+        ],
+        [
+          3,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          3
+        ]
+      ],
+      "labels": [
+        "class_a",
+        "class_b",
+        "class_c"
+      ]
+    },
+    "history": [
+      {
+        "epoch": 1,
+        "train_loss": 1.1334537863731384,
+        "val_accuracy": 0.6666666666666666,
+        "val_macro_f1": 0.5555555555555555
+      },
+      {
+        "epoch": 2,
+        "train_loss": 1.0580604672431946,
+        "val_accuracy": 0.5555555555555556,
+        "val_macro_f1": 0.4666666666666666
+      },
+      {
+        "epoch": 3,
+        "train_loss": 1.0533877611160278,
+        "val_accuracy": 0.6666666666666666,
+        "val_macro_f1": 0.5555555555555555
+      },
+      {
+        "epoch": 4,
+        "train_loss": 1.029321551322937,
+        "val_accuracy": 0.6666666666666666,
+        "val_macro_f1": 0.5555555555555555
+      }
+    ],
+    "finetuned_dir": "E:\\Research Proj\\bigbluebutton\\edusync\\packages\\blueprint_model\\artifacts\\finetuned",
+    "train_seconds": 1.6104081999510527
+  }
+}
