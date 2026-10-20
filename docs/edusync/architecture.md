@@ -12,7 +12,7 @@ fork plus the Python backend in [`edusync/`](../../edusync).
 | ID | Name | Job | Main inputs |
 |----|------|-----|-------------|
 | C1 | Lecturer Monitoring | Track the current concept and curriculum coverage vs. the syllabus; share "current concept" context with the other components | speech transcript, slide text, whiteboard, syllabus |
-| C2 | Learning Difficulty Prediction + Comprehension Validation | Predict per-concept difficulty, then check it against poll/quiz evidence | C1 concept, polls, quizzes |
+| C2 | Learning Difficulty Prediction + Comprehension Validation | Before the lecture: predict per-concept difficulty from the lecture file and the C1 graph. Later, live: check it against poll/quiz evidence | lecture file, C1 graph, (later) C1 current concept, polls, quizzes |
 | C3 | Pedagogical Relevance | Classify speech/discussion as relevant or unrelated to the current concept | transcript, chat, C1 concept |
 | C4 | Live Visual Evidence + Reconciliation | Collect slide and timestamped whiteboard evidence and reconcile it across components (notes optional) | slides, whiteboard annotations, other components' evidence |
 
@@ -51,7 +51,7 @@ flowchart LR
   CORE -->|UpdateTranscriptPubMsg| REDIS
   HTML5 -->|plugin remoteDataSources| EDU
   BAPI -->|meetingEndedURL callback| CORE
-  C1 -->|current concept| C2
+  C1 -.->|"current concept (planned, not built)"| C2
   C1 -->|current concept| C3
   C1 -->|current concept| C4
 ```
@@ -64,8 +64,14 @@ flowchart LR
 - **C1**: transcript chunks + slide text (+ whiteboard text) are matched to syllabus concepts, updating the
   "current concept" and a coverage table; skipped/under-covered concepts become `Flag`s. The current concept is
   shared with C2/C3/C4.
-- **C2**: for each concept C1 reports, predict difficulty; when poll/quiz results for that concept arrive,
-  compare predicted vs. observed and flag mismatches.
+- **C2** has two stages. (1) Pre-lecture difficulty pipeline (built as a Phase 1 baseline): lecture file (PPTX/PDF) +
+  optional C1 graph JSON -> slide records -> concepts located on slides -> 24 features in four groups -> model ->
+  Low/Medium/High per concept, before the lecture. The model is a rule baseline (not trained) and some inputs and
+  features are mocked or TODO; the response labels them. The graph is passed to C2 as a request payload; without it C2
+  uses a labelled mock. See [c2-difficulty.md](c2-difficulty.md) and the [C1 -> C2 graph contract](c1-c2-graph-contract.md).
+  (2) Live comprehension (later, **FUTURE**): when poll/quiz results for a concept arrive, compare predicted vs.
+  observed and flag mismatches. Only a rule-based placeholder exists (`/api/c2/comprehension/evaluate`). The C1 -> C2
+  runtime hand-off of the current concept is not implemented.
 - **C3**: score each transcript/chat segment against the current concept; flag sustained off-topic stretches.
 - **C4**: collect slide changes and timestamped whiteboard annotations as `EvidenceItem`s; reconcile with
   evidence from C1-C3 (e.g. slide says concept X while speech says Y) and flag conflicts.
