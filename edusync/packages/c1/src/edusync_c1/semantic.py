@@ -6,8 +6,10 @@ reports which method produced it.
 """
 
 import logging
+import os
 import re
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from edusync_c1.schemas import Concept, ConceptMatch, MatchResult
@@ -20,10 +22,49 @@ SEMANTIC_METHOD = "minilm_cosine_similarity"
 EXACT_METHOD = "exact_phrase_fallback"
 
 
+def resolve_model_path(candidate: str | Path | None = None) -> str:
+    """Resolve path to local MiniLM weights if present, otherwise return HuggingFace model id."""
+    if candidate:
+        path = Path(candidate)
+        if path.exists():
+            return str(path.resolve())
+        return str(candidate)
+
+    env_path = os.getenv("EDUSYNC_C1_MODEL_PATH")
+    if env_path and Path(env_path).exists():
+        return str(Path(env_path).resolve())
+
+    # 1. Check local C1 blueprint_model artifacts
+    c1_blueprint = (
+        Path(__file__).resolve().parents[2]
+        / "blueprint_model"
+        / "artifacts"
+        / "base"
+        / "sentence-transformers--all-MiniLM-L6-v2"
+    )
+    if c1_blueprint.exists():
+        return str(c1_blueprint.resolve())
+
+    cwd_model = Path.cwd() / "models" / "edusync_c1_base_minilm"
+    if cwd_model.exists():
+        return str(cwd_model.resolve())
+
+    package_model = Path(__file__).resolve().parents[4] / "models" / "edusync_c1_base_minilm"
+    if package_model.exists():
+        return str(package_model.resolve())
+
+    docker_model = Path("/data/models/edusync_c1_base_minilm")
+    if docker_model.exists():
+        return str(docker_model)
+
+    return MODEL_NAME
+
+
 def _default_loader(model_name: str) -> Any:  # pragma: no cover - needs real weights
     from sentence_transformers import SentenceTransformer
 
-    return SentenceTransformer(model_name)
+    resolved = resolve_model_path(model_name)
+    return SentenceTransformer(resolved)
 
 
 class SemanticMatcher:
@@ -34,13 +75,13 @@ class SemanticMatcher:
 
     def __init__(
         self,
-        model_name: str = MODEL_NAME,
+        model_name: str | None = None,
         threshold: float = DEFAULT_SIMILARITY_THRESHOLD,
         *,
         enabled: bool = True,
         loader: Callable[[str], Any] | None = None,
     ) -> None:
-        self.model_name = model_name
+        self.model_name = resolve_model_path(model_name) if model_name else resolve_model_path()
         self.threshold = threshold
         self._enabled = enabled
         self._loader = loader or _default_loader

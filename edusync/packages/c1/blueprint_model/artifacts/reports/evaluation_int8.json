@@ -1,0 +1,47 @@
+{
+  "num_examples": 9,
+  "accuracy": 0.3333333333333333,
+  "macro_f1": 0.16666666666666666,
+  "per_class": {
+    "class_a": {
+      "precision": 0.3333333333333333,
+      "recall": 1.0,
+      "f1": 0.5,
+      "support": 3
+    },
+    "class_b": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 3
+    },
+    "class_c": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 3
+    }
+  },
+  "confusion_matrix": [
+    [
+      3,
+      0,
+      0
+    ],
+    [
+      3,
+      0,
+      0
+    ],
+    [
+      3,
+      0,
+      0
+    ]
+  ],
+  "labels": [
+    "class_a",
+    "class_b",
+    "class_c"
+  ]
+}
