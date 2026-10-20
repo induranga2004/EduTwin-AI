@@ -74,7 +74,7 @@ Redis, or real models.
 
 - Branches: `feat/`, `fix/`, `docs/`, `ci/`. Conventional commits, e.g. `feat(c1): add coverage endpoint`.
 - Small PRs, squash merge.
-- Never commit `.env`, data files or model weights.
+- Never commit `.env` or data files. Model files go through Git LFS only (run `git lfs install` once).
 - Ruff: line length 100, rules E,F,I,UP,B,SIM,C4,PT,RUF,ASYNC.
 - CI: `.github/workflows/python-ci.yml` with jobs `lint`, `test`, `docker`.
 - Security problems: do not open a public PR; use the repository Security tab -> "Report a vulnerability".

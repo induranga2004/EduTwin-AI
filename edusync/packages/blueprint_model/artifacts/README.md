@@ -1,7 +1,9 @@
 # Artifacts
 
-Everything the blueprint produces is written here. The folder is **git-ignored** (only `.gitkeep` and this
-README are tracked), so models never end up in the repository.
+Everything the blueprint produces is written here. Model files (`*.onnx`, `*.pt`, `*.pth`, `*.safetensors`,
+`*.joblib`) are committed through **Git LFS**; small files (JSON, tokenizer files, reports) are normal git.
+The models committed with the blueprint were trained on the FAKE sample dataset: they only prove the pipeline
+works and must not be used for anything real. See [Git LFS](#git-lfs) below.
 
 ```
 artifacts/
@@ -37,8 +39,37 @@ clf = OnnxClassifier.from_dir("path/to/quantized")
 print(clf.predict(["some text to classify"]))
 ```
 
-## Sharing models
+## Git LFS
 
-Do not commit these files. Share them through your team's storage (a release asset, a drive folder, a model
-registry) and record the base model revision and the dataset version next to them; `train_config.json`
-already contains the revision and hyperparameters.
+The model weights are stored with Git LFS (rules in the repo-root `.gitattributes`). Git keeps only a small
+pointer file; the real file lives on GitHub's LFS storage.
+
+| Stored in LFS | Stored in normal git |
+|---|---|
+| `*.onnx`, `*.pt`, `*.pth`, `*.safetensors`, `*.joblib` | JSON files (`labels.json`, `inference_config.json`, `train_config.json`, tokenizer files), reports, READMEs |
+
+**One-time setup on every machine** (before you clone or pull):
+
+```bash
+git lfs install
+```
+
+If it says `Hook already exists` (for example a Husky hook left by `npm install` in `bigbluebutton-html5`),
+use `git lfs install --force`. If you ever see tiny text files starting with
+`version https://git-lfs.github.com/spec/v1` instead of models, LFS was not installed when you pulled: run
+`git lfs install` then `git lfs pull`.
+
+**Skip the big downloads** (a full checkout downloads about 295 MB of models):
+
+```powershell
+$env:GIT_LFS_SKIP_SMUDGE = "1"; git clone https://github.com/induranga2004/EduTwin-AI.git
+git lfs pull --include="edusync/packages/blueprint_model/artifacts/quantized/*"   # only what you need
+```
+
+Useful commands: `git lfs ls-files` (what is in LFS), `git lfs status`.
+
+**Quota:** GitHub's free plan gives 1 GB of LFS storage and 1 GB of LFS bandwidth per month, and every full
+clone or pull of the models counts against the bandwidth. Commit only models other people need, not every
+experiment, and remember that replaced versions stay in the history and keep using storage. When a model
+becomes real, record the base model revision, the dataset version and the config next to it
+(`train_config.json` already contains the revision and hyperparameters).

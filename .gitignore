@@ -41,15 +41,9 @@ edusync/data/*
 !edusync/data/.gitkeep
 .env
 .dev/
-*.joblib
-*.pt
-*.onnx
 
-# EduSync blueprint_model: outputs and real datasets stay local (sample.csv and READMEs are kept)
-edusync/packages/blueprint_model/artifacts/*
-!edusync/packages/blueprint_model/artifacts/.gitkeep
-!edusync/packages/blueprint_model/artifacts/README.md
+# EduSync blueprint_model: real datasets stay local (sample.csv and the README are kept).
+# Model files under artifacts/ are committed through Git LFS (see .gitattributes).
 edusync/packages/blueprint_model/data/*
 !edusync/packages/blueprint_model/data/sample.csv
 !edusync/packages/blueprint_model/data/README.md
-*.safetensors

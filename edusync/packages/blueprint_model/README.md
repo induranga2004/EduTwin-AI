@@ -47,7 +47,7 @@ packages/blueprint_model/
   pyproject.toml           package and extras
   config/blueprint.toml    all settings (copy it for your own project)
   data/                    your CSV goes here (see data/README.md); sample.csv is FAKE
-  artifacts/               generated models and reports, git-ignored (see artifacts/README.md)
+  artifacts/               generated models and reports; model files are in Git LFS (see artifacts/README.md)
   docs/
     quantization.md        quantization explained with steps and measured numbers
     customizing.md         how to adapt the blueprint to your own classifier

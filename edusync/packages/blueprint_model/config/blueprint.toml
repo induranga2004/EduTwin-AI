@@ -35,5 +35,5 @@ op_types = ["MatMul", "Gather"]  # operators whose weights are quantized; Gather
 benchmark_runs = 50       # timed runs per batch size in the fp32 vs int8 comparison
 
 [paths]
-# Everything the blueprint produces goes here (git-ignored): base/, finetuned/, onnx/, quantized/, reports/.
+# Everything the blueprint produces goes here (model files are tracked by Git LFS): base/, finetuned/, onnx/, quantized/, reports/.
 artifacts_dir = "../artifacts"

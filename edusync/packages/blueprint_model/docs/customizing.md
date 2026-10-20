@@ -48,7 +48,7 @@ To keep your outputs separate from the sample run, give your config its own `art
 | `[quantize]` | `per_channel` | `false` | Per-channel scales. |
 | `[quantize]` | `op_types` | `["MatMul", "Gather"]` | Operators to quantize; keep `Gather` (embedding table). |
 | `[quantize]` | `benchmark_runs` | `50` | Timed runs per batch size in the comparison. Raise for steadier latency numbers. |
-| `[paths]` | `artifacts_dir` | `../artifacts` | Where all outputs go (git-ignored). |
+| `[paths]` | `artifacts_dir` | `../artifacts` | Where all outputs go (model files are committed through Git LFS). |
 
 Note: `val_fraction + test_fraction` must be below 1.0. The `[quantize]` fields are explained in
 [quantization.md](quantization.md).
@@ -184,8 +184,10 @@ uv run --no-sync ruff check packages/blueprint_model
 
 ## 8. Sharing models
 
-Artifacts are git-ignored on purpose. Share them through team storage (a release asset, a drive folder, a
-model registry), not the repository. Next to the model, record:
+Model files under `artifacts/` are committed through **Git LFS** (`*.onnx`, `*.pt`, `*.pth`, `*.safetensors`,
+`*.joblib`; run `git lfs install` once per machine, details and the free-quota limits are in
+[../artifacts/README.md](../artifacts/README.md#git-lfs)). Commit only models other people need, not every
+experiment. Next to the model, record:
 
 - the base model `name` and `revision` (already in `inference_config.json` and `train_config.json`),
 - the dataset version (file name, date or hash; the data itself is not in git),
