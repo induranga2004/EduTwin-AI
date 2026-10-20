@@ -61,12 +61,6 @@ def test_health(client):
     assert COMPONENT.prefix == "/api/c2"
 
 
-def test_difficulty_endpoint(client):
-    r = client.post("/difficulty", json={"text": "Hello world."})
-    assert r.status_code == 200
-    assert 0 <= r.json()["score"] <= 1
-
-
 def test_evaluate_endpoint(client):
     body = {
         "concept": {"id": "c1", "label": "Recursion"},

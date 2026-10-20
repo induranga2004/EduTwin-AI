@@ -6,7 +6,10 @@ from edusync_core import Component
 COMPONENT = Component(
     name="c2",
     title="Learning difficulty and comprehension",
-    description="Lexical difficulty heuristic and poll-based comprehension flags per concept.",
+    description=(
+        "Pre-lecture difficulty prediction pipeline (rule-based baseline, mocked C1 graph) "
+        "and poll-based comprehension flags."
+    ),
     router=router,
 )
 

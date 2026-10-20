@@ -7,15 +7,6 @@ from pydantic import BaseModel, Field, model_validator
 from edusync_core import ConceptRef, Flag, LectureTimestamp
 
 
-class DifficultyRequest(BaseModel):
-    text: str
-
-
-class DifficultyResponse(BaseModel):
-    score: float = Field(ge=0, le=1)
-    method: str = "lexical-heuristic"
-
-
 class ComprehensionRequest(BaseModel):
     concept: ConceptRef
     correct: int = Field(ge=0)
