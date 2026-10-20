@@ -122,6 +122,8 @@ The full `setup` is only needed again on a new machine or after deleting `.env` 
 | Problem | Fix |
 |---|---|
 | "running scripts is disabled" | Run the `Set-ExecutionPolicy` line in the same window. |
+| `git clone` ends with "checkout failed" or "Filename too long" | Windows limits paths to 260 characters and this repo has paths up to 175 characters, so clone into a short folder such as `C:\dev`, or run `git config --global core.longpaths true` and retry. |
+| Model files are tiny text files starting with `version https://git-lfs.github.com/spec/v1` | Git LFS was not installed when you cloned. Run `git lfs install`, then `git lfs pull`. Details and the free-quota limits: [artifacts README](../../edusync/packages/blueprint_model/artifacts/README.md#git-lfs). |
 | "docker daemon not reachable" | Docker Desktop is not running; start it and wait for "Engine running". |
 | Port 80 or 443 already in use | Stop the other web server, then run `first-run` again. |
 | `curl.exe` shows SSL error 35 or code `000` | Add `--ssl-no-revoke` (Windows curl cannot check revocation for mkcert's CA). Browsers and the scripts are unaffected. |
