@@ -55,10 +55,13 @@ def test_upload_missing_file_is_422(client):
     assert client.post(UPLOAD).status_code == 422
 
 
-def test_upload_rejects_pptx(client, lecture_pptx):
+def test_upload_pptx(client, lecture_pptx, settings):
     response = client.post(UPLOAD, files={"file": ("d.pptx", lecture_pptx, "application/zip")})
-    assert response.status_code == 400
-    assert "PDF files only" in response.json()["detail"]
+    assert response.status_code == 200
+    body = response.json()
+    assert body["page_count"] == 2
+    assert body["concept_count"] > 0
+    assert (settings.data_dir / "c1" / "uploads" / f"{body['lecture_id']}.pptx").is_file()
 
 
 def test_graph_pdf_and_pptx(client, lecture_pdf, lecture_pptx):
