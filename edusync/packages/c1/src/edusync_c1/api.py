@@ -69,18 +69,17 @@ async def health() -> HealthResponse:
 
 @router.post("/lectures/upload", response_model=UploadResponse)
 async def upload_lecture(settings: SettingsDep, file: FileDep) -> UploadResponse:
-    """Upload a PDF and return extracted concepts and page text."""
+    """Upload a PDF or PPTX and return extracted concepts and page text."""
     try:
         content = await read_upload(file, document_limit_bytes(settings.max_upload_mb))
-        if validate_document(file.filename, content) != ".pdf":
-            raise UploadError(400, "This endpoint accepts PDF files only.")
+        extension = validate_document(file.filename, content)
         pages = extract_document_pages(file.filename or "", content)
         full_text = combine_page_text(pages)
         if not full_text:
-            raise UploadError(422, "No extractable text was found. The PDF may require OCR.")
+            raise UploadError(422, "No extractable text was found in the document.")
 
         lecture_id = str(uuid4())
-        (uploads_dir(settings) / f"{lecture_id}.pdf").write_bytes(content)
+        (uploads_dir(settings) / f"{lecture_id}{extension}").write_bytes(content)
         concepts = extract_concepts(full_text)
         return UploadResponse(
             lecture_id=lecture_id,
@@ -90,13 +89,13 @@ async def upload_lecture(settings: SettingsDep, file: FileDep) -> UploadResponse
             concept_count=len(concepts),
             concepts=concepts,
             pages=pages,
-            message="PDF processed successfully.",
+            message="Document processed successfully.",
         )
     except HTTPException:
         raise
     except Exception as exc:
-        logger.exception("PDF upload failed")
-        raise HTTPException(500, "Could not process the uploaded PDF.") from exc
+        logger.exception("Document upload failed")
+        raise HTTPException(500, "Could not process the uploaded document.") from exc
     finally:
         await file.close()
 
