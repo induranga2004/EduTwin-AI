@@ -68,9 +68,12 @@ class TrainConfig(_Section):
     dropout: float = Field(ge=0.0, lt=1.0)
     threads: int = Field(ge=0, default=0)
     seed: int = 42
-    # Which validation score picks the best epoch. "positive_recall" needs [decision] positive_label;
-    # ties are broken by macro-F1.
-    select_by: Literal["macro_f1", "positive_recall"] = "macro_f1"
+    # Which validation score picks the best epoch. "positive_recall" and "macro_f1_with_recall_floor"
+    # need [decision] positive_label. positive_recall: highest recall, ties by macro-F1.
+    # macro_f1_with_recall_floor: highest macro-F1 among epochs with recall >= recall_floor
+    # (if none reach it, the highest recall).
+    select_by: Literal["macro_f1", "positive_recall", "macro_f1_with_recall_floor"] = "macro_f1"
+    recall_floor: float = Field(ge=0.0, le=1.0, default=0.99)
 
 
 class QuantizeConfig(_Section):
@@ -140,8 +143,9 @@ class BlueprintConfig(_Section):
 
     @model_validator(mode="after")
     def _selection_metric_has_what_it_needs(self) -> "BlueprintConfig":
-        if self.train.select_by == "positive_recall" and self.decision.positive_label is None:
-            raise ValueError("train.select_by = 'positive_recall' needs decision.positive_label")
+        needs_label = self.train.select_by in ("positive_recall", "macro_f1_with_recall_floor")
+        if needs_label and self.decision.positive_label is None:
+            raise ValueError(f"train.select_by = '{self.train.select_by}' needs decision.positive_label")
         return self
 
 

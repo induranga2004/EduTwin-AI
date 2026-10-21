@@ -90,3 +90,14 @@ def test_positive_recall_selection_needs_positive_label(config_file: Path) -> No
     bad.write_text(text.replace("seed = 1\n\n[quantize]", 'seed = 1\nselect_by = "positive_recall"\n\n[quantize]', 1), encoding="utf-8")
     with pytest.raises(ConfigError, match="positive_label"):
         load_config(bad)
+
+
+def test_recall_floor_selection_needs_positive_label(config_file: Path) -> None:
+    text = config_file.read_text(encoding="utf-8")
+    bad = config_file.with_name("bad_floor.toml")
+    bad.write_text(
+        text.replace("seed = 1\n\n[quantize]", 'seed = 1\nselect_by = "macro_f1_with_recall_floor"\n\n[quantize]', 1),
+        encoding="utf-8",
+    )
+    with pytest.raises(ConfigError, match="positive_label"):
+        load_config(bad)

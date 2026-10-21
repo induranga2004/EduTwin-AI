@@ -68,13 +68,21 @@ def summarize(y_true: np.ndarray, y_pred: np.ndarray, labels: list[str]) -> dict
 
 
 def selection_score(
-    summary: dict[str, Any], select_by: str, positive_label: str | None
-) -> tuple[float, float]:
-    """Sortable epoch score (higher is better): the chosen metric first, macro-F1 as tie-break."""
+    summary: dict[str, Any],
+    select_by: str,
+    positive_label: str | None,
+    recall_floor: float = 0.0,
+) -> tuple[float, ...]:
+    """Sortable epoch score (higher is better). See ``TrainConfig.select_by``."""
     if select_by == "macro_f1":
-        return (summary["macro_f1"], 0.0)
-    if select_by == "positive_recall":
+        return (summary["macro_f1"],)
+    if select_by in ("positive_recall", "macro_f1_with_recall_floor"):
         if positive_label not in summary["per_class"]:
             raise ValueError(f"positive_label {positive_label!r} not in {list(summary['per_class'])}")
-        return (summary["per_class"][positive_label]["recall"], summary["macro_f1"])
+        recall = summary["per_class"][positive_label]["recall"]
+        if select_by == "positive_recall":
+            return (recall, summary["macro_f1"])
+        if recall >= recall_floor:
+            return (1.0, summary["macro_f1"], recall)
+        return (0.0, recall, summary["macro_f1"])
     raise ValueError(f"Unknown select_by {select_by!r}")

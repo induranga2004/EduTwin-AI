@@ -136,7 +136,7 @@ def train(  # pragma: no cover - needs torch + weights
     y_train = np.array([labels.id_of(e.label) for e in splits.train])
     y_val = np.array([labels.id_of(e.label) for e in splits.val])
 
-    best = {"score": (-1.0, -1.0), "f1": -1.0, "epoch": 0, "state": None}
+    best = {"score": (-1.0,), "f1": -1.0, "epoch": 0, "state": None}
     history: list[dict[str, Any]] = []
     started = time.perf_counter()
     for epoch in range(1, tc.epochs + 1):
@@ -164,7 +164,7 @@ def train(  # pragma: no cover - needs torch + weights
             row["val_positive_recall"] = val["per_class"][cfg.decision.positive_label]["recall"]
         history.append(row)
         logger.info("epoch %d: %s", epoch, row)
-        score = selection_score(val, tc.select_by, cfg.decision.positive_label)
+        score = selection_score(val, tc.select_by, cfg.decision.positive_label, tc.recall_floor)
         if score > best["score"]:
             best = {
                 "score": score,

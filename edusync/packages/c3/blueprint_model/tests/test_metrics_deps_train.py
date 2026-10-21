@@ -120,3 +120,21 @@ def test_selection_score_prefers_positive_recall_then_macro_f1() -> None:
         selection_score(same, "positive_recall", "x")
     with pytest.raises(ValueError, match="Unknown"):
         selection_score(same, "nope", None)
+
+
+def test_selection_score_recall_floor() -> None:
+    from edusync_blueprint_model.metrics import selection_score, summarize
+
+    labels = ["0", "1"]
+    y = np.array([0] * 10 + [1] * 100)
+    # A: recall 1.00 but 3 false positives (lower macro-F1); B: recall 0.99, 1 FP (higher macro-F1)
+    a_pred = np.array([1, 1, 1] + [0] * 7 + [1] * 100)
+    b_pred = np.array([1] + [0] * 9 + [1] * 99 + [0])
+    c_pred = np.array([0] * 10 + [1] * 90 + [0] * 10)  # recall 0.90, perfect REMOVE
+    a, b, c = (summarize(y, p, labels) for p in (a_pred, b_pred, c_pred))
+    score = lambda s: selection_score(s, "macro_f1_with_recall_floor", "1", 0.99)  # noqa: E731
+    assert b["macro_f1"] > a["macro_f1"]
+    assert score(b) > score(a)  # both meet the floor, so the higher macro-F1 wins
+    assert score(a) > score(c) and score(b) > score(c)  # below the floor always loses
+    # raw positive_recall would still prefer A
+    assert selection_score(a, "positive_recall", "1") > selection_score(b, "positive_recall", "1")
