@@ -1,47 +1,33 @@
 {
-  "num_examples": 9,
-  "accuracy": 0.3333333333333333,
-  "macro_f1": 0.16666666666666666,
+  "num_examples": 330,
+  "accuracy": 0.9727272727272728,
+  "macro_f1": 0.9642078116149868,
   "per_class": {
-    "class_a": {
-      "precision": 0.3333333333333333,
-      "recall": 1.0,
-      "f1": 0.5,
-      "support": 3
+    "0": {
+      "precision": 0.9411764705882353,
+      "recall": 0.9523809523809523,
+      "f1": 0.9467455621301775,
+      "support": 84
     },
-    "class_b": {
-      "precision": 0.0,
-      "recall": 0.0,
-      "f1": 0.0,
-      "support": 3
-    },
-    "class_c": {
-      "precision": 0.0,
-      "recall": 0.0,
-      "f1": 0.0,
-      "support": 3
+    "1": {
+      "precision": 0.9836734693877551,
+      "recall": 0.9796747967479674,
+      "f1": 0.9816700610997963,
+      "support": 246
     }
   },
   "confusion_matrix": [
     [
-      3,
-      0,
-      0
+      80,
+      4
     ],
     [
-      3,
-      0,
-      0
-    ],
-    [
-      3,
-      0,
-      0
+      5,
+      241
     ]
   ],
   "labels": [
-    "class_a",
-    "class_b",
-    "class_c"
+    "0",
+    "1"
   ]
 }

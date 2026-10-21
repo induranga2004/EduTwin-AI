@@ -11,85 +11,78 @@
     "warmup_ratio": 0.1,
     "dropout": 0.1,
     "threads": 0,
-    "seed": 42
+    "seed": 3,
+    "select_by": "macro_f1_with_recall_floor",
+    "recall_floor": 0.99
   },
   "result": {
-    "best_epoch": 1,
-    "best_val_macro_f1": 0.5555555555555555,
+    "best_epoch": 3,
+    "best_val_macro_f1": 0.9840466550992868,
+    "selected_by": "macro_f1_with_recall_floor",
     "test": {
-      "num_examples": 9,
-      "accuracy": 0.6666666666666666,
-      "macro_f1": 0.5555555555555555,
+      "num_examples": 330,
+      "accuracy": 0.9787878787878788,
+      "macro_f1": 0.9719425246869344,
       "per_class": {
-        "class_a": {
-          "precision": 0.5,
-          "recall": 1.0,
-          "f1": 0.6666666666666666,
-          "support": 3
+        "0": {
+          "precision": 0.963855421686747,
+          "recall": 0.9523809523809523,
+          "f1": 0.9580838323353292,
+          "support": 84
         },
-        "class_b": {
-          "precision": 0.0,
-          "recall": 0.0,
-          "f1": 0.0,
-          "support": 3
-        },
-        "class_c": {
-          "precision": 1.0,
-          "recall": 1.0,
-          "f1": 1.0,
-          "support": 3
+        "1": {
+          "precision": 0.9838056680161943,
+          "recall": 0.9878048780487805,
+          "f1": 0.9858012170385396,
+          "support": 246
         }
       },
       "confusion_matrix": [
         [
-          3,
-          0,
-          0
+          80,
+          4
         ],
         [
           3,
-          0,
-          0
-        ],
-        [
-          0,
-          0,
-          3
+          243
         ]
       ],
       "labels": [
-        "class_a",
-        "class_b",
-        "class_c"
+        "0",
+        "1"
       ]
     },
     "history": [
       {
         "epoch": 1,
-        "train_loss": 1.1334537863731384,
-        "val_accuracy": 0.6666666666666666,
-        "val_macro_f1": 0.5555555555555555
+        "train_loss": 0.2900584522759561,
+        "val_accuracy": 0.9697885196374623,
+        "val_macro_f1": 0.9591358024691359,
+        "val_positive_recall": 1.0
       },
       {
         "epoch": 2,
-        "train_loss": 1.0580604672431946,
-        "val_accuracy": 0.5555555555555556,
-        "val_macro_f1": 0.4666666666666666
+        "train_loss": 0.05193855886506013,
+        "val_accuracy": 0.9788519637462235,
+        "val_macro_f1": 0.9721905493476721,
+        "val_positive_recall": 0.9918367346938776
       },
       {
         "epoch": 3,
-        "train_loss": 1.0533877611160278,
-        "val_accuracy": 0.6666666666666666,
-        "val_macro_f1": 0.5555555555555555
+        "train_loss": 0.02195221580971229,
+        "val_accuracy": 0.9879154078549849,
+        "val_macro_f1": 0.9840466550992868,
+        "val_positive_recall": 1.0
       },
       {
         "epoch": 4,
-        "train_loss": 1.029321551322937,
-        "val_accuracy": 0.6666666666666666,
-        "val_macro_f1": 0.5555555555555555
+        "train_loss": 0.010097733375417745,
+        "val_accuracy": 0.9879154078549849,
+        "val_macro_f1": 0.9840466550992868,
+        "val_positive_recall": 1.0
       }
     ],
-    "finetuned_dir": "E:\\Research Proj\\bigbluebutton\\edusync\\packages\\blueprint_model\\artifacts\\finetuned",
-    "train_seconds": 1.6104081999510527
+    "finetuned_dir": "artifacts/finetuned",
+    "train_seconds": 47.12741637486033
   }
 }

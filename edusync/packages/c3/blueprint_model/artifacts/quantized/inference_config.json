@@ -1,11 +1,10 @@
 {
   "max_length": 128,
   "labels": [
-    "class_a",
-    "class_b",
-    "class_c"
+    "0",
+    "1"
   ],
   "base_model": "sentence-transformers/all-MiniLM-L6-v2",
   "base_revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
-  "source": "E:\\Research Proj\\bigbluebutton\\edusync\\packages\\blueprint_model\\artifacts\\finetuned"
+  "source": "artifacts/finetuned"
 }
