@@ -77,6 +77,17 @@ class QuantizeConfig(_Section):
     benchmark_runs: int = Field(ge=1, default=50)
 
 
+class DecisionConfig(_Section):
+    """Optional binary decision rule: predict ``positive_label`` when its probability >= threshold.
+
+    Unset (the default) means plain argmax. A threshold below 0.5 trades precision for recall
+    on the positive label.
+    """
+
+    positive_label: str | None = None
+    threshold: float = Field(gt=0.0, lt=1.0, default=0.5)
+
+
 class PathsConfig(_Section):
     artifacts_dir: Path
 
@@ -117,6 +128,7 @@ class BlueprintConfig(_Section):
     train: TrainConfig
     quantize: QuantizeConfig
     paths: PathsConfig
+    decision: DecisionConfig = Field(default_factory=DecisionConfig)
     config_dir: Path = Path()
 
     @property

@@ -23,6 +23,20 @@ def softmax(logits: np.ndarray) -> np.ndarray:
     return exp / exp.sum(axis=-1, keepdims=True)
 
 
+def decide(
+    probs: np.ndarray, labels: list[str], positive_label: str | None, threshold: float
+) -> np.ndarray:
+    """Class index per row: argmax, or for binary data ``positive_label`` when p >= threshold."""
+    if positive_label is None:
+        return probs.argmax(axis=-1)
+    if len(labels) != 2:
+        raise ValueError("A decision threshold needs exactly 2 classes")
+    if positive_label not in labels:
+        raise ValueError(f"positive_label {positive_label!r} not in labels {labels}")
+    pos = labels.index(positive_label)
+    return np.where(probs[:, pos] >= threshold, pos, 1 - pos)
+
+
 class OnnxClassifier:
     """Tokenizes text, runs an ONNX session and returns labelled predictions.
 
@@ -64,11 +78,14 @@ class OnnxClassifier:
         out = self.session.run(None, {"input_ids": input_ids, "attention_mask": attention})
         return np.asarray(out[0])
 
-    def predict(self, texts: list[str]) -> list[Prediction]:
+    def predict(
+        self, texts: list[str], positive_label: str | None = None, threshold: float = 0.5
+    ) -> list[Prediction]:
         probs = softmax(self.logits(texts))
+        chosen = decide(probs, self.labels, positive_label, threshold) if len(probs) else []
         results = []
-        for row in probs:
-            best = int(row.argmax())
+        for row, best in zip(probs, chosen, strict=True):
+            best = int(best)
             results.append(
                 Prediction(
                     label=self.labels[best],

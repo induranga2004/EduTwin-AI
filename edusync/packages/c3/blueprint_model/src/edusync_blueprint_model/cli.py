@@ -15,7 +15,7 @@ from edusync_blueprint_model.deps import MissingExtraError, install_command, is_
 from edusync_blueprint_model.download import download_base
 from edusync_blueprint_model.metrics import summarize
 from edusync_blueprint_model.onnx_export import FP32_NAME, export_onnx
-from edusync_blueprint_model.predict import OnnxClassifier
+from edusync_blueprint_model.predict import OnnxClassifier, decide, softmax
 from edusync_blueprint_model.quantize import (
     INT8_NAME,
     compare_models,
@@ -101,7 +101,9 @@ def cmd_evaluate(config: BlueprintConfig, args: argparse.Namespace) -> int:
     _, splits = load_splits(config)
     ids = {label: i for i, label in enumerate(clf.labels)}
     y_true = np.array([ids[e.label] for e in splits.test])
-    y_pred = clf.logits([e.text for e in splits.test]).argmax(axis=-1)
+    d = config.decision
+    probs = softmax(clf.logits([e.text for e in splits.test]))
+    y_pred = decide(probs, clf.labels, d.positive_label, d.threshold)
     metrics = summarize(y_true, y_pred, clf.labels)
     reports = config.artifacts.reports_dir
     reports.mkdir(parents=True, exist_ok=True)
@@ -109,6 +111,8 @@ def cmd_evaluate(config: BlueprintConfig, args: argparse.Namespace) -> int:
         json.dumps(metrics, indent=2), encoding="utf-8"
     )
     print(f"{args.model} on {metrics['num_examples']} test examples")
+    if d.positive_label is not None:
+        print(f"decision: label {d.positive_label!r} when probability >= {d.threshold}")
     print(f"accuracy {metrics['accuracy']:.4f}  macro-F1 {metrics['macro_f1']:.4f}")
     for label, row in metrics["per_class"].items():
         print(
@@ -152,7 +156,9 @@ def cmd_predict(config: BlueprintConfig, args: argparse.Namespace) -> int:
     if not texts:
         print("error: give some TEXT arguments or --file", file=sys.stderr)
         return 2
-    for text, pred in zip(texts, _load_classifier(config, args.model).predict(texts), strict=True):
+    d = config.decision
+    preds = _load_classifier(config, args.model).predict(texts, d.positive_label, d.threshold)
+    for text, pred in zip(texts, preds, strict=True):
         print(f"{pred.label}\t{pred.score:.3f}\t{text}")
     return 0
 

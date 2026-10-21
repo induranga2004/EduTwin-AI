@@ -150,7 +150,7 @@ def test_quantize_command(config_file, monkeypatch, capsys) -> None:
 
 def test_predict_command(config_file, monkeypatch, capsys, tmp_path) -> None:
     class Clf:
-        def predict(self, texts):
+        def predict(self, texts, positive_label=None, threshold=0.5):
             return [Prediction(label="a", score=0.9, probabilities={"a": 0.9}) for _ in texts]
 
     seen = []

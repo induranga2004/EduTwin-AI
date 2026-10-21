@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from edusync_blueprint_model.predict import OnnxClassifier, softmax
+from edusync_blueprint_model.predict import OnnxClassifier, decide, softmax
 
 
 class Enc:
@@ -60,3 +60,24 @@ def test_empty_input() -> None:
     clf, _ = make()
     assert clf.logits([]).shape == (0, 3)
     assert clf.predict([]) == []
+
+
+def test_decide_argmax_without_positive_label() -> None:
+    probs = np.array([[0.7, 0.3], [0.2, 0.8]])
+    assert decide(probs, ["0", "1"], None, 0.5).tolist() == [0, 1]
+
+
+def test_decide_lower_threshold_favours_positive_label() -> None:
+    probs = np.array([[0.7, 0.3], [0.55, 0.45], [0.2, 0.8]])
+    labels = ["0", "1"]
+    assert decide(probs, labels, "1", 0.5).tolist() == [0, 0, 1]
+    assert decide(probs, labels, "1", 0.4).tolist() == [0, 1, 1]
+    assert decide(probs, ["1", "0"], "1", 0.4).tolist() == [0, 0, 1]
+
+
+def test_decide_rejects_bad_setup() -> None:
+    probs = np.array([[0.5, 0.3, 0.2]])
+    with pytest.raises(ValueError, match="exactly 2"):
+        decide(probs, ["a", "b", "c"], "a", 0.5)
+    with pytest.raises(ValueError, match="not in labels"):
+        decide(np.array([[0.5, 0.5]]), ["a", "b"], "z", 0.5)
