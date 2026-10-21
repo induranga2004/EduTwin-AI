@@ -248,8 +248,15 @@ function New-DevCertificates {
     $full = Join-Path $certDir 'fullchain.pem'
     $key = Join-Path $certDir 'privkey.pem'
     Invoke-Step 'mkcert -install (trust the local CA; Windows may show a prompt)' {
-        $r = Invoke-Native 'mkcert' @('-install')
-        if ($r.ExitCode -ne 0) { throw "mkcert -install failed: $($r.Output -join ' ')" }
+        $oldJava = $env:JAVA_HOME
+        try {
+            $env:JAVA_HOME = $null
+            $r = Invoke-Native 'mkcert' @('-install')
+            if ($r.ExitCode -ne 0 -and (($r.Output -join ' ') -notmatch 'installed in the system trust store')) {
+                throw "mkcert -install failed: $($r.Output -join ' ')"
+            }
+        }
+        finally { $env:JAVA_HOME = $oldJava }
     }
     Invoke-Step 'Create .dev\certs' { [void](New-Item -ItemType Directory -Force -Path $certDir) }
     if ((Test-Path $full) -and (Test-Path $key)) { Write-Info 'Certificates already exist (kept).'; return }
