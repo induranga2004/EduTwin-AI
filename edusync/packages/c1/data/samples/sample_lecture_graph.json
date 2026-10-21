@@ -1,0 +1,188 @@
+{
+  "lecture_id": "iisa-module-lecture-001",
+  "filename": "IISA_Module_Introduction_to_Information_Security_Analytics.pdf",
+  "page_count": 42,
+  "concept_count": 6,
+  "concepts": [
+    {
+      "name": "Introduction to Information Security",
+      "frequency": 18
+    },
+    {
+      "name": "Cryptography Basics",
+      "frequency": 14
+    },
+    {
+      "name": "Symmetric Encryption",
+      "frequency": 12
+    },
+    {
+      "name": "Cryptographic Hash Functions",
+      "frequency": 15
+    },
+    {
+      "name": "User Authentication",
+      "frequency": 16
+    },
+    {
+      "name": "Access Control",
+      "frequency": 14
+    }
+  ],
+  "graph": {
+    "node_count": 6,
+    "edge_count": 6,
+    "nodes": [
+      {
+        "id": "intro_infosec",
+        "label": "Introduction to Information Security",
+        "frequency": 18,
+        "description": "Core foundational principles of the CIA triad (Confidentiality, Integrity, Availability), security policies, threat vectors, and risk assessment."
+      },
+      {
+        "id": "crypto_basics",
+        "label": "Cryptography Basics",
+        "frequency": 14,
+        "description": "Foundational cryptosystem concepts including plaintext, ciphertext, cryptographic keys, algorithm transparency, and Kerckhoffs's principle."
+      },
+      {
+        "id": "symmetric_encryption",
+        "label": "Symmetric Encryption",
+        "frequency": 12,
+        "description": "Cryptographic primitives sharing a single secret key for both encryption and decryption, including block ciphers (AES) and cipher modes (CBC, GCM)."
+      },
+      {
+        "id": "hash_functions",
+        "label": "Cryptographic Hash Functions",
+        "frequency": 15,
+        "description": "Deterministic one-way mathematical algorithms producing fixed-size digests with pre-image resistance and collision resistance (e.g., SHA-256, HMAC)."
+      },
+      {
+        "id": "user_authentication",
+        "label": "User Authentication",
+        "frequency": 16,
+        "description": "Identity verification schemes utilizing credentials, salted password hashing, multi-factor authentication (MFA), and signed bearer tokens."
+      },
+      {
+        "id": "access_control",
+        "label": "Access Control",
+        "frequency": 14,
+        "description": "Authorization frameworks governing resource access based on identity and privileges, including Role-Based Access Control (RBAC), ABAC, and the Principle of Least Privilege."
+      }
+    ],
+    "edges": [
+      {
+        "source": "intro_infosec",
+        "target": "crypto_basics",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 1.0,
+        "source_type": "curriculum_defined",
+        "evidence_count": 2,
+        "evidence": [
+          {
+            "page": 4,
+            "sentence": "Information security goals of confidentiality and integrity require cryptosystem fundamentals."
+          },
+          {
+            "page": 6,
+            "sentence": "Before studying ciphers, students must master threat models and security objectives."
+          }
+        ]
+      },
+      {
+        "source": "crypto_basics",
+        "target": "symmetric_encryption",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 1.0,
+        "source_type": "curriculum_defined",
+        "evidence_count": 2,
+        "evidence": [
+          {
+            "page": 11,
+            "sentence": "Symmetric algorithms apply basic cryptosystem primitives using a shared secret key."
+          },
+          {
+            "page": 12,
+            "sentence": "Understanding key spaces and plaintext blocks is required before studying AES."
+          }
+        ]
+      },
+      {
+        "source": "crypto_basics",
+        "target": "hash_functions",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 1.0,
+        "source_type": "curriculum_defined",
+        "evidence_count": 2,
+        "evidence": [
+          {
+            "page": 16,
+            "sentence": "Cryptographic hash functions provide one-way transformation without a decryption key."
+          },
+          {
+            "page": 18,
+            "sentence": "Message integrity verification builds on mathematical cryptosystem definitions."
+          }
+        ]
+      },
+      {
+        "source": "hash_functions",
+        "target": "user_authentication",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 1.0,
+        "source_type": "curriculum_defined",
+        "evidence_count": 2,
+        "evidence": [
+          {
+            "page": 24,
+            "sentence": "Secure password authentication requires salting and cryptographic hashing via SHA-256 or bcrypt."
+          },
+          {
+            "page": 26,
+            "sentence": "Challenge-response authentication protocols utilize keyed hash functions (HMAC)."
+          }
+        ]
+      },
+      {
+        "source": "symmetric_encryption",
+        "target": "user_authentication",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 0.95,
+        "source_type": "curriculum_defined",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 29,
+            "sentence": "Authentication tokens and session cookies require symmetric encryption for confidentiality."
+          }
+        ]
+      },
+      {
+        "source": "user_authentication",
+        "target": "access_control",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 1.0,
+        "source_type": "curriculum_defined",
+        "evidence_count": 2,
+        "evidence": [
+          {
+            "page": 35,
+            "sentence": "Access control models determine authorized permissions only after user identity is authenticated."
+          },
+          {
+            "page": 37,
+            "sentence": "Role-Based Access Control (RBAC) binds verified user accounts to specific organizational roles."
+          }
+        ]
+      }
+    ],
+    "note": "Curriculum prerequisite dependency DAG for Introduction to Information Security Analytics (IISA)."
+  },
+  "message": "Candidate knowledge graph generated successfully."
+}
