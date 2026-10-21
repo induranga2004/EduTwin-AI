@@ -68,6 +68,9 @@ class TrainConfig(_Section):
     dropout: float = Field(ge=0.0, lt=1.0)
     threads: int = Field(ge=0, default=0)
     seed: int = 42
+    # Which validation score picks the best epoch. "positive_recall" needs [decision] positive_label;
+    # ties are broken by macro-F1.
+    select_by: Literal["macro_f1", "positive_recall"] = "macro_f1"
 
 
 class QuantizeConfig(_Section):
@@ -134,6 +137,12 @@ class BlueprintConfig(_Section):
     @property
     def artifacts(self) -> ArtifactPaths:
         return ArtifactPaths(self.paths.artifacts_dir)
+
+    @model_validator(mode="after")
+    def _selection_metric_has_what_it_needs(self) -> "BlueprintConfig":
+        if self.train.select_by == "positive_recall" and self.decision.positive_label is None:
+            raise ValueError("train.select_by = 'positive_recall' needs decision.positive_label")
+        return self
 
 
 def _resolve(value: Path, base: Path) -> Path:

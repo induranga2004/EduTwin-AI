@@ -26,6 +26,7 @@ warmup_ratio = 0.1
 dropout = 0.1
 threads = 0               # CPU threads for PyTorch; 0 = library default (all cores)
 seed = 42
+select_by = "positive_recall"  # best epoch = highest KEEP recall on val (ties: macro-F1)
 
 [decision]
 # KEEP (label "1") is the priority class: predict it whenever P(KEEP) >= threshold. Below 0.5 favours recall.

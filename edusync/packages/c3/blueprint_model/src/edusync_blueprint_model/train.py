@@ -13,7 +13,8 @@ from pydantic import BaseModel
 
 from edusync_blueprint_model.config import BlueprintConfig
 from edusync_blueprint_model.dataset import Example, load_splits
-from edusync_blueprint_model.metrics import summarize
+from edusync_blueprint_model.metrics import selection_score, summarize
+from edusync_blueprint_model.predict import decide, softmax
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,7 @@ def iter_batches(
 class TrainResult(BaseModel):
     best_epoch: int
     best_val_macro_f1: float
+    selected_by: str = "macro_f1"
     test: dict[str, Any]
     history: list[dict[str, Any]]
     finetuned_dir: Path
@@ -61,25 +63,26 @@ def _encode(tokenizer: Any, examples: list[Example], max_length: int) -> Any:  #
 
 
 def _predict(  # pragma: no cover - needs torch
-    model: Any, tokenizer: Any, examples: list[Example], cfg: BlueprintConfig
+    model: Any, tokenizer: Any, examples: list[Example], cfg: BlueprintConfig, labels: list[str]
 ) -> Any:
-    """Argmax predictions for ``examples`` (eval mode, no grad)."""
+    """Predictions for ``examples`` (eval mode, no grad): argmax, or the [decision] threshold rule."""
     import torch
 
     model.eval()
-    preds = []
+    rows = []
     with torch.no_grad():
         for idx in iter_batches(len(examples), cfg.train.batch_size, shuffle=False):
             enc = _encode(tokenizer, [examples[i] for i in idx], cfg.model.max_length)
             logits = model(enc["input_ids"], enc["attention_mask"])
-            preds.extend(logits.argmax(dim=-1).tolist())
-    return np.array(preds)
+            rows.append(logits.numpy())
+    d = cfg.decision
+    return decide(softmax(np.concatenate(rows)), labels, d.positive_label, d.threshold)
 
 
 def train(  # pragma: no cover - needs torch + weights
     config: BlueprintConfig, *, base_dir: Path | None = None
 ) -> TrainResult:
-    """Fine-tune all weights on CPU, keep the best epoch by validation macro-F1."""
+    """Fine-tune all weights on CPU, keep the best epoch by the configured validation score."""
     from edusync_blueprint_model.deps import require
     from edusync_blueprint_model.model import build_classifier, save_classifier
 
@@ -133,7 +136,7 @@ def train(  # pragma: no cover - needs torch + weights
     y_train = np.array([labels.id_of(e.label) for e in splits.train])
     y_val = np.array([labels.id_of(e.label) for e in splits.val])
 
-    best = {"f1": -1.0, "epoch": 0, "state": None}
+    best = {"score": (-1.0, -1.0), "f1": -1.0, "epoch": 0, "state": None}
     history: list[dict[str, Any]] = []
     started = time.perf_counter()
     for epoch in range(1, tc.epochs + 1):
@@ -149,7 +152,7 @@ def train(  # pragma: no cover - needs torch + weights
             optimizer.step()
             scheduler.step()
             losses.append(loss.item())
-        val_pred = _predict(model, tokenizer, splits.val, cfg)
+        val_pred = _predict(model, tokenizer, splits.val, cfg, labels.labels)
         val = summarize(y_val, val_pred, labels.labels)
         row = {
             "epoch": epoch,
@@ -157,10 +160,14 @@ def train(  # pragma: no cover - needs torch + weights
             "val_accuracy": val["accuracy"],
             "val_macro_f1": val["macro_f1"],
         }
+        if cfg.decision.positive_label is not None:
+            row["val_positive_recall"] = val["per_class"][cfg.decision.positive_label]["recall"]
         history.append(row)
         logger.info("epoch %d: %s", epoch, row)
-        if val["macro_f1"] > best["f1"]:
+        score = selection_score(val, tc.select_by, cfg.decision.positive_label)
+        if score > best["score"]:
             best = {
+                "score": score,
                 "f1": val["macro_f1"],
                 "epoch": epoch,
                 "state": copy.deepcopy(model.state_dict()),
@@ -169,7 +176,7 @@ def train(  # pragma: no cover - needs torch + weights
 
     model.load_state_dict(best["state"])
     y_test = np.array([labels.id_of(e.label) for e in splits.test])
-    test = summarize(y_test, _predict(model, tokenizer, splits.test, cfg), labels.labels)
+    test = summarize(y_test, _predict(model, tokenizer, splits.test, cfg, labels.labels), labels.labels)
 
     out = cfg.artifacts.finetuned_dir
     out.mkdir(parents=True, exist_ok=True)
@@ -179,6 +186,7 @@ def train(  # pragma: no cover - needs torch + weights
     result = TrainResult(
         best_epoch=best["epoch"],
         best_val_macro_f1=best["f1"],
+        selected_by=tc.select_by,
         test=test,
         history=history,
         finetuned_dir=out,

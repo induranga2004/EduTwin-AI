@@ -65,3 +65,16 @@ def summarize(y_true: np.ndarray, y_pred: np.ndarray, labels: list[str]) -> dict
         "confusion_matrix": confusion_matrix(y_true, y_pred, n).tolist(),
         "labels": list(labels),
     }
+
+
+def selection_score(
+    summary: dict[str, Any], select_by: str, positive_label: str | None
+) -> tuple[float, float]:
+    """Sortable epoch score (higher is better): the chosen metric first, macro-F1 as tie-break."""
+    if select_by == "macro_f1":
+        return (summary["macro_f1"], 0.0)
+    if select_by == "positive_recall":
+        if positive_label not in summary["per_class"]:
+            raise ValueError(f"positive_label {positive_label!r} not in {list(summary['per_class'])}")
+        return (summary["per_class"][positive_label]["recall"], summary["macro_f1"])
+    raise ValueError(f"Unknown select_by {select_by!r}")

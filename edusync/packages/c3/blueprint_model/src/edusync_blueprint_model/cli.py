@@ -79,11 +79,15 @@ def cmd_download(config: BlueprintConfig, args: argparse.Namespace) -> int:
 def cmd_train(config: BlueprintConfig, args: argparse.Namespace) -> int:
     result = run_train(config)
     for row in result.history:
+        recall = f"  val recall {row['val_positive_recall']:.4f}" if "val_positive_recall" in row else ""
         print(
             f"epoch {row['epoch']}: loss {row['train_loss']:.4f}  "
-            f"val acc {row['val_accuracy']:.4f}  val macro-F1 {row['val_macro_f1']:.4f}"
+            f"val acc {row['val_accuracy']:.4f}  val macro-F1 {row['val_macro_f1']:.4f}{recall}"
         )
-    print(f"best epoch {result.best_epoch} (val macro-F1 {result.best_val_macro_f1:.4f})")
+    print(
+        f"best epoch {result.best_epoch} by {result.selected_by} "
+        f"(val macro-F1 {result.best_val_macro_f1:.4f})"
+    )
     print(
         f"test accuracy {result.test['accuracy']:.4f}  test macro-F1 {result.test['macro_f1']:.4f}"
         f"  ({result.train_seconds:.1f}s)"

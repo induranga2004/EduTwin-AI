@@ -99,3 +99,24 @@ def test_no_decay_names_and_model_module_imports_without_torch() -> None:
     assert train._no_decay("head.bias")
     assert not train._no_decay("head.weight")
     assert callable(model.build_classifier)
+
+
+def test_selection_score_prefers_positive_recall_then_macro_f1() -> None:
+    from edusync_blueprint_model.metrics import selection_score, summarize
+
+    labels = ["0", "1"]
+    y_true = np.array([0, 0, 0, 0, 1, 1, 1, 1])
+    high_recall = summarize(y_true, np.array([1, 1, 0, 0, 1, 1, 1, 1]), labels)  # all 1s, 2 FP
+    high_f1 = summarize(y_true, np.array([0, 0, 0, 0, 1, 1, 1, 0]), labels)  # misses a 1, no FP
+    assert selection_score(high_recall, "positive_recall", "1") > selection_score(
+        high_f1, "positive_recall", "1"
+    )
+    assert selection_score(high_f1, "macro_f1", None) > selection_score(high_recall, "macro_f1", None)
+    same = summarize(y_true, np.array([0, 0, 0, 0, 1, 1, 1, 1]), labels)
+    assert selection_score(same, "positive_recall", "1") > selection_score(
+        high_recall, "positive_recall", "1"
+    )  # equal recall, better macro-F1 wins
+    with pytest.raises(ValueError, match="not in"):
+        selection_score(same, "positive_recall", "x")
+    with pytest.raises(ValueError, match="Unknown"):
+        selection_score(same, "nope", None)
