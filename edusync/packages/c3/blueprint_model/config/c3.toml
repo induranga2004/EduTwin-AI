@@ -25,7 +25,7 @@ weight_decay = 0.01
 warmup_ratio = 0.1
 dropout = 0.1
 threads = 0               # CPU threads for PyTorch; 0 = library default (all cores)
-seed = 42
+seed = 3  # chosen by best validation macro-F1 across seeds 1, 2, 3 and 42
 select_by = "macro_f1_with_recall_floor"  # best macro-F1 among epochs that keep >= recall_floor of KEEP on val
 recall_floor = 0.99
 
