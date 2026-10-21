@@ -17,7 +17,7 @@ from edusync_c1.schemas import Concept, ConceptMatch, MatchResult
 logger = logging.getLogger(__name__)
 
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-DEFAULT_SIMILARITY_THRESHOLD = 0.45
+DEFAULT_SIMILARITY_THRESHOLD = 0.38
 SEMANTIC_METHOD = "minilm_cosine_similarity"
 EXACT_METHOD = "exact_phrase_fallback"
 
@@ -101,8 +101,16 @@ class SemanticMatcher:
         return self._model
 
     @staticmethod
-    def _names(concepts: list[Concept]) -> list[str]:
-        return [c.name.strip() for c in concepts if c.name.strip()]
+    def _names(concepts: list[Any]) -> list[str]:
+        names: list[str] = []
+        for c in concepts:
+            if hasattr(c, "label") and getattr(c, "label"):
+                names.append(str(c.label).strip())
+            elif hasattr(c, "name") and getattr(c, "name"):
+                names.append(str(c.name).strip())
+            elif isinstance(c, str):
+                names.append(c.strip())
+        return [n for n in names if n]
 
     def _exact_result(self, text: str, names: list[str], threshold: float) -> MatchResult:
         folded = text.casefold()
