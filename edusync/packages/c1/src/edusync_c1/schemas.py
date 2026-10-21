@@ -21,6 +21,7 @@ class ConceptNode(BaseModel):
     id: str
     label: str
     frequency: int = 0
+    description: str = ""
 
 
 class EdgeEvidence(BaseModel):
@@ -29,12 +30,15 @@ class EdgeEvidence(BaseModel):
 
 
 class ConceptEdge(BaseModel):
-    """Co-mention edge; NOT a verified prerequisite relation."""
+    """Curriculum prerequisite or co-mention edge."""
 
     source: str
     target: str
     relation_type: str = "co_mentioned"
-    evidence_count: int
+    direction: str = "source_is_prerequisite_of_target"
+    confidence: float = 1.0
+    source_type: str = "curriculum_defined"
+    evidence_count: int = 0
     evidence: list[EdgeEvidence] = Field(default_factory=list)
 
 
