@@ -1,10 +1,17 @@
 """Graph providers: where the C1 graph comes from (caller payload, mock, later the C1 API)."""
 
+import hashlib
 import itertools
 import re
+from importlib import resources
+from pathlib import Path
 from typing import Protocol
 
+from pydantic import ValidationError
+
+from edusync_c2.difficulty.c1_client import Transport
 from edusync_c2.difficulty.concepts import locate_slides, normalize
+from edusync_c2.difficulty.errors import GraphProviderError
 from edusync_c2.difficulty.ids import casefold_id
 from edusync_c2.difficulty.schemas import (
     C1GraphResponse,
@@ -15,6 +22,7 @@ from edusync_c2.difficulty.schemas import (
 
 _EVIDENCE_MAX = 200
 _DIRECTION = "source_is_prerequisite_of_target"
+_SAMPLE_RESOURCE = ("resources", "sample_c1_graph_v1.json")
 
 
 def slugify(label: str) -> str:
@@ -146,9 +154,58 @@ class MockC1GraphProvider:
 
 
 class C1ApiGraphProvider:
-    """TODO (not implemented): will call C1's POST /api/c1/lectures/graph with the same file."""
+    """Asks C1 for the graph of the uploaded file through an injectable transport.
+
+    Built per request because ``build`` receives the parsed deck, not the raw bytes. The reported
+    ``lecture_id`` is derived from the bytes, so identical uploads give identical responses.
+    """
 
     name = "c1_api"
 
+    def __init__(self, data: bytes, filename: str, transport: Transport) -> None:
+        self._data = data
+        self._filename = filename
+        self._transport = transport
+
     def build(self, materials: MaterialsDoc) -> GraphContext:
-        raise NotImplementedError("C1 API integration is not implemented yet")
+        raw = self._transport(self._data, self._filename)
+        try:
+            response = C1GraphResponse.model_validate(raw)
+        except ValidationError:
+            raise GraphProviderError(502, "C1 returned an invalid graph") from None
+        response = response.model_copy(
+            update={"lecture_id": f"c1-{hashlib.sha256(self._data).hexdigest()[:12]}"}
+        )
+        nodes, edges = len(response.graph.nodes), len(response.graph.edges)
+        return GraphContext(
+            response=response,
+            source=InputSource(
+                name="c1_graph",
+                kind="real",
+                detail=f"C1 API graph ({nodes} nodes, {edges} edges)",
+            ),
+        )
+
+
+class FileGraphProvider:
+    """Serves a C1-shaped graph from a JSON file (default: the bundled synthetic sample).
+
+    Labelled ``mock``: the file is not C1 output for the uploaded deck, so the mock-graph warning
+    applies. The file's own ``lecture_id`` is kept.
+    """
+
+    name = "file"
+
+    def __init__(self, path: Path | None = None) -> None:
+        self._path = path
+
+    def build(self, materials: MaterialsDoc) -> GraphContext:
+        ref = self._path or resources.files("edusync_c2.difficulty").joinpath(*_SAMPLE_RESOURCE)
+        try:
+            response = C1GraphResponse.model_validate_json(ref.read_text(encoding="utf-8"))
+        except (OSError, ValueError):  # ValidationError and JSON/Unicode errors are ValueErrors
+            raise GraphProviderError(500, "graph file could not be loaded") from None
+        return GraphContext(
+            response=response,
+            source=InputSource(name="c1_graph", kind="mock", detail=f"graph file: {ref.name}"),
+        )

@@ -1,0 +1,345 @@
+{
+ "concept_count": 6,
+ "concepts": [
+  {
+   "frequency": 5,
+   "name": "Modular Scheduler"
+  },
+  {
+   "frequency": 1,
+   "name": "Dense Buffer"
+  },
+  {
+   "frequency": 4,
+   "name": "Stable Queue"
+  },
+  {
+   "frequency": 4,
+   "name": "Cyclic Signal"
+  },
+  {
+   "frequency": 6,
+   "name": "Cyclic Tensor"
+  },
+  {
+   "frequency": 6,
+   "name": "Ordered Queue"
+  }
+ ],
+ "filename": "sample-lecture.pptx",
+ "graph": {
+  "edge_count": 20,
+  "edges": [
+   {
+    "evidence": [
+     {
+      "page": 6,
+      "sentence": "Cyclic Signal and Cyclic Tensor appear together."
+     }
+    ],
+    "evidence_count": 1,
+    "relation_type": "co_mentioned",
+    "source": "cyclic-signal",
+    "target": "cyclic-tensor"
+   },
+   {
+    "evidence": [
+     {
+      "page": 5,
+      "sentence": "Cyclic Signal and Dense Buffer appear together."
+     }
+    ],
+    "evidence_count": 1,
+    "relation_type": "co_mentioned",
+    "source": "cyclic-signal",
+    "target": "dense-buffer"
+   },
+   {
+    "evidence": [
+     {
+      "page": 5,
+      "sentence": "Cyclic Signal and Modular Scheduler appear together."
+     }
+    ],
+    "evidence_count": 1,
+    "relation_type": "co_mentioned",
+    "source": "cyclic-signal",
+    "target": "modular-scheduler"
+   },
+   {
+    "evidence": [
+     {
+      "page": 7,
+      "sentence": "Cyclic Signal and Ordered Queue appear together."
+     }
+    ],
+    "evidence_count": 1,
+    "relation_type": "co_mentioned",
+    "source": "cyclic-signal",
+    "target": "ordered-queue"
+   },
+   {
+    "evidence": [
+     {
+      "page": 5,
+      "sentence": "Cyclic Signal and Stable Queue appear together."
+     }
+    ],
+    "evidence_count": 1,
+    "relation_type": "co_mentioned",
+    "source": "cyclic-signal",
+    "target": "stable-queue"
+   },
+   {
+    "evidence": [
+     {
+      "page": 7,
+      "sentence": "Cyclic Tensor and Ordered Queue appear together."
+     }
+    ],
+    "evidence_count": 1,
+    "relation_type": "co_mentioned",
+    "source": "cyclic-tensor",
+    "target": "ordered-queue"
+   },
+   {
+    "evidence": [
+     {
+      "page": 6,
+      "sentence": "Cyclic Tensor and Stable Queue appear together."
+     }
+    ],
+    "evidence_count": 1,
+    "relation_type": "co_mentioned",
+    "source": "cyclic-tensor",
+    "target": "stable-queue"
+   },
+   {
+    "evidence": [
+     {
+      "page": 3,
+      "sentence": "Dense Buffer and Modular Scheduler appear together."
+     }
+    ],
+    "evidence_count": 1,
+    "relation_type": "co_mentioned",
+    "source": "dense-buffer",
+    "target": "modular-scheduler"
+   },
+   {
+    "evidence": [
+     {
+      "page": 7,
+      "sentence": "Dense Buffer and Ordered Queue appear together."
+     }
+    ],
+    "evidence_count": 1,
+    "relation_type": "co_mentioned",
+    "source": "dense-buffer",
+    "target": "ordered-queue"
+   },
+   {
+    "evidence": [
+     {
+      "page": 4,
+      "sentence": "Dense Buffer and Stable Queue appear together."
+     }
+    ],
+    "evidence_count": 1,
+    "relation_type": "co_mentioned",
+    "source": "dense-buffer",
+    "target": "stable-queue"
+   },
+   {
+    "evidence": [
+     {
+      "page": 4,
+      "sentence": "Modular Scheduler and Stable Queue appear together."
+     }
+    ],
+    "evidence_count": 1,
+    "relation_type": "co_mentioned",
+    "source": "modular-scheduler",
+    "target": "stable-queue"
+   },
+   {
+    "confidence": 0.67,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [
+     {
+      "page": 3,
+      "sentence": "Modular Scheduler comes before Dense Buffer."
+     }
+    ],
+    "evidence_count": 1,
+    "relation_type": "prerequisite",
+    "source": "modular-scheduler",
+    "source_type": "inferred",
+    "target": "dense-buffer"
+   },
+   {
+    "confidence": 0.95,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [
+     {
+      "page": 4,
+      "sentence": "Modular Scheduler comes before Stable Queue."
+     }
+    ],
+    "evidence_count": 1,
+    "relation_type": "prerequisite",
+    "source": "modular-scheduler",
+    "source_type": "curriculum_defined",
+    "target": "stable-queue"
+   },
+   {
+    "confidence": 0.53,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [
+     {
+      "page": 5,
+      "sentence": "Dense Buffer comes before Cyclic Signal."
+     }
+    ],
+    "evidence_count": 1,
+    "relation_type": "prerequisite",
+    "source": "dense-buffer",
+    "source_type": "inferred",
+    "target": "cyclic-signal"
+   },
+   {
+    "confidence": 0.64,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [
+     {
+      "page": 5,
+      "sentence": "Stable Queue comes before Cyclic Signal."
+     }
+    ],
+    "evidence_count": 1,
+    "relation_type": "prerequisite",
+    "source": "stable-queue",
+    "source_type": "inferred",
+    "target": "cyclic-signal"
+   },
+   {
+    "confidence": 0.56,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [
+     {
+      "page": 5,
+      "sentence": "Modular Scheduler comes before Cyclic Signal."
+     }
+    ],
+    "evidence_count": 1,
+    "relation_type": "prerequisite",
+    "source": "modular-scheduler",
+    "source_type": "curriculum_defined",
+    "target": "cyclic-signal"
+   },
+   {
+    "confidence": 0.68,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [
+     {
+      "page": 6,
+      "sentence": "Stable Queue comes before Cyclic Tensor."
+     }
+    ],
+    "evidence_count": 1,
+    "relation_type": "prerequisite",
+    "source": "stable-queue",
+    "source_type": "inferred",
+    "target": "cyclic-tensor"
+   },
+   {
+    "confidence": 0.99,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [
+     {
+      "page": 6,
+      "sentence": "Cyclic Signal comes before Cyclic Tensor."
+     }
+    ],
+    "evidence_count": 1,
+    "relation_type": "prerequisite",
+    "source": "cyclic-signal",
+    "source_type": "inferred",
+    "target": "cyclic-tensor"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [
+     {
+      "page": 7,
+      "sentence": "Dense Buffer comes before Ordered Queue."
+     }
+    ],
+    "evidence_count": 1,
+    "relation_type": "prerequisite",
+    "source": "dense-buffer",
+    "source_type": "inferred",
+    "target": "ordered-queue"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [
+     {
+      "page": 7,
+      "sentence": "Cyclic Signal comes before Ordered Queue."
+     }
+    ],
+    "evidence_count": 1,
+    "relation_type": "prerequisite",
+    "source": "cyclic-signal",
+    "source_type": "curriculum_defined",
+    "target": "ordered-queue"
+   }
+  ],
+  "node_count": 6,
+  "nodes": [
+   {
+    "description": "Modular Scheduler: synthetic concept used for pipeline testing.",
+    "frequency": 5,
+    "id": "modular-scheduler",
+    "label": "Modular Scheduler"
+   },
+   {
+    "description": "Dense Buffer: synthetic concept used for pipeline testing.",
+    "frequency": 1,
+    "id": "dense-buffer",
+    "label": "Dense Buffer"
+   },
+   {
+    "description": "Stable Queue: synthetic concept used for pipeline testing.",
+    "frequency": 4,
+    "id": "stable-queue",
+    "label": "Stable Queue"
+   },
+   {
+    "description": "Cyclic Signal: synthetic concept used for pipeline testing.",
+    "frequency": 4,
+    "id": "cyclic-signal",
+    "label": "Cyclic Signal"
+   },
+   {
+    "description": "Cyclic Tensor: synthetic concept used for pipeline testing.",
+    "frequency": 6,
+    "id": "cyclic-tensor",
+    "label": "Cyclic Tensor"
+   },
+   {
+    "description": "Ordered Queue: synthetic concept used for pipeline testing.",
+    "frequency": 6,
+    "id": "ordered-queue",
+    "label": "Ordered Queue"
+   }
+  ],
+  "note": "Synthetic prerequisite graph."
+ },
+ "lecture_id": "sample-lecture",
+ "message": "Candidate knowledge graph generated successfully.",
+ "page_count": 8
+}
