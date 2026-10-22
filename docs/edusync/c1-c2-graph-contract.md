@@ -13,7 +13,38 @@ reaches C2 as JSON.
   HTTP 422 with the failing field.
 - The file posted to C2 must be the same lecture file C1 processed, because C2 locates each node on the slides by label.
 - Without `c1_graph`, C2 builds a clearly labelled **mock** graph from slide titles and marks every value derived from it
-  as `mocked`. The planned `C1ApiGraphProvider` (C2 calling C1 directly) is not implemented.
+  as `mocked`. C2 can also call C1 itself or read a graph file, both opt-in; see section 1a.
+
+## 1a. C2 calling C1 itself (`c1_api` provider)
+
+Optional and off by default (`EDUSYNC_C2_GRAPH_PROVIDER=c1_api`; settings in [c2-difficulty.md](c2-difficulty.md), section
+"Graph providers"). When no `c1_graph` is posted, C2 sends the uploaded file to C1 instead of building a mock:
+
+- **Request.** `POST {EDUSYNC_C2_C1_BASE_URL}/lectures/graph` (default base `http://127.0.0.1:8100/api/c1`), multipart
+  form with one field `file` holding the upload unchanged (content type derived from `.pdf` / `.pptx`). Plain stdlib HTTP;
+  C2 imports no C1 code.
+- **Response.** The JSON object C1 returns, validated as `C1GraphResponse` (same rules as a posted graph; extra fields kept).
+  Anything else is an error: C1 4xx gives HTTP 422 with C1's `detail` (cut to 200 characters), C1 5xx, unreachable, a
+  non-JSON body or a shape mismatch gives 502, a timeout gives 504 (`EDUSYNC_C2_C1_TIMEOUT_S`, default 60).
+- **`lecture_id`.** C1 returns a fresh uuid on every call. C2 drops it and reports `c1-<first 12 hex digits of
+  sha256(upload)>`, so the same file always gives the same C2 response. C1's uuid is not visible in C2's output.
+- **v0 from C1.** C1 emits v0 today (19 nodes and 20 `co_mentioned` edges were seen in a Docker check). C2 accepts it, marks
+  the graph `real`, and group B is `unavailable` with the warning "C1 graph has no prerequisite edges: group B features
+  unavailable". Nothing breaks; the prerequisite features simply wait for v1.
+- **Privacy.** C2 logs only the status and a reason code of a failed call, never the file or its name.
+
+### Swapping the sample graph (`file` provider)
+
+`EDUSYNC_C2_GRAPH_PROVIDER=file` serves a graph from disk with no C1 running: by default the bundled synthetic v1 sample
+`edusync/packages/c2/src/edusync_c2/difficulty/resources/sample_c1_graph_v1.json` (made by
+`packages/c2/scripts/make_sample_graph.py`; not C1 data). To use another graph, for example C1's real v1 sample once it is
+published, set `EDUSYNC_C2_GRAPH_FILE=<path>`. The file must be a `C1GraphResponse` (check it first with
+`scripts/validate_c1_graph.py`, section 9). It is always labelled `mock` in `inputs[]`, because it is not C1 output for the
+uploaded deck; concepts that are not in the deck come back as `not_found_in_materials`. Use a posted `c1_graph` (precedence:
+posted graph, then configured provider, then slide-title mock) when the graph really belongs to the file.
+
+Still pending: C1's real v1 sample. Until it exists, the v1 side of the `c1_api` path has been tested only with C2's own
+synthetic graphs behind a fake server.
 
 ## 2. Top-level shape (both versions)
 
@@ -163,8 +194,9 @@ Goal: fail loudly if C1's real output drifts from what C2 reads.
    `computed`.
 4. Keep the v0 synthetic graph (`lecture_<k>_graph_v0.json`) as a regression check that a graph without prerequisite
    edges yields `unavailable` group B features and the matching warning.
-5. When `C1ApiGraphProvider` is built, add a test with a fake C1 response and, in an integration environment, one
-   against the running C1.
+5. `C1ApiGraphProvider` is built: tests with a fake C1 server exist (`test_c1_client.py`, `test_c1_providers.py`,
+   `test_graph_provider_selection.py`), and a Docker run against the running C1 returned a v0 graph. Still to add: a test
+   against C1's real v1 output once it exists.
 6. Version the contract: record the C1 version or a `schema_version` field in the fixture so a change is visible.
 
 ## 9. Self-check: validate a C1 graph file

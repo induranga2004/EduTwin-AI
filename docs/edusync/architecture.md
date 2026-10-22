@@ -68,7 +68,7 @@ flowchart LR
   optional C1 graph JSON -> slide records -> concepts located on slides -> 35 features in four groups (32 implemented, 1 mock, 2 planned) -> model ->
   Low/Medium/High per concept, before the lecture. The model is a rule baseline (not trained) and some inputs and
   features are mocked or TODO; the response labels them. The graph is passed to C2 as a request payload; without it C2
-  uses a labelled mock. See [c2-difficulty.md](c2-difficulty.md) and the [C1 -> C2 graph contract](c1-c2-graph-contract.md).
+  uses a labelled mock, or, if configured (`EDUSYNC_C2_GRAPH_PROVIDER`, off by default), a bundled sample graph file or a call to C1's `POST /api/c1/lectures/graph`. See [c2-difficulty.md](c2-difficulty.md) and the [C1 -> C2 graph contract](c1-c2-graph-contract.md).
   (2) Live comprehension (later, **FUTURE**): when poll/quiz results for a concept arrive, compare predicted vs.
   observed and flag mismatches. Only a rule-based placeholder exists (`/api/c2/comprehension/evaluate`). The C1 -> C2
   runtime hand-off of the current concept is not implemented. The model interface and logging convention are in [c2-model-and-blueprint.md](c2-model-and-blueprint.md) and [c2-difficulty.md](c2-difficulty.md#logging-and-development-conventions).

@@ -29,7 +29,7 @@ replaced one at a time without changing the response shape. What exists:
   confidence;
 - an API route and a deterministic synthetic data generator for tests.
 
-What does **not** exist: a trained model, a labelled dataset, a real C1 connection at runtime, persistence, any
+What does **not** exist: a trained model, a labelled dataset, a verified C1 connection at runtime (the `c1_api` provider exists but is off by default and has only met C1's v0 output), persistence, any
 evaluation of prediction quality, and the live stage.
 
 ## 2. Architecture
@@ -40,8 +40,12 @@ flowchart LR
   G["C1 graph JSON<br/>(optional, form field)"] --> P{"graph provider"}
   M --> P
   P -->|caller payload = real| GV["graph.py GraphView (raw)<br/>validates the C1 edges"]
-  P -->|no payload| MK["MockC1GraphProvider<br/>(labelled mock)"]
+  P -->|no payload, default| MK["MockC1GraphProvider<br/>(labelled mock)"]
+  P -->|no payload, GRAPH_PROVIDER=file| FP["FileGraphProvider<br/>(labelled mock)"]
+  P -->|no payload, GRAPH_PROVIDER=c1_api| CP["C1ApiGraphProvider<br/>(POST to C1, real)"]
   MK --> GV
+  FP --> GV
+  CP --> GV
   M --> CO["concepts.py + concept_filter.py<br/>concepts located on slides<br/>filter: mock_keep_all (default) or heuristic"]
   GV --> CO
   CO --> GF["graph.py GraphView (final)<br/>aliases remapped, dropped concepts cut<br/>(the raw view itself if nothing merged)"]
@@ -58,7 +62,8 @@ Flow in `difficulty/pipeline.py` (`DifficultyPipeline.run`):
 1. `materials.parse_materials` turns the upload into `SlideRecord`s (title, text, notes, paragraphs with bullet level,
    picture/chart/table/shape counts, formula and code hints). PDF yields text per page only.
 2. The graph comes from `PayloadGraphProvider` when the caller supplied `c1_graph` (a real input, not verified by C2),
-   otherwise from `MockC1GraphProvider` (concepts = slide titles, prerequisites = slide order, labelled mock).
+   otherwise from the provider configured by `EDUSYNC_C2_GRAPH_PROVIDER` (`file` or `c1_api`, see "Graph providers"),
+   and by default from `MockC1GraphProvider` (concepts = slide titles, prerequisites = slide order, labelled mock).
 3. `GraphView(response)` validates the C1 edges on the raw ids (the "raw view"; the `graph` log line reports these raw
    counts). `concepts.build_concepts` then takes concepts from the C1 nodes (fallback: the C1 `concepts` list), locates
    each one on the slides (whole-phrase, case-insensitive match of label or id in title or text) and passes them through
@@ -88,10 +93,13 @@ All paths are under `edusync/packages/c2/src/edusync_c2/`.
 | `difficulty/materials.py` | PPTX/PDF parser, upload validation (`MaterialsError`), formula and code detectors |
 | `difficulty/geometry.py` | Pure integer-EMU helpers for the parser: rotation swap, group transform, box clipping, union area (cap `MAX_UNION_SHAPES = 200`) |
 | `difficulty/graph.py` | `GraphView`: valid prerequisite edges and per-concept metrics; optional `aliases` and `dropped` arguments remap edges to canonical concepts and cut dropped ones |
-| `difficulty/providers.py` | Graph providers: `PayloadGraphProvider`, `MockC1GraphProvider`, `C1ApiGraphProvider` (TODO, raises `NotImplementedError`) |
+| `difficulty/providers.py` | Graph providers: `PayloadGraphProvider`, `MockC1GraphProvider`, `C1ApiGraphProvider` (per request, off by default), `FileGraphProvider` (bundled sample or a JSON file, labelled mock) |
+| `difficulty/c1_client.py` | `UrllibTransport` and `build_multipart`: stdlib HTTP call to C1's `POST /lectures/graph`, errors mapped to `GraphProviderError` |
+| `difficulty/errors.py` | `ModelArtifactError`, `ModelNotAvailableError`, `GraphProviderError` (carries the HTTP status) |
+| `difficulty/resources/sample_c1_graph_v1.json` | Bundled synthetic v1 graph for the `file` provider (made by `scripts/make_sample_graph.py`) |
 | `difficulty/concepts.py` | Concepts from graph nodes, slide alignment, `ConceptFilter` and `ContextualConceptFilter` protocols, `FilterContext`, `MockConceptFilter` (`is_mock = True`), `create_concept_filter` |
 | `difficulty/concept_filter.py` | `HeuristicConceptFilter`: generic-phrase drop, normalisation merge, abbreviation merge (see "Concept filter") |
-| `settings.py` | `C2Settings` (`EDUSYNC_C2_*`): log level, model, model dir, concept filter and its extras tier |
+| `settings.py` | `C2Settings` (`EDUSYNC_C2_*`): log level, model, model dir, concept filter and its extras tier, graph provider, graph file, C1 base URL and timeout |
 | `difficulty/registry.py` | `FEATURE_SPECS` (the 35 features, in order), `FEATURE_SCHEMA_VERSION`, `feature_schema_hash()`, `PHASE1_TODO` |
 | `difficulty/features/language.py` | Group A processor and `lexical_difficulty` |
 | `difficulty/features/vocab.py` | `VocabularyAnalyzer`: word-piece fragmentation, unfamiliar share and domain-term share; shared default analyzer with one cached first load |
@@ -727,11 +735,72 @@ Tests (all under `edusync/packages/c2/tests/difficulty/`): `test_concept_filter.
 protocol dispatch), `test_pipeline_filter.py` (end to end, log order and the ` merged=N` suffix, privacy, alias mentions, fusion
 text, default path builds one plain view), `test_settings.py`, `test_router.py` (settings reach the pipeline).
 
+## Graph providers (Phase 2, milestone M5b)
+
+The graph can come from four places. Precedence per request: a posted `c1_graph` form field, then the provider named by
+`EDUSYNC_C2_GRAPH_PROVIDER`, then the slide-title mock. The default is `mock`, so nothing changes unless it is set.
+
+| Variable | Values | Default | Meaning |
+|----------|--------|---------|---------|
+| `EDUSYNC_C2_GRAPH_PROVIDER` | `mock`, `file`, `c1_api` | `mock` | Which provider builds the graph when the request has no `c1_graph`. Reported as `graph_provider` by `GET /difficulty/info` (the mock reports its own name) |
+| `EDUSYNC_C2_GRAPH_FILE` | file path | unset (bundled sample) | JSON file for `file`; an empty value counts as unset |
+| `EDUSYNC_C2_C1_BASE_URL` | `http://` or `https://` URL | `http://127.0.0.1:8100/api/c1` | Base URL of C1 for `c1_api`; other schemes fail settings validation |
+| `EDUSYNC_C2_C1_TIMEOUT_S` | number > 0 | `60` | Timeout of the C1 call in seconds |
+
+| Provider | Source of the graph | Input kind in `inputs[]` | `lecture_id` in the response |
+|----------|---------------------|--------------------------|------------------------------|
+| posted `c1_graph` (`PayloadGraphProvider`) | the caller | `real` (not verified by C2) | the payload's own |
+| `mock` (`MockC1GraphProvider`) | slide titles | `mock` | `null` |
+| `file` (`FileGraphProvider`) | JSON file | `mock` (`graph file: <name>`) | the file's own |
+| `c1_api` (`C1ApiGraphProvider`) | C1's `POST /lectures/graph` | `real` (`C1 API graph (N nodes, M edges)`) | `c1-<sha256(upload)[:12]>` |
+
+**file.** Serves a C1-shaped graph from a JSON file validated as `C1GraphResponse`: the bundled
+`difficulty/resources/sample_c1_graph_v1.json` or the file in `EDUSYNC_C2_GRAPH_FILE`. It is labelled `mock` on purpose:
+the file is not C1 output for the uploaded deck, so the standard mock-graph warning applies (its wording now covers file
+graphs too: "C1 graph is a mock, not C1 output for this lecture (see inputs): ..."). Concepts of the file that do not occur
+in the deck are `not_found_in_materials`, so the sample fits its own synthetic deck, not arbitrary uploads. The sample is
+synthetic (6 concepts, contract v1) and is regenerated byte for byte by `scripts/make_sample_graph.py`.
+
+**c1_api.** Built per request, because `build` receives the parsed deck and the provider needs the raw bytes. It posts the
+upload as multipart (field `file`) to `{EDUSYNC_C2_C1_BASE_URL}/lectures/graph` with stdlib `urllib` (`difficulty/c1_client.py`,
+`UrllibTransport`); no C1 code is imported and no dependency was added. The answer must validate as `C1GraphResponse`.
+C1 returns a new uuid on every call, which would make responses non-deterministic, so C2 discards it and reports
+`c1-` plus the first 12 hex digits of the SHA-256 of the upload. Identical uploads therefore give identical responses (as
+long as C1 does).
+
+The call is blocking and loopback by default. It is safe because the pipeline already runs in the thread pool (`router.py`);
+never call `C1ApiGraphProvider.build` from the event-loop thread.
+
+Errors (`GraphProviderError` in `difficulty/errors.py`; the router turns it into an HTTP error with the status and message):
+
+| Situation | HTTP status | Message |
+|-----------|-------------|---------|
+| C1 answers 4xx | 422 | C1's `detail`, trimmed and cut to 200 characters (generic text if it has none) |
+| C1 answers 5xx | 502 | C1 failed to build the graph |
+| C1 unreachable, connection error | 502 | C1 is unreachable |
+| C1 body is not JSON or not a JSON object | 502 | C1 returned an invalid response |
+| C1 JSON does not validate as `C1GraphResponse` | 502 | C1 returned an invalid graph |
+| Timeout (`EDUSYNC_C2_C1_TIMEOUT_S`) | 504 | C1 timed out |
+| `file` provider: missing, unreadable or invalid graph file | 500 | graph file could not be loaded |
+
+Logs carry the status and a reason code only (`c1_request_failed status=<n> reason=<code>`, WARNING, from
+`edusync_c2.c1_client`), never the file content or file name; the router adds `rejected status=<n> reason=graph_provider`.
+
+**Measured behaviour (Docker check, real services).** With `c1_api` pointed at the C1 route of the same container, C1
+returned a v0 graph (19 nodes, 20 edges, all `co_mentioned`). Group B was therefore `unavailable` with the warning "C1 graph
+has no prerequisite edges: group B features unavailable". With the `file` provider the response used the 6 sample concepts,
+the input `c1_graph` had kind `mock`, and the mock warning was present. A real v1 graph from C1 has still not been seen.
+
+Tests (under `edusync/packages/c2/tests/difficulty/`): `test_c1_client.py` (multipart bytes, 4xx/5xx/timeout/unreachable
+mapping against a local stdlib HTTP server, logs), `test_c1_providers.py` (both providers, bundled sample against the
+contract validator, regeneration, id derivation), `test_graph_provider_selection.py` (settings, factory choice, precedence,
+`/info`, end to end, error mapping, default stays the mock).
+
 ## 8. Mock and TODO register
 
 `PHASE1_TODO` in `difficulty/registry.py` (also returned in every response and by `/difficulty/info`):
 
-1. Real C1 connection (`C1ApiGraphProvider`); the graph is a mock unless supplied by the caller.
+1. Real C1 connection (`C1ApiGraphProvider`); the graph is a mock unless supplied by the caller. **Status:** `C1ApiGraphProvider` is implemented behind `EDUSYNC_C2_GRAPH_PROVIDER=c1_api` and off by default (see "Graph providers"), but this item stays open, and its text in `PHASE1_TODO` is unchanged, because C1 still emits only v0 graphs: the real v1 sample and its fields (descriptions, prerequisite edges, direction, confidence, source type) have never been seen, so group B has not run on real C1 output.
 2. Concept filter: alias merging (TDE = Transparent Data Encryption) and generic phrases. **Status:** a heuristic filter exists behind `EDUSYNC_C2_CONCEPT_FILTER=heuristic` (see "Concept filter"); the default is still the mock `mock_keep_all` until the heuristic has been validated on real C1 output, so this item stays open and its text in `PHASE1_TODO` is unchanged.
 3. Feature C: semantic definition/example detection (`expl.semantic_support_score` is a mock; `expl.semantic_definition_count` and `expl.semantic_example_count` are planned).
 4. `MiniLMFusionModel` and learned feature fusion (Phase 3, trained on lecturer labels).
@@ -745,7 +814,8 @@ Per-module mocks and TODOs found in the code:
 | Where | What |
 |-------|------|
 | `providers.MockC1GraphProvider` | Fabricates a graph from slide titles (titles ending in `?` or without alphanumerics are skipped): co-mention edges for titles sharing a slide, prerequisite edges between consecutive titles (confidence 0.5, `source_type` `inferred`); not real prerequisites |
-| `providers.C1ApiGraphProvider` | Not implemented (`NotImplementedError`) |
+| `providers.C1ApiGraphProvider` | Implemented, off by default (`EDUSYNC_C2_GRAPH_PROVIDER=c1_api`); only exercised against C1's v0 output and fake servers, never a real v1 graph |
+| `providers.FileGraphProvider` | Serves the synthetic sample (or a user file) labelled mock; not C1 output for the uploaded deck |
 | `providers.PayloadGraphProvider` | The caller's graph is trusted as C1's output; C2 does not verify that it matches the file |
 | `concepts.MockConceptFilter` | Keeps every concept (name `mock_keep_all`); still the default, stage `concepts` is `mocked` |
 | `concept_filter.HeuristicConceptFilter` | Real but not validated on real C1 output, and off by default (`EDUSYNC_C2_CONCEPT_FILTER=heuristic`); recall figures come from hand-written lists; known limits in "Concept filter" |
@@ -816,7 +886,7 @@ Paths are relative to `edusync/packages/c2/` unless they start with `docs/`. Tes
 |---|------|--------|----------|---------------|
 | 1 | End-to-end pre-lecture difficulty pipeline implemented | Done | `src/edusync_c2/difficulty/pipeline.py`; `POST /api/c2/difficulty` in `router.py`; `test_pipeline.py` (`test_v1_payload`, `test_v0_payload_group_b_unavailable`, `test_mock_provider`, `test_deterministic_and_roundtrip`), `test_router.py` (`test_with_graph`, `test_without_graph`, `test_pdf`) | The model is a rule baseline, not trained |
 | 2 | Four feature modules have defined inputs, outputs and test coverage | Done | `difficulty/features/{language,prerequisites,explanation,density}.py`; registry in `difficulty/registry.py`; `test_features_language.py`, `test_features_prerequisites.py`, `test_features_explanation.py`, `test_features_density.py`, `test_features_registry.py` (`test_names_and_order`, `test_statuses_real_deck`); group A vocabulary features: `test_vocab.py`, `test_wordpiece.py`, `test_lexicon.py`, `test_vocab_resources.py`, `test_baseline_golden.py` | Some features are mocked or unavailable by design (see the register in section 8) |
-| 3 | C1 knowledge-graph integration has a documented interface and can be tested with sample data | Partially done / pending C1 | Interface and contract: `docs/edusync/c1-c2-graph-contract.md`; `difficulty/graph.py`, `providers.py`; validator `difficulty/contract_check.py` and `scripts/validate_c1_graph.py`; synthetic v0/v1 graphs from `scripts/make_synthetic_data.py`; tests `test_contract_check.py`, `test_validate_script.py`, `test_providers.py`, `test_graph.py`, `test_synthetic.py` | C1's real v1 sample file is not on GitHub, so the contract has never been checked against real C1 output. `C1ApiGraphProvider` is not implemented |
+| 3 | C1 knowledge-graph integration has a documented interface and can be tested with sample data | Partially done / pending C1 | Interface and contract: `docs/edusync/c1-c2-graph-contract.md`; `difficulty/graph.py`, `providers.py`; validator `difficulty/contract_check.py` and `scripts/validate_c1_graph.py`; synthetic v0/v1 graphs from `scripts/make_synthetic_data.py`; tests `test_contract_check.py`, `test_validate_script.py`, `test_providers.py`, `test_graph.py`, `test_synthetic.py` | C1's real v1 sample file is not on GitHub, so the contract has never been checked against real C1 output. `C1ApiGraphProvider` is implemented (off by default) but has only met C1's v0 output |
 | 4 | Feature fusion and the MiniLM prediction interface are defined and connected | Partially done | Fusion: `difficulty/fusion.py`, `test_fusion.py`. Interface, factory and artifact spec: `difficulty/models.py` (`create_model`, `OnnxFusionModel.from_artifacts`, `MiniLMFusionModel`), `docs/edusync/c2-model-and-blueprint.md`; `test_model_contract.py` (reusable contract checks), `test_model_artifacts.py`, `test_models.py`; HTTP 501 selection in `test_router.py` (`test_minilm_is_501_and_not_cached`, `test_artifact_error_is_501`, `test_model_not_implemented_at_inference_is_501`) | Only the rule baseline can predict. `OnnxFusionModel` validates its artifacts but does not run inference, and `MiniLMFusionModel` is a TODO marker; both wait for Phase 3 |
 | 5 | The existing MiniLM blueprint has been located and assessed for reuse | Done | Assessment and the copy-in-Phase-3 decision in `docs/edusync/c2-model-and-blueprint.md`, section 5 | The assessment is documentation only; no blueprint code has been copied or run |
 | 6 | The pipeline returns structured concept-level results | Done | `DifficultyResponse` and `ConceptPrediction` in `difficulty/schemas.py` (label, raw `score`, feature statuses, provenance); `test_schemas.py`, `test_pipeline.py::test_deterministic_and_roundtrip`, `test_router.py::test_info_shows_model_fields` | `score` is a raw baseline value, not a probability; no probabilities exist yet |
@@ -842,7 +912,7 @@ What remains before Phase 1 can be called fully closed: merge PR #19 and these c
 
 **Using the logger.** Modules use `from edusync_c2.logger import get_logger` and `logger = get_logger(__name__)`. Names are placed under the `edusync_c2` namespace.
 
-**Configuration.** `EDUSYNC_C2_LOG_LEVEL` (DEBUG, INFO, WARNING or ERROR; default INFO; see `settings.py`). The concept filter has its own two variables, `EDUSYNC_C2_CONCEPT_FILTER` and `EDUSYNC_C2_CONCEPT_FILTER_EXTRAS` (see "Concept filter"). Logging is configured once, when `get_pipeline()` builds the cached pipeline, and never at import. `configure_logging` sets the level of the `edusync_c2` logger; it adds its own stderr handler only if the root logger has no handlers, so it does not touch an existing root logging setup.
+**Configuration.** `EDUSYNC_C2_LOG_LEVEL` (DEBUG, INFO, WARNING or ERROR; default INFO; see `settings.py`). The concept filter has its own two variables, `EDUSYNC_C2_CONCEPT_FILTER` and `EDUSYNC_C2_CONCEPT_FILTER_EXTRAS` (see "Concept filter"); the graph provider has four (see "Graph providers"). Logging is configured once, when `get_pipeline()` builds the cached pipeline, and never at import. `configure_logging` sets the level of the `edusync_c2` logger; it adds its own stderr handler only if the root logger has no handlers, so it does not touch an existing root logging setup.
 
 **Line format.** Handler format: `%(asctime)s %(levelname)s %(name)s [%(request_id)s] %(message)s`. The message is the event name first, then `key=value` fields.
 
@@ -858,6 +928,7 @@ What remains before Phase 1 can be called fully closed: merge PR #19 and these c
 | `vocab_loaded` | INFO | `words` (vocabulary entries), `lexicon` (terms), `sha` (first 8 hex digits of the vocabulary SHA-256); logged once per process, lazily on the first analysis (so during the first request's `features` step, before its `features` line), by `edusync_c2.difficulty.features.vocab` |
 | `vocab_unavailable` | WARNING | `reason` (exception class name); logged once per process when the vocabulary resources cannot be loaded |
 | `materials_rejected` | WARNING | `status`, `reason` |
+| `c1_request_failed` | WARNING | `status`, `reason` (code such as `c1_http_503`, `timeout`, `unreachable`, `invalid_json`; logger `edusync_c2.c1_client`; no content, no file name) |
 | `graph_warning` | WARNING | `count` |
 | `graph_cycle` | WARNING | `concepts` |
 | `rejected` (router) | WARNING | `status`, `reason` (and `limit_mb` for 413) |
@@ -896,7 +967,7 @@ What remains before Phase 1 can be called fully closed: merge PR #19 and these c
 3. Feature C: `expl.semantic_support_score` (mock) and the planned `expl.semantic_definition_count` and `expl.semantic_example_count` (semantic definition/example detection).
 4. Feature B against the real C1 graph: `prereq.weighted_depth` and `prereq.dependents_count` are built (graph-metrics step, no schema change). Open: run all of group B on a real C1 v1 graph (needs the v1 contract to exist; see the contract doc and its contract tests).
 5. Concept filter: a heuristic filter (alias merging, generic phrases) exists since milestone M2 behind `EDUSYNC_C2_CONCEPT_FILTER=heuristic` (section "Concept filter"). Open: run it on real C1 output, then decide whether to make it the default; C1 aliases could replace parts of it.
-6. `C1ApiGraphProvider`, calling C1's graph endpoint with the same file.
+6. `C1ApiGraphProvider`: done in milestone M5b (section "Graph providers"), with a bundled sample graph behind a `file` provider. Both are off by default. Open: run it against a real C1 v1 graph (C1 still returns v0), then decide whether to make it the default.
 
 **Phase 3 - dataset and model.**
 

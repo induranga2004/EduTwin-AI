@@ -23,7 +23,7 @@ curl -F "file=@lecture.pptx" -F "c1_graph=<graph.json" http://localhost:8100/api
 uv run python packages/c2/scripts/make_synthetic_data.py   # synthetic decks, graphs, labels
 ```
 
-Without `c1_graph` the graph is a mock built from slide titles (labelled `mock` in the response).
+Without `c1_graph` the graph is a mock built from slide titles (labelled `mock` in the response), unless `EDUSYNC_C2_GRAPH_PROVIDER` selects `file` or `c1_api` (see Settings).
 
 ## Endpoints (mounted under `/api/c2`)
 
@@ -44,18 +44,20 @@ packages/c2/
   scripts/make_synthetic_data.py      # CLI: seeded synthetic decks, C1 graphs, labels
   scripts/validate_c1_graph.py        # CLI: check a C1 graph file against the contract
   scripts/feature_report.py           # CLI: per-feature report; regenerates the registry snapshot
+  scripts/make_sample_graph.py        # CLI: rewrites the bundled sample C1 graph (synthetic)
   data/synthetic/                     # generated; .pptx/.pdf git-ignored; labels are circular
   src/edusync_c2/
     router.py                         # HTTP routes
     comprehension.py, schemas.py      # later live stage (rule-based placeholder)
     difficulty/
       materials.py                    # PPTX/PDF parser
-      graph.py, providers.py          # C1 graph view, payload/mock/TODO providers
+      graph.py, providers.py          # C1 graph view; payload, mock, file and C1 API providers
+      c1_client.py, errors.py         # stdlib HTTP call to C1's graph route; GraphProviderError
       concepts.py                     # concepts on slides, filter protocols, mock filter, create_concept_filter
       concept_filter.py               # HeuristicConceptFilter: generic-phrase drop, alias merge (opt-in)
       registry.py                     # 35 features, FEATURE_SCHEMA_VERSION, PHASE1_TODO
       features/                       # groups A-D; vocab.py, wordpiece.py, lexicon.py for the vocabulary features
-      resources/                      # vendored vocabulary + domain lexicon (see Vendored resources)
+      resources/                      # vendored vocabulary + domain lexicon (see Vendored resources); sample_c1_graph_v1.json
       fusion.py, models.py            # ordered features + mask; RuleBaselineModel
       pipeline.py, schemas.py         # orchestration; contracts
       synthetic.py                    # synthetic data helpers
@@ -94,6 +96,10 @@ Read from environment variables (prefix `EDUSYNC_C2_`, see `src/edusync_c2/setti
 | `EDUSYNC_C2_MODEL_DIR` | folder path | unset | Model artifact folder for `minilm` (spec in the model doc above) |
 | `EDUSYNC_C2_CONCEPT_FILTER` | `mock_keep_all`, `heuristic` | `mock_keep_all` | Concept filter. The mock keeps every concept; `heuristic` drops generic slide phrases and merges aliases (TDE = Transparent Data Encryption). Not validated on real C1 output, hence off by default |
 | `EDUSYNC_C2_CONCEPT_FILTER_EXTRAS` | `true`, `false` | `false` | With `heuristic` only: also drop Example, Definition, Exercise, Demo, Quiz, Lab slides |
+| `EDUSYNC_C2_GRAPH_PROVIDER` | `mock`, `file`, `c1_api` | `mock` | Graph used when the request has no `c1_graph`. `file` serves the bundled synthetic sample (labelled mock); `c1_api` asks C1 per request. Errors: C1 4xx 422, C1 5xx or unreachable 502, timeout 504, bad graph file 500 |
+| `EDUSYNC_C2_GRAPH_FILE` | file path | unset | `file` provider only: JSON graph to serve instead of the bundled sample |
+| `EDUSYNC_C2_C1_BASE_URL` | `http://` or `https://` URL | `http://127.0.0.1:8100/api/c1` | `c1_api` only: base URL of C1 |
+| `EDUSYNC_C2_C1_TIMEOUT_S` | number > 0 | `60` | `c1_api` only: timeout of the C1 call in seconds |
 
 Rules, measured numbers and limits of the concept filter: "Concept filter" in the [design document](../../../docs/edusync/c2-difficulty.md).
 
