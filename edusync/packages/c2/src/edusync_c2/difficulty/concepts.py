@@ -3,6 +3,7 @@
 import re
 from typing import Protocol
 
+from edusync_c2.difficulty.ids import casefold_id
 from edusync_c2.difficulty.schemas import (
     AlignmentStatus,
     ConceptRecord,
@@ -14,7 +15,7 @@ from edusync_c2.difficulty.schemas import (
 
 def normalize(text: str) -> str:
     """Casefold, collapse whitespace and strip (the same rule C1 uses for concept ids)."""
-    return " ".join(text.casefold().split())
+    return casefold_id(text)
 
 
 def _phrase_pattern(term: str) -> re.Pattern[str] | None:

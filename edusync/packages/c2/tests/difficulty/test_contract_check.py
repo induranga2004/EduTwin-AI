@@ -334,3 +334,10 @@ def test_never_raises_on_garbage(payload: object, expected: str) -> None:
     report = check_c1_graph(payload, expected=expected)  # type: ignore[arg-type]
     assert isinstance(report, ContractReport)
     assert report.stats["errors"] + report.stats["warnings"] == len(report.findings)
+
+
+def test_slug_detection_uses_the_hyphen_slug_of_punctuated_labels() -> None:
+    graph = {"graph": {"nodes": [{"id": "tcp-ip", "label": "TCP/IP"}], "edges": []}}
+    assert check_c1_graph(graph).version == "mixed"  # 'tcp-ip' is the slug of 'TCP/IP'
+    graph["graph"]["nodes"][0]["id"] = "tcp/ip"  # the casefolded label, so plain v0
+    assert check_c1_graph(graph).version == "v0"

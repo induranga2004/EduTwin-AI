@@ -5,6 +5,7 @@ import re
 from typing import Protocol
 
 from edusync_c2.difficulty.concepts import locate_slides, normalize
+from edusync_c2.difficulty.ids import casefold_id
 from edusync_c2.difficulty.schemas import (
     C1GraphResponse,
     GraphContext,
@@ -17,8 +18,11 @@ _DIRECTION = "source_is_prerequisite_of_target"
 
 
 def slugify(label: str) -> str:
-    """C1 ids are casefolded labels, so this is the same as ``normalize``."""
-    return normalize(label)
+    """Alias of ``casefold_id``: the v0/mock/fallback id of a label (casefolded, spaces kept).
+
+    The name is historical. It is not a hyphen slug; for the C1 v1 id use ``ids.slug_id``.
+    """
+    return casefold_id(label)
 
 
 class GraphProvider(Protocol):

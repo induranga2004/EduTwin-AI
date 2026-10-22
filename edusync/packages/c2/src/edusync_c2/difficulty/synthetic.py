@@ -11,7 +11,6 @@ needs no font encoding.
 
 import csv
 import random
-import re
 import struct
 import zlib
 from io import BytesIO, StringIO
@@ -21,12 +20,13 @@ from pptx import Presentation
 from pptx.util import Inches, Pt
 from pydantic import BaseModel, Field
 
+from edusync_c2.difficulty.ids import slug_id
 from edusync_c2.difficulty.schemas import DifficultyLabel
 
 
 def slugify(text: str) -> str:
     """C1 v1 id rule: lowercase letters/digits joined by single hyphens (ASCII labels)."""
-    return re.sub(r"[^a-z0-9]+", "-", text.casefold()).strip("-")
+    return slug_id(text)
 
 
 _ADJECTIVES = [
