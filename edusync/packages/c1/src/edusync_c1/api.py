@@ -129,6 +129,45 @@ async def generate_lecture_graph(settings: SettingsDep, file: FileDep) -> GraphR
         await file.close()
 
 
+@router.post("/lectures/demo-graph", response_model=GraphResponse)
+async def generate_demo_graph(
+    settings: SettingsDep,
+    name: Annotated[str, Query(description="Sample file name")] = "Cyber_Resilience_Energy_Sector.pptx",
+) -> GraphResponse:
+    """Generate a prerequisite knowledge graph directly from a bundled sample presentation."""
+    candidate_paths = [
+        Path(__file__).resolve().parent / "samples" / name,
+        Path(__file__).resolve().parents[2] / "data" / "samples" / name,
+        uploads_dir(settings) / name,
+    ]
+    target: Path | None = None
+    for p in candidate_paths:
+        if p.exists() and p.is_file():
+            target = p
+            break
+
+    if target is None:
+        raise HTTPException(404, f"Sample file '{name}' not found.")
+
+    try:
+        content = target.read_bytes()
+        pages = extract_document_pages(target.name, content)
+        full_text = combine_page_text(pages)
+        concepts = extract_concepts(full_text)
+        return GraphResponse(
+            lecture_id=str(uuid4()),
+            filename=target.name,
+            page_count=len(pages),
+            concept_count=len(concepts),
+            concepts=concepts,
+            graph=build_knowledge_graph(pages, concepts),
+            message="Demo knowledge graph generated successfully.",
+        )
+    except Exception as exc:
+        logger.exception("Demo graph generation failed")
+        raise HTTPException(500, "Could not generate the demo knowledge graph.") from exc
+
+
 @router.post("/lectures/transcribe", response_model=TranscribeResponse)
 async def transcribe_lecture(
     settings: SettingsDep,

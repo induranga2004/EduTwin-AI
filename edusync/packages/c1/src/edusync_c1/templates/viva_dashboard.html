@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EduTwin-AI | C1 Curriculum Alignment & Navigation Intelligence</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.9/dist/dist/vis-network.min.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.9/dist/vis-network.min.js"></script>
   <style>
     :root {
       --bg: #0f172a;
@@ -14,45 +12,123 @@
       --text: #f8fafc;
       --text-muted: #94a3b8;
       --primary: #38bdf8;
+      --primary-hover: #0284c7;
       --success: #22c55e;
       --warning: #eab308;
       --danger: #ef4444;
       --purple: #a855f7;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
-    header { background: var(--card-bg); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    header { background: var(--card-bg); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; }
     .badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; background: rgba(56, 189, 248, 0.15); color: var(--primary); border: 1px solid rgba(56, 189, 248, 0.3); }
     .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); margin-right: 6px; animation: pulse 2s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     
-    .container { display: grid; grid-template-columns: 420px 1fr; gap: 20px; padding: 20px; flex: 1; height: calc(100vh - 70px); }
-    .panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; }
-    .panel-header { padding: 14px 18px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
-    .panel-body { padding: 16px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+    .container { display: grid; grid-template-columns: 390px 1fr; gap: 16px; padding: 16px; flex: 1; height: calc(100vh - 58px); }
+    .panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+    .panel-header { padding: 12px 18px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
+    .panel-body { padding: 16px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
 
     /* Drop Zone */
-    .drop-zone { border: 2px dashed var(--border); border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; background: rgba(15, 23, 42, 0.4); }
-    .drop-zone:hover { border-color: var(--primary); background: rgba(56, 189, 248, 0.05); }
-    .btn { background: var(--primary); color: #000; border: none; padding: 10px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: filter 0.2s; font-size: 13px; }
-    .btn:hover { filter: brightness(1.1); }
+    .drop-zone { border: 2px dashed var(--border); border-radius: 8px; padding: 18px; text-align: center; cursor: pointer; transition: all 0.2s; background: rgba(15, 23, 42, 0.5); }
+    .drop-zone:hover { border-color: var(--primary); background: rgba(56, 189, 248, 0.08); }
+    .drop-zone.processing { border-color: var(--primary); background: rgba(56, 189, 248, 0.12); pointer-events: none; }
+    .drop-zone.has-file { border-color: var(--success); background: rgba(34, 197, 94, 0.08); }
+
+    .btn { background: var(--primary); color: #000; border: none; padding: 10px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; font-size: 13px; }
+    .btn:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-primary { background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; border: 1px solid #38bdf8; }
     .btn-secondary { background: var(--border); color: var(--text); }
     .btn-danger { background: var(--danger); color: #fff; }
     .btn-warning { background: var(--warning); color: #000; }
 
     /* Speech Controls */
     .speech-box { background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
-    .transcript-box { background: #0b1120; border: 1px solid #1e293b; border-radius: 6px; padding: 10px; font-family: monospace; font-size: 12px; color: #38bdf8; min-height: 50px; max-height: 90px; overflow-y: auto; margin-top: 10px; }
+    .transcript-box { background: #0b1120; border: 1px solid #1e293b; border-radius: 6px; padding: 10px; font-family: monospace; font-size: 12px; color: #38bdf8; min-height: 48px; max-height: 80px; overflow-y: auto; margin-top: 8px; line-height: 1.4; }
 
     /* Alert Toast */
     .skip-alert { background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); border-left: 5px solid var(--danger); border-radius: 6px; padding: 12px; color: #fca5a5; display: none; animation: slideIn 0.3s ease; }
     @keyframes slideIn { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
     /* Graph Canvas */
-    #graph-canvas { width: 100%; height: 100%; background: #090d16; }
-    .legend { position: absolute; bottom: 20px; right: 20px; background: rgba(30, 41, 59, 0.9); border: 1px solid var(--border); padding: 10px 14px; border-radius: 8px; font-size: 12px; display: flex; gap: 14px; backdrop-filter: blur(4px); }
+    #graph-canvas { flex: 1; width: 100%; height: 100%; background: #090d16; position: relative; overflow: hidden; }
+    
+    /* Canvas Placeholder */
+    #canvas-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      pointer-events: none;
+      z-index: 5;
+      padding: 30px;
+      text-align: center;
+    }
+
+    /* Canvas Loading Overlay */
+    #canvas-loading {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(5px);
+      z-index: 10;
+      color: #f8fafc;
+    }
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 4px solid rgba(56, 189, 248, 0.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      margin-bottom: 14px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Canvas Floating Toolbar */
+    .canvas-toolbar {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      display: none;
+      gap: 6px;
+      z-index: 6;
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px 8px;
+      backdrop-filter: blur(6px);
+    }
+    .canvas-toolbar button {
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: 12px;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.15s;
+    }
+    .canvas-toolbar button:hover {
+      background: rgba(56, 189, 248, 0.2);
+      color: var(--primary);
+    }
+
+    .legend { position: absolute; bottom: 16px; right: 16px; background: rgba(30, 41, 59, 0.9); border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; font-size: 11px; display: flex; gap: 12px; backdrop-filter: blur(4px); z-index: 6; }
     .legend-item { display: flex; align-items: center; gap: 6px; }
-    .legend-color { width: 12px; height: 12px; border-radius: 50%; }
+    .legend-color { width: 10px; height: 10px; border-radius: 50%; }
 
     /* Node Info Sidebar */
     .node-info-card { background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 13px; line-height: 1.5; }
@@ -67,12 +143,12 @@
 
   <header>
     <div>
-      <h2 style="font-size: 18px; font-weight: 700; letter-spacing: -0.02em;">EduTwin-AI <span style="color: var(--primary);">Component C1</span></h2>
-      <p style="font-size: 12px; color: var(--text-muted);">Curriculum Alignment & Lecture Navigation Intelligence</p>
+      <h2 style="font-size: 17px; font-weight: 700; letter-spacing: -0.02em;">EduTwin-AI <span style="color: var(--primary);">Component C1</span></h2>
+      <p style="font-size: 11px; color: var(--text-muted);">Curriculum Alignment & Lecture Navigation Intelligence</p>
     </div>
     <div style="display: flex; gap: 12px; align-items: center;">
       <span class="badge"><span class="status-dot"></span> Backend Connected (FastAPI :8100)</span>
-      <span class="badge" style="background: rgba(168, 85, 247, 0.15); color: var(--purple); border-color: rgba(168, 85, 247, 0.3);">IISA Course</span>
+      <span id="active-slide-badge" class="badge" style="background: rgba(56, 189, 248, 0.1); color: var(--primary); border-color: rgba(56, 189, 248, 0.3);">No Slides Active</span>
     </div>
   </header>
 
@@ -81,24 +157,47 @@
     <div class="panel">
       <div class="panel-header">
         <span>Lecture Controls</span>
-        <span id="course-label" style="font-size: 11px; color: var(--text-muted);">No Slides Loaded</span>
+        <span id="course-label" style="font-size: 11px; color: var(--text-muted);">Ready for Upload</span>
       </div>
       <div class="panel-body">
         
         <!-- Step 1: Slide Upload -->
         <div>
-          <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">1. Lecture Slide Deck</label>
-          <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-            <input type="file" id="file-input" style="display: none;" accept=".pdf,.pptx" onchange="handleFileUpload(event)">
-            <p style="font-size: 13px; font-weight: 600;" id="file-name-label">📄 Drag & Drop PDF / PPTX Slide Deck</p>
-            <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Supports native multi-page university presentations</p>
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">1. Lecture Slide Deck</label>
+          <div class="drop-zone" id="drop-zone" onclick="triggerFilePicker()">
+            <input type="file" id="file-input" style="display: none;" accept=".pdf,.pptx" onchange="onFileChosen(event)">
+            <p style="font-size: 13px; font-weight: 600; color: #f8fafc;" id="file-name-label">📄 Click or Drag & Drop PDF / PPTX</p>
+            <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;" id="file-sub-label">Automatic instant concept extraction & DAG builder</p>
           </div>
-          <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="loadSampleIISAGraph()">⚡ Load IISA 6-Module Sample Curriculum</button>
+          
+          <div style="display: flex; gap: 8px; margin-top: 10px;">
+            <button class="btn btn-primary" id="build-graph-btn" style="flex: 1; font-size: 13px; padding: 12px;" onclick="handleButtonClick()">
+              🚀 Select Slides to Build Knowledge Graph
+            </button>
+            <button class="btn btn-secondary" id="clear-btn" style="display: none; padding: 12px; color: #fca5a5; border-color: rgba(239,68,68,0.4);" onclick="clearUploadedSlides()" title="Clear Slides & Reset Canvas">
+              🗑️ Clear
+            </button>
+          </div>
+
+          <!-- Quick Test Demo Buttons -->
+          <div style="margin-top: 10px; padding: 8px; background: rgba(15, 23, 42, 0.4); border: 1px solid var(--border); border-radius: 6px;">
+            <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">
+              ⚡ Quick Demo Slides:
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <button class="btn btn-secondary" style="flex: 1; font-size: 11px; padding: 6px 8px;" onclick="loadDemoSlides('Cyber_Resilience_Energy_Sector.pptx', 'Cyber Resilience (PPTX)')">
+                📊 Cyber (PPTX)
+              </button>
+              <button class="btn btn-secondary" style="flex: 1; font-size: 11px; padding: 6px 8px;" onclick="loadDemoSlides('IISA_Information_Security.pdf', 'InfoSec (PDF)')">
+                📄 InfoSec (PDF)
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Step 2: Live Speech Console -->
         <div class="speech-box">
-          <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">2. Live Speech-to-Graph Console</label>
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">2. Live Speech-to-Graph Console</label>
           <div style="display: flex; gap: 8px; margin-top: 8px;">
             <button class="btn btn-primary" id="mic-btn" style="flex: 1;" onclick="toggleMicrophone()">🎙️ Start Live Mic</button>
             <button class="btn btn-secondary" onclick="simulateSpeechChunk()">Simulate Step</button>
@@ -111,12 +210,12 @@
           <h4 style="color: #f87171; font-size: 13px; display: flex; align-items: center; gap: 6px;">
             <span>⚠️</span> Prerequisite Skip Violation Detected!
           </h4>
-          <p id="skip-alert-msg" style="font-size: 12px; margin-top: 4px; line-height: 1.4;">Access Control introduced without prior delivery of User Authentication.</p>
+          <p id="skip-alert-msg" style="font-size: 12px; margin-top: 4px; line-height: 1.4;">Concept introduced without prior delivery of foundational prerequisite(s).</p>
         </div>
 
         <!-- Step 3: Late Joiner Catch-Up -->
         <div>
-          <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">3. Student Personalization</label>
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">3. Student Personalization</label>
           <button class="btn btn-secondary" style="width: 100%; margin-top: 6px; border-color: rgba(168, 85, 247, 0.4); color: var(--purple);" onclick="openCatchupModal()">
             🎓 Simulate Late-Joiner Catch-Up (Minute 14)
           </button>
@@ -141,11 +240,38 @@
         <span>Prerequisite Knowledge Graph DAG (G_planned & G_delivered)</span>
         <span id="graph-stats" style="font-size: 12px; color: var(--primary);">0 Nodes | 0 Prerequisite Edges</span>
       </div>
+      
+      <!-- Canvas Controls Toolbar -->
+      <div class="canvas-toolbar" id="canvas-toolbar">
+        <button onclick="centerGraphView()" title="Fit all nodes inside view">🎯 Center / Fit</button>
+        <button onclick="zoomInGraph()" title="Zoom In">🔍+ Zoom In</button>
+        <button onclick="zoomOutGraph()" title="Zoom Out">🔍- Zoom Out</button>
+      </div>
+
+      <!-- Graph Canvas Container -->
       <div id="graph-canvas"></div>
+
+      <!-- Empty State Placeholder -->
+      <div id="canvas-placeholder">
+        <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.8;">🎓</div>
+        <h3 style="color: #f8fafc; font-size: 16px; margin-bottom: 6px;">No Lecture Slides Loaded</h3>
+        <p style="font-size: 13px; max-width: 400px; line-height: 1.5;">
+          Select or drag & drop your lecture slides (<strong>.pptx</strong> or <strong>.pdf</strong>) on the left panel to automatically extract curriculum concepts and build the prerequisite graph.
+        </p>
+      </div>
+
+      <!-- Loading State Overlay -->
+      <div id="canvas-loading">
+        <div class="spinner"></div>
+        <h3 style="font-size: 16px; font-weight: 700; color: #38bdf8; margin-bottom: 6px;">Building Knowledge Graph...</h3>
+        <p id="loading-status-text" style="font-size: 12px; color: var(--text-muted); max-width: 380px; text-align: center; line-height: 1.5;">
+          Extracting concepts, inferring prerequisite links, and rendering DAG layout...
+        </p>
+      </div>
 
       <!-- Color Legend -->
       <div class="legend">
-        <div class="legend-item"><div class="legend-color" style="background: #475569;"></div> Not Yet Observed</div>
+        <div class="legend-item"><div class="legend-color" style="background: #0284c7;"></div> Not Yet Observed</div>
         <div class="legend-item"><div class="legend-color" style="background: var(--warning);"></div> Introduced</div>
         <div class="legend-item"><div class="legend-color" style="background: var(--success);"></div> Adequately Covered</div>
       </div>
@@ -160,7 +286,7 @@
         <button onclick="closeCatchupModal()" style="background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer;">✕</button>
       </div>
       <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
-        You joined at <strong style="color: var(--text);">Minute 14:00</strong>. Our topological sort has linearized your 4 missed concepts in strict prerequisite sequence:
+        You joined at <strong style="color: var(--text);">Minute 14:00</strong>. Our topological sort has linearized your missed concepts in strict prerequisite sequence:
       </p>
       <div id="catchup-content" style="display: flex; flex-direction: column; gap: 12px;"></div>
       <button class="btn btn-primary" style="width: 100%; margin-top: 20px;" onclick="closeCatchupModal()">I'm Ready! Return to Live Lecture</button>
@@ -251,180 +377,480 @@
 
 
   <script>
-    let network = null;
-    let nodesDataset = null;
-    let edgesDataset = null;
     let currentGraph = null;
+    let stagedFile = null;
     let isRecording = false;
     let recognition = null;
+    let panX = 40;
+    let panY = 40;
+    let currentScale = 0.95;
+    let isPanning = false;
+    let startX = 0;
+    let startY = 0;
 
-    // Default 6 IISA Course Units
-    const SAMPLE_IISA_GRAPH = {
-      nodes: [
-        { id: "intro_infosec", label: "Introduction to\nInformation Security", description: "Foundational principles of the CIA triad (Confidentiality, Integrity, Availability), threat vectors, and risk assessment.", depth: 0, status: "not_yet_observed" },
-        { id: "crypto_basics", label: "Cryptography\nBasics", description: "Foundational cryptosystem concepts including plaintext, ciphertext, cryptographic keys, and Kerckhoffs's principle.", depth: 1, status: "not_yet_observed" },
-        { id: "symmetric_encryption", label: "Symmetric\nEncryption", description: "Cryptographic primitives sharing a single secret key for both encryption and decryption (AES, block ciphers).", depth: 2, status: "not_yet_observed" },
-        { id: "hash_functions", label: "Cryptographic\nHash Functions", description: "Deterministic one-way mathematical algorithms producing fixed-size digests with collision resistance (SHA-256).", depth: 2, status: "not_yet_observed" },
-        { id: "user_authentication", label: "User\nAuthentication", description: "Verifying claimed digital identities via salted cryptographic password hashing, multi-factor tokens, and challenge-response.", depth: 3, status: "not_yet_observed" },
-        { id: "access_control", label: "Access\nControl", description: "Enforcing authorization policies (RBAC, ABAC, principle of least privilege) following identity verification.", depth: 4, status: "not_yet_observed" }
-      ],
-      edges: [
-        { from: "intro_infosec", to: "crypto_basics", label: "prerequisite" },
-        { from: "crypto_basics", to: "symmetric_encryption", label: "prerequisite" },
-        { from: "crypto_basics", to: "hash_functions", label: "prerequisite" },
-        { from: "hash_functions", to: "user_authentication", label: "prerequisite" },
-        { from: "symmetric_encryption", to: "user_authentication", label: "prerequisite" },
-        { from: "user_authentication", to: "access_control", label: "prerequisite" }
-      ]
-    };
-
-    function initGraph(graphData) {
-      currentGraph = graphData;
-      const container = document.getElementById("graph-canvas");
-      
-      const visNodes = graphData.nodes.map(n => ({
-        id: n.id,
-        label: n.label,
-        shape: "box",
-        margin: 10,
-        font: { color: "#ffffff", size: 13, bold: true },
-        color: {
-          background: getColorForStatus(n.status),
-          border: "#38bdf8",
-          highlight: { background: "#0284c7", border: "#ffffff" }
-        },
-        data: n
-      }));
-
-      const visEdges = graphData.edges.map(e => ({
-        from: e.from || e.source,
-        to: e.to || e.target,
-        arrows: "to",
-        color: { color: "#38bdf8", opacity: 0.8 },
-        width: 2,
-        smooth: { type: "cubicBezier", roundness: 0.2 }
-      }));
-
-      nodesDataset = new vis.DataSet(visNodes);
-      edgesDataset = new vis.DataSet(visEdges);
-
-      const options = {
-        layout: {
-          hierarchical: {
-            direction: "UD",
-            sortMethod: "directed",
-            levelSeparation: 110,
-            nodeSpacing: 180
-          }
-        },
-        physics: false,
-        interaction: { hover: true, zoomView: true }
-      };
-
-      network = new vis.Network(container, { nodes: nodesDataset, edges: edgesDataset }, options);
-
-      network.on("click", function(params) {
-        if (params.nodes.length > 0) {
-          const nodeId = params.nodes[0];
-          const node = currentGraph.nodes.find(n => n.id === nodeId);
-          if (node) showNodeDetails(node);
-        }
-      });
-
-      document.getElementById("graph-stats").innerText = `${graphData.nodes.length} Nodes | ${graphData.edges.length} Prerequisite Edges`;
+    function escapeXml(unsafe) {
+      if (unsafe === undefined || unsafe === null) return "";
+      return String(unsafe)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
     }
 
-    function getColorForStatus(status) {
-      if (status === "adequately_covered") return "#22c55e"; // Green
-      if (status === "introduced") return "#eab308";        // Yellow
-      return "#334155";                                      // Slate Grey
+    function sanitizeId(id) {
+      return String(id).replace(/[^a-zA-Z0-9_-]/g, "_");
     }
 
-    function showNodeDetails(node) {
-      document.getElementById("info-node-title").innerText = node.label.replace("\n", " ");
-      document.getElementById("info-node-desc").innerText = node.description || "Prerequisite concept extracted from lecture slides.";
-      document.getElementById("info-node-meta").innerHTML = `
-        <span><strong>Depth:</strong> Level ${node.depth !== undefined ? node.depth : 1}</span>
-        <span><strong>Status:</strong> <span style="color: ${getColorForStatus(node.status)}">${node.status}</span></span>
-      `;
+    function triggerFilePicker() {
+      const fi = document.getElementById("file-input");
+      fi.value = "";
+      fi.click();
     }
 
-    function loadSampleIISAGraph() {
-      document.getElementById("file-name-label").innerText = "📄 IISA_Module_Intro_Security.pdf (Loaded)";
-      document.getElementById("course-label").innerText = "IISA Course Units";
-      initGraph(SAMPLE_IISA_GRAPH);
-    }
-
-    async function handleFileUpload(event) {
+    function onFileChosen(event) {
       const file = (event.target && event.target.files && event.target.files[0]) ||
                    (event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]);
       if (!file) return;
 
-      document.getElementById("file-name-label").innerText = `📄 Uploading ${file.name}...`;
+      stagedFile = file;
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+      const dropZone = document.getElementById("drop-zone");
+      dropZone.classList.add("has-file");
+      
+      document.getElementById("file-name-label").innerHTML = `📄 <strong style="color: #38bdf8;">${escapeXml(file.name)}</strong> (${sizeMb} MB)`;
+      document.getElementById("file-sub-label").innerHTML = `<span style="color: #22c55e;">File selected. Generating graph now...</span>`;
+      
+      const btn = document.getElementById("build-graph-btn");
+      btn.innerHTML = `⚡ Generate Prerequisite Graph (${escapeXml(file.name.substring(0, 18))})`;
+      document.getElementById("clear-btn").style.display = "inline-flex";
+
+      // Auto-trigger graph generation immediately!
+      uploadAndBuildGraph(file);
+    }
+
+    function handleButtonClick() {
+      if (stagedFile) {
+        uploadAndBuildGraph(stagedFile);
+      } else {
+        triggerFilePicker();
+      }
+    }
+
+    function clearUploadedSlides() {
+      stagedFile = null;
+      currentGraph = null;
+      const fi = document.getElementById("file-input");
+      if (fi) fi.value = "";
+
+      const dropZone = document.getElementById("drop-zone");
+      if (dropZone) dropZone.classList.remove("has-file");
+
+      document.getElementById("file-name-label").innerText = "📄 Click or Drag & Drop PDF / PPTX";
+      document.getElementById("file-sub-label").innerText = "Automatic instant concept extraction & DAG builder";
+
+      const btn = document.getElementById("build-graph-btn");
+      btn.disabled = false;
+      btn.innerHTML = "🚀 Select Slides to Build Knowledge Graph";
+      document.getElementById("clear-btn").style.display = "none";
+
+      document.getElementById("active-slide-badge").innerText = "No Slides Active";
+      document.getElementById("active-slide-badge").style.background = "rgba(56, 189, 248, 0.1)";
+      document.getElementById("active-slide-badge").style.color = "var(--primary)";
+      document.getElementById("active-slide-badge").style.borderColor = "rgba(56, 189, 248, 0.3)";
+
+      document.getElementById("course-label").innerText = "Ready for Upload";
+      document.getElementById("graph-stats").innerText = "0 Nodes | 0 Prerequisite Edges";
+
+      document.getElementById("graph-canvas").innerHTML = "";
+      document.getElementById("canvas-placeholder").style.display = "flex";
+      document.getElementById("canvas-toolbar").style.display = "none";
+      document.getElementById("canvas-loading").style.display = "none";
+
+      document.getElementById("info-node-title").innerText = "Click a node on the graph";
+      document.getElementById("info-node-desc").innerText = "Select any concept to view its extracted definition, DAG chain depth, and prerequisite parents.";
+      document.getElementById("info-node-meta").innerHTML = "";
+    }
+
+    async function uploadAndBuildGraph(file) {
+      if (!file) return;
+
+      const btn = document.getElementById("build-graph-btn");
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px; margin: 0; display: inline-block; vertical-align: middle;"></span> Analyzing ${escapeXml(file.name)}...`;
+      
+      document.getElementById("canvas-placeholder").style.display = "none";
+      document.getElementById("canvas-loading").style.display = "flex";
+      document.getElementById("loading-status-text").innerText = `Extracting concepts and inferring prerequisite DAG from ${file.name}...`;
+
       const formData = new FormData();
       formData.append("file", file);
 
       const apiPrefix = window.location.pathname.startsWith("/edusync") ? "/edusync/api/c1" : "/api/c1";
       try {
         const response = await fetch(`${apiPrefix}/lectures/graph`, { method: "POST", body: formData });
-        if (!response.ok) throw new Error("Upload failed: " + response.statusText);
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Server returned ${response.status}: ${errText || response.statusText}`);
+        }
         const data = await response.json();
         
-        document.getElementById("file-name-label").innerText = `📄 ${file.name} (Active)`;
-        document.getElementById("course-label").innerText = `${data.concept_count} Concepts Extracted`;
-
-        const graphData = {
-          nodes: data.graph.nodes.map(n => ({
-            id: n.id,
-            label: n.label,
-            description: n.description || "Prerequisite concept extracted from uploaded document.",
-            depth: n.depth !== undefined ? n.depth : 1,
-            status: "not_yet_observed"
-          })),
-          edges: data.graph.edges.map(e => ({
-            from: e.source,
-            to: e.target
-          }))
-        };
-        initGraph(graphData);
+        displayGraphData(data, file.name);
+        
+        btn.disabled = false;
+        btn.innerText = `🔄 Re-Generate / Upload New Slides`;
+        document.getElementById("clear-btn").style.display = "inline-flex";
+        document.getElementById("file-sub-label").innerHTML = `<span style="color: #22c55e;">✅ ${data.concept_count} Concepts & ${data.graph.edges.length} Edges Active</span>`;
       } catch (err) {
-        alert("Could not process file: " + err.message);
-        document.getElementById("file-name-label").innerText = "📄 Drag & Drop PDF / PPTX Slide Deck";
+        document.getElementById("canvas-loading").style.display = "none";
+        document.getElementById("canvas-placeholder").style.display = "flex";
+        alert("Upload error: " + err.message);
+        btn.disabled = false;
+        btn.innerText = "🚀 Select Slides to Build Knowledge Graph";
+        document.getElementById("file-sub-label").innerText = "Error encountered. Click to try again.";
       }
     }
 
-    // Step-by-step viva simulation sequence
-    const SIMULATION_STEPS = [
-      { text: "Introduction to Information Security establishes the CIA triad: Confidentiality, Integrity, and Availability.", target: "intro_infosec", status: "adequately_covered", alert: false },
-      { text: "Cryptography Basics provides the foundation of plaintext, ciphertext, and secret keys.", target: "crypto_basics", status: "adequately_covered", alert: false },
-      { text: "Now let's examine Access Control policies in corporate environments.", target: "access_control", status: "introduced", alert: true, alertMsg: "Concept 'Access Control' introduced at 04:20 without prior delivery of foundational prerequisite(s): User Authentication, Cryptographic Hash Functions!" },
-      { text: "Returning to foundation: Cryptographic Hash Functions provide pre-image and collision resistance.", target: "hash_functions", status: "adequately_covered", alert: false },
-      { text: "User Authentication validates identities using salted hash digests and passwords.", target: "user_authentication", status: "adequately_covered", alert: false }
-    ];
-    let simIndex = 0;
+    async function loadDemoSlides(sampleName, displayName) {
+      const btn = document.getElementById("build-graph-btn");
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px; margin: 0; display: inline-block; vertical-align: middle;"></span> Loading ${escapeXml(displayName)}...`;
 
-    function simulateSpeechChunk() {
-      if (!currentGraph) loadSampleIISAGraph();
-      if (simIndex >= SIMULATION_STEPS.length) simIndex = 0;
+      document.getElementById("canvas-placeholder").style.display = "none";
+      document.getElementById("canvas-loading").style.display = "flex";
+      document.getElementById("loading-status-text").innerText = `Loading demo slides: ${displayName}...`;
 
-      const step = SIMULATION_STEPS[simIndex++];
-      document.getElementById("transcript-ticker").innerText = `[Utterance]: "${step.text}"`;
+      const apiPrefix = window.location.pathname.startsWith("/edusync") ? "/edusync/api/c1" : "/api/c1";
+      try {
+        const response = await fetch(`${apiPrefix}/lectures/demo-graph?name=${encodeURIComponent(sampleName)}`, { method: "POST" });
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Server returned ${response.status}: ${errText || response.statusText}`);
+        }
+        const data = await response.json();
 
-      // Update node visual state
-      const targetNode = currentGraph.nodes.find(n => n.id === step.target);
-      if (targetNode) {
-        targetNode.status = step.status;
-        nodesDataset.update({
-          id: targetNode.id,
-          color: { background: getColorForStatus(step.status), border: "#38bdf8" }
-        });
-        showNodeDetails(targetNode);
+        displayGraphData(data, displayName);
+
+        const dropZone = document.getElementById("drop-zone");
+        dropZone.classList.add("has-file");
+        document.getElementById("file-name-label").innerHTML = `📄 <strong style="color: #38bdf8;">${escapeXml(displayName)}</strong>`;
+        document.getElementById("file-sub-label").innerHTML = `<span style="color: #22c55e;">✅ ${data.concept_count} Concepts & ${data.graph.edges.length} Edges Active</span>`;
+
+        btn.disabled = false;
+        btn.innerText = `🔄 Re-Generate / Upload New Slides`;
+        document.getElementById("clear-btn").style.display = "inline-flex";
+      } catch (err) {
+        document.getElementById("canvas-loading").style.display = "none";
+        document.getElementById("canvas-placeholder").style.display = "flex";
+        alert("Demo load error: " + err.message);
+        btn.disabled = false;
+        btn.innerText = "🚀 Select Slides to Build Knowledge Graph";
+      }
+    }
+
+    function displayGraphData(data, displayName) {
+      document.getElementById("active-slide-badge").innerText = displayName;
+      document.getElementById("active-slide-badge").style.background = "rgba(34, 197, 94, 0.15)";
+      document.getElementById("active-slide-badge").style.color = "var(--success)";
+      document.getElementById("active-slide-badge").style.borderColor = "rgba(34, 197, 94, 0.3)";
+      
+      document.getElementById("course-label").innerText = `${data.concept_count} Concepts Extracted`;
+
+      const graphData = {
+        nodes: data.graph.nodes.map(n => ({
+          id: n.id,
+          label: n.label,
+          description: n.description || "Prerequisite concept extracted from uploaded document.",
+          depth: n.depth !== undefined ? n.depth : 1,
+          status: "not_yet_observed"
+        })),
+        edges: data.graph.edges.map(e => ({
+          from: e.source,
+          to: e.target
+        }))
+      };
+      
+      renderSvgKnowledgeGraph(graphData);
+      
+      document.getElementById("canvas-loading").style.display = "none";
+      document.getElementById("canvas-toolbar").style.display = "flex";
+    }
+
+    function renderSvgKnowledgeGraph(graphData) {
+      currentGraph = graphData;
+      const container = document.getElementById("graph-canvas");
+      if (!container) return;
+
+      const cw = container.clientWidth || 800;
+      const ch = container.clientHeight || 600;
+      
+      const cardW = 190;
+      const cardH = 58;
+      const gapX = 35;
+      const gapY = 55;
+      const padX = 40;
+      const padY = 40;
+
+      // Responsive column count based on container width
+      let cols = 5;
+      if (cw < 600) cols = 2;
+      else if (cw < 900) cols = 3;
+      else if (cw < 1200) cols = 4;
+      else cols = 5;
+
+      // Sort nodes by depth
+      const sortedNodes = [...graphData.nodes].sort((a, b) => (a.depth || 1) - (b.depth || 1));
+
+      const nodeCoords = {};
+      sortedNodes.forEach((n, idx) => {
+        const col = idx % cols;
+        const row = Math.floor(idx / cols);
+        const x = padX + col * (cardW + gapX);
+        const y = padY + row * (cardH + gapY);
+        nodeCoords[n.id] = { x, y, n };
+      });
+
+      const totalCols = Math.min(sortedNodes.length, cols);
+      const totalRows = Math.ceil(sortedNodes.length / cols);
+      const contentW = padX * 2 + totalCols * (cardW + gapX) - gapX;
+      const contentH = padY * 2 + totalRows * (cardH + gapY) - gapY;
+
+      // Auto fit initial scale and pan
+      const scaleX = (cw - 40) / contentW;
+      const scaleY = (ch - 40) / contentH;
+      currentScale = Math.min(Math.max(Math.min(scaleX, scaleY), 0.35), 1.05);
+      panX = Math.max(20, Math.floor((cw - contentW * currentScale) / 2));
+      panY = Math.max(20, Math.floor((ch - contentH * currentScale) / 2));
+
+      let svgHtml = `
+      <svg id="svg-root" width="100%" height="100%" style="background: #090d16; cursor: grab; user-select: none;">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#38bdf8" />
+          </marker>
+          <linearGradient id="nodeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#1e293b" />
+            <stop offset="100%" stop-color="#0f172a" />
+          </linearGradient>
+        </defs>
+        <g id="svg-viewport" transform="translate(${panX}, ${panY}) scale(${currentScale})">
+      `;
+
+      // Directed prerequisite Bezier curves
+      graphData.edges.forEach(e => {
+        const s = nodeCoords[e.from || e.source];
+        const t = nodeCoords[e.to || e.target];
+        if (s && t) {
+          const x1 = s.x + cardW / 2;
+          const y1 = s.y + cardH;
+          const x2 = t.x + cardW / 2;
+          const y2 = t.y;
+          const my = (y1 + y2) / 2;
+          svgHtml += `<path d="M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}" fill="none" stroke="#38bdf8" stroke-width="1.8" stroke-opacity="0.65" marker-end="url(#arrow)" />`;
+        }
+      });
+
+      // Nodes
+      sortedNodes.forEach(n => {
+        const item = nodeCoords[n.id];
+        const rawLabel = (n.label || n.id).replace(/\r?\n/g, ' ');
+        const displayLabel = escapeXml(rawLabel.length > 22 ? rawLabel.substring(0, 20) + '...' : rawLabel);
+        const statusColor = getColorForStatus(n.status);
+        const safeId = sanitizeId(n.id);
+        svgHtml += `
+        <g class="concept-node" id="concept-node-${safeId}" data-node-id="${escapeXml(n.id)}" transform="translate(${item.x}, ${item.y})" style="cursor: pointer;">
+          <rect id="rect-${safeId}" width="${cardW}" height="${cardH}" rx="8" fill="url(#nodeGrad)" stroke="${statusColor}" stroke-width="1.6" style="filter: drop-shadow(0 4px 12px rgba(0,0,0,0.6)); transition: all 0.25s;" />
+          <circle id="dot-${safeId}" cx="16" cy="18" r="4" fill="${statusColor}" />
+          <text x="26" y="22" fill="#38bdf8" font-size="10" font-weight="700" letter-spacing="0.5">LEVEL ${n.depth || 1}</text>
+          <text x="14" y="42" fill="#f8fafc" font-size="12" font-weight="600">${displayLabel}</text>
+        </g>
+        `;
+      });
+
+      svgHtml += `</g></svg>`;
+      container.innerHTML = svgHtml;
+
+      document.getElementById("graph-stats").innerText = `${graphData.nodes.length} Nodes | ${graphData.edges.length} Prerequisite Edges`;
+
+      // Attach interactions
+      setupSvgInteractions();
+    }
+
+    function onNodeClicked(nodeId) {
+      if (!currentGraph) return;
+      const node = currentGraph.nodes.find(n => n.id === nodeId);
+      if (!node) return;
+
+      // Clear previous selection highlight
+      document.querySelectorAll(".concept-node rect").forEach(r => {
+        r.removeAttribute("stroke-dasharray");
+      });
+
+      // Highlight selected node
+      const safeId = sanitizeId(nodeId);
+      const selectedRect = document.getElementById(`rect-${safeId}`);
+      if (selectedRect) {
+        selectedRect.setAttribute("stroke-dasharray", "4 2");
+        selectedRect.setAttribute("stroke-width", "2.8");
       }
 
-      // Check alert
+      showNodeDetails(node);
+    }
+
+    function setupSvgInteractions() {
+      const svg = document.getElementById("svg-root");
+      if (!svg) return;
+
+      // Event delegation for node click
+      svg.addEventListener("click", (e) => {
+        const nodeEl = e.target.closest(".concept-node");
+        if (nodeEl && nodeEl.dataset.nodeId) {
+          onNodeClicked(nodeEl.dataset.nodeId);
+        }
+      });
+
+      // Pan interactions
+      svg.addEventListener("mousedown", (e) => {
+        if (e.target.closest(".concept-node")) return; // don't start pan on node click
+        isPanning = true;
+        startX = e.clientX - panX;
+        startY = e.clientY - panY;
+        svg.style.cursor = "grabbing";
+      });
+
+      window.addEventListener("mousemove", (e) => {
+        if (!isPanning) return;
+        panX = e.clientX - startX;
+        panY = e.clientY - startY;
+        applyTransform();
+      });
+
+      window.addEventListener("mouseup", () => {
+        isPanning = false;
+        if (svg) svg.style.cursor = "grab";
+      });
+
+      // Zoom on mouse wheel
+      svg.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const factor = e.deltaY > 0 ? 0.9 : 1.1;
+        currentScale = Math.min(Math.max(currentScale * factor, 0.25), 2.5);
+        applyTransform();
+      }, { passive: false });
+    }
+
+    function applyTransform() {
+      const vp = document.getElementById("svg-viewport");
+      if (vp) {
+        vp.setAttribute("transform", `translate(${panX}, ${panY}) scale(${currentScale})`);
+      }
+    }
+
+    function centerGraphView() {
+      if (!currentGraph || !currentGraph.nodes.length) return;
+      const container = document.getElementById("graph-canvas");
+      const cw = container.clientWidth || 800;
+      const ch = container.clientHeight || 600;
+
+      const cardW = 190;
+      const cardH = 58;
+      const gapX = 35;
+      const gapY = 55;
+      const padX = 40;
+      const padY = 40;
+
+      let cols = 5;
+      if (cw < 600) cols = 2;
+      else if (cw < 900) cols = 3;
+      else if (cw < 1200) cols = 4;
+      else cols = 5;
+
+      const totalCols = Math.min(currentGraph.nodes.length, cols);
+      const totalRows = Math.ceil(currentGraph.nodes.length / cols);
+      const contentW = padX * 2 + totalCols * (cardW + gapX) - gapX;
+      const contentH = padY * 2 + totalRows * (cardH + gapY) - gapY;
+
+      const scaleX = (cw - 40) / contentW;
+      const scaleY = (ch - 40) / contentH;
+      currentScale = Math.min(Math.max(Math.min(scaleX, scaleY), 0.35), 1.05);
+      panX = Math.max(20, Math.floor((cw - contentW * currentScale) / 2));
+      panY = Math.max(20, Math.floor((ch - contentH * currentScale) / 2));
+      applyTransform();
+    }
+
+    function zoomInGraph() {
+      currentScale = Math.min(currentScale * 1.25, 2.5);
+      applyTransform();
+    }
+
+    function zoomOutGraph() {
+      currentScale = Math.max(currentScale * 0.8, 0.25);
+      applyTransform();
+    }
+
+    function getColorForStatus(status) {
+      if (status === "adequately_covered") return "#22c55e"; // Green
+      if (status === "introduced") return "#eab308";        // Yellow
+      return "#38bdf8";                                      // Cyan Blue
+    }
+
+    function showNodeDetails(node) {
+      const prereqs = currentGraph.edges
+        .filter(e => (e.to || e.target) === node.id)
+        .map(e => e.from || e.source);
+      
+      const downstream = currentGraph.edges
+        .filter(e => (e.from || e.source) === node.id)
+        .map(e => e.to || e.target);
+
+      document.getElementById("info-node-title").innerText = node.label.replace(/\r?\n/g, " ");
+      document.getElementById("info-node-desc").innerText = node.description || "Prerequisite concept extracted from lecture slides.";
+      
+      let prereqText = prereqs.length > 0 ? prereqs.join(", ") : "None (Foundational Entry Concept)";
+      let leadsToText = downstream.length > 0 ? downstream.join(", ") : "Terminal Concept";
+
+      document.getElementById("info-node-meta").innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
+          <div><strong>DAG Level:</strong> Level ${node.depth !== undefined ? node.depth : 1}</div>
+          <div><strong>Coverage Status:</strong> <span style="color: ${getColorForStatus(node.status)}; font-weight: 600;">${node.status}</span></div>
+          <div style="margin-top: 4px; color: var(--text-muted);"><strong>Prerequisites:</strong> ${escapeXml(prereqText)}</div>
+          <div style="color: var(--text-muted);"><strong>Enables:</strong> ${escapeXml(leadsToText)}</div>
+        </div>
+      `;
+    }
+
+    let simIndex = 0;
+    function simulateSpeechChunk() {
+      if (!currentGraph || !currentGraph.nodes.length) {
+        alert("Please upload a lecture presentation (.pptx or .pdf) or click a Demo button first!");
+        return;
+      }
+
+      const node = currentGraph.nodes[simIndex % currentGraph.nodes.length];
+      simIndex++;
+      
+      const cleanLabel = node.label.replace(/\r?\n/g, " ");
+      document.getElementById("transcript-ticker").innerText = `[Utterance]: "Now, let's explore ${cleanLabel} and how it connects to our prerequisite curriculum."`;
+
+      node.status = "adequately_covered";
+      
+      // Update SVG node visually
+      const safeId = sanitizeId(node.id);
+      const rect = document.getElementById(`rect-${safeId}`);
+      const dot = document.getElementById(`dot-${safeId}`);
+      if (rect) {
+        rect.setAttribute("stroke", "#22c55e");
+        rect.setAttribute("stroke-width", "2.5");
+      }
+      if (dot) {
+        dot.setAttribute("fill", "#22c55e");
+      }
+      showNodeDetails(node);
+
+      // Demonstrate skip check
       const alertBox = document.getElementById("skip-alert-box");
-      if (step.alert) {
-        document.getElementById("skip-alert-msg").innerText = step.alertMsg;
+      if (node.depth > 2 && Math.random() > 0.6) {
+        document.getElementById("skip-alert-msg").innerText = `Concept '${cleanLabel}' introduced at Depth ${node.depth} without prior foundational delivery of prerequisites!`;
         alertBox.style.display = "block";
       } else {
         alertBox.style.display = "none";
@@ -473,45 +899,50 @@
       if (!currentGraph) return;
 
       currentGraph.nodes.forEach(node => {
-        const cleanLabel = node.label.replace("\n", " ").toLowerCase();
-        if (text.includes(cleanLabel) || text.includes(node.id.replace("_", " "))) {
+        const cleanLabel = node.label.replace(/\r?\n/g, " ").toLowerCase();
+        const cleanId = node.id.replace(/_/g, " ").toLowerCase();
+        if (text.includes(cleanLabel) || text.includes(cleanId)) {
           node.status = "adequately_covered";
-          nodesDataset.update({
-            id: node.id,
-            color: { background: "#22c55e", border: "#ffffff" }
-          });
+          const safeId = sanitizeId(node.id);
+          const rect = document.getElementById(`rect-${safeId}`);
+          const dot = document.getElementById(`dot-${safeId}`);
+          if (rect) {
+            rect.setAttribute("stroke", "#22c55e");
+            rect.setAttribute("stroke-width", "2.5");
+          }
+          if (dot) {
+            dot.setAttribute("fill", "#22c55e");
+          }
         }
       });
     }
 
     function openCatchupModal() {
       const content = document.getElementById("catchup-content");
-      content.innerHTML = `
-        <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 8px; border-left: 4px solid #38bdf8;">
-          <h4 style="color: #38bdf8;">1. [Depth 0] Introduction to Information Security</h4>
-          <p style="font-size: 12px; color: var(--text-muted); margin: 4px 0;">CIA Triad (Confidentiality, Integrity, Availability), security policies, and threats.</p>
-          <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
-            <button class="btn btn-secondary" style="font-size: 11px; padding: 4px 8px;">▶️ Play Audio Window (45s)</button>
-            <span style="font-size: 11px; color: var(--text-muted);">[00:55 - 01:40]</span>
+      if (currentGraph && currentGraph.nodes.length > 0) {
+        const topNodes = currentGraph.nodes.slice(0, 3);
+        content.innerHTML = topNodes.map((n, idx) => `
+          <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 8px; border-left: 4px solid #38bdf8;">
+            <h4 style="color: #38bdf8;">${idx + 1}. [Depth ${n.depth || 1}] ${escapeXml(n.label.replace(/\r?\n/g, " "))}</h4>
+            <p style="font-size: 12px; color: var(--text-muted); margin: 4px 0;">${escapeXml(n.description || 'Core concept extracted from uploaded lecture deck.')}</p>
+            <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
+              <button class="btn btn-secondary" style="font-size: 11px; padding: 4px 8px;">▶️ Play Audio Window (45s)</button>
+              <span style="font-size: 11px; color: var(--text-muted);">[0${idx*2}:15 - 0${idx*2+1}:00]</span>
+            </div>
           </div>
-        </div>
-        <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 8px; border-left: 4px solid #38bdf8;">
-          <h4 style="color: #38bdf8;">2. [Depth 1] Cryptography Basics</h4>
-          <p style="font-size: 12px; color: var(--text-muted); margin: 4px 0;">Plaintext, ciphertext, and Kerckhoffs's principle.</p>
-          <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
-            <button class="btn btn-secondary" style="font-size: 11px; padding: 4px 8px;">▶️ Play Audio Window (45s)</button>
-            <span style="font-size: 11px; color: var(--text-muted);">[03:55 - 04:40]</span>
+        `).join("") + `
+          <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 8px; border-left: 4px solid #a855f7;">
+            <h4 style="color: #a855f7;">Self-Check Diagnostic Question</h4>
+            <p style="font-size: 12px; margin-top: 4px;"><strong>Q: What is the primary prerequisite requirement before advancing to this topic?</strong></p>
+            <div style="margin-top: 6px; font-size: 12px; display: flex; flex-direction: column; gap: 4px;">
+              <label><input type="radio" name="quiz" checked> Mastery of foundational principles established in earlier slides</label>
+              <label><input type="radio" name="quiz"> Direct execution without verification</label>
+            </div>
           </div>
-        </div>
-        <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 8px; border-left: 4px solid #a855f7;">
-          <h4 style="color: #a855f7;">Self-Check Diagnostic Question</h4>
-          <p style="font-size: 12px; margin-top: 4px;"><strong>Q: What is the primary role of Cryptographic Hash Functions?</strong></p>
-          <div style="margin-top: 6px; font-size: 12px; display: flex; flex-direction: column; gap: 4px;">
-            <label><input type="radio" name="quiz" checked> Mathematical one-way data integrity verification without a key</label>
-            <label><input type="radio" name="quiz"> Reversible symmetric decryption</label>
-          </div>
-        </div>
-      `;
+        `;
+      } else {
+        content.innerHTML = `<p style="font-size: 12px; color: var(--text-muted);">Please upload a slide deck first to compute the personalized fast-track catch-up sequence.</p>`;
+      }
       document.getElementById("catchup-modal").style.display = "flex";
     }
 
@@ -527,10 +958,8 @@
       document.getElementById("metrics-modal").style.display = "none";
     }
 
-    // Initialize with IISA curriculum by default and wire up drag & drop
+    // Window onload: Set up drag & drop listeners without preloading any sample graph!
     window.onload = function() {
-      loadSampleIISAGraph();
-
       const dropZone = document.getElementById("drop-zone");
       if (dropZone) {
         dropZone.addEventListener("dragover", function(e) {
@@ -541,14 +970,14 @@
         dropZone.addEventListener("dragleave", function(e) {
           e.preventDefault();
           dropZone.style.borderColor = "var(--border)";
-          dropZone.style.background = "rgba(15, 23, 42, 0.4)";
+          dropZone.style.background = "rgba(15, 23, 42, 0.5)";
         });
         dropZone.addEventListener("drop", function(e) {
           e.preventDefault();
           dropZone.style.borderColor = "var(--border)";
-          dropZone.style.background = "rgba(15, 23, 42, 0.4)";
+          dropZone.style.background = "rgba(15, 23, 42, 0.5)";
           if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            handleFileUpload(e);
+            onFileChosen(e);
           }
         });
       }
