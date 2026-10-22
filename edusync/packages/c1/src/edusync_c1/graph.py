@@ -278,7 +278,7 @@ def _build_structured_curriculum_graph(
     max_edges: int = 200,
     matcher: SemanticMatcher | None = None,
 ) -> KnowledgeGraph:
-    """Construct an educational curriculum DAG rooted at the Main Concept."""
+    """Construct an educational curriculum DAG in exact sequential lecture slide order."""
     root_id = main_concept_title.casefold()
     nodes: list[ConceptNode] = [
         ConceptNode(
@@ -292,63 +292,55 @@ def _build_structured_curriculum_graph(
     ]
 
     edges: list[ConceptEdge] = []
-    prev_topic_id: str | None = None
+    prev_topic_id: str = root_id
 
-    for t in structured_topics:
+    for idx, t in enumerate(structured_topics):
+        slide_num = t["page"]
         t_id = t["title"].casefold()
+        t_label = f"[Slide {slide_num:02d}] {t['title']}"
         t_desc = t["desc"]
         if matcher is not None:
             t_desc = extract_concept_description(t["title"], [t_desc], matcher=matcher) or t_desc
 
+        stage = 1 + (idx // 5)  # 5 topics per sequential curriculum stage
+
         nodes.append(
             ConceptNode(
                 id=t_id,
-                label=t["title"],
+                label=t_label,
                 frequency=25,
                 description=t_desc,
-                depth=1,
+                depth=stage,
                 is_main_concept=False,
             )
         )
-        # Root -> Pillar edge
+
+        # Sequential prerequisite edge from predecessor in exact PDF order
         edges.append(
             ConceptEdge(
-                source=root_id,
+                source=prev_topic_id,
                 target=t_id,
                 relation_type="prerequisite",
                 direction="source_is_prerequisite_of_target",
-                confidence=1.0,
-                source_type="main_topic_hierarchy",
+                confidence=0.95,
+                source_type="curriculum_sequential_flow",
                 evidence_count=1,
-                evidence=[EdgeEvidence(page=1, sentence=f"Core curriculum pillar branching directly from {main_concept_title}.")],
+                evidence=[EdgeEvidence(page=slide_num, sentence=f"Curriculum sequence: {t_label} follows {prev_topic_id}.")],
             )
         )
-        # Sequential prerequisite flow between consecutive curriculum topics
-        if prev_topic_id is not None:
-            edges.append(
-                ConceptEdge(
-                    source=prev_topic_id,
-                    target=t_id,
-                    relation_type="prerequisite",
-                    direction="source_is_prerequisite_of_target",
-                    confidence=0.85,
-                    source_type="curriculum_sequential_flow",
-                    evidence_count=1,
-                    evidence=[EdgeEvidence(page=t["page"], sentence=f"Curriculum sequence: {t['title']} follows {prev_topic_id}.")],
-                )
-            )
         prev_topic_id = t_id
 
-        # Sub-points under pillar
+        # Sub-points under this slide topic
         for pt_name, pt_desc in t["points"]:
             pt_id = pt_name.casefold()
+            pt_label = f"[Slide {slide_num:02d}] {pt_name}"
             nodes.append(
                 ConceptNode(
                     id=pt_id,
-                    label=pt_name,
+                    label=pt_label,
                     frequency=15,
                     description=pt_desc,
-                    depth=2,
+                    depth=stage,
                     is_main_concept=False,
                 )
             )
@@ -361,7 +353,7 @@ def _build_structured_curriculum_graph(
                     confidence=0.90,
                     source_type="topic_subconcept_hierarchy",
                     evidence_count=1,
-                    evidence=[EdgeEvidence(page=t["page"], sentence=pt_desc)],
+                    evidence=[EdgeEvidence(page=slide_num, sentence=pt_desc)],
                 )
             )
 

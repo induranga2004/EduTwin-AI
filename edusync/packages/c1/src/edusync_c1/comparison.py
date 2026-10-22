@@ -11,6 +11,7 @@ import logging
 from collections import defaultdict
 from typing import Any
 
+import networkx as nx
 from pydantic import BaseModel, Field
 
 from edusync_c1.schemas import ConceptEdge, KnowledgeGraph
@@ -62,11 +63,15 @@ class DualGraphComparator:
         self.node_labels: dict[str, str] = {n.id: n.label for n in planned_graph.nodes}
         self.all_node_ids: set[str] = set(self.node_labels.keys())
 
-        # Build prerequisite parent mapping: target -> list of source prerequisites
+        # Build prerequisite parent mapping and directed DAG
         self.prerequisites: dict[str, list[str]] = defaultdict(list)
+        self.dag = nx.DiGraph()
+        for n in planned_graph.nodes:
+            self.dag.add_node(n.id)
         for edge in planned_graph.edges:
             if edge.relation_type == "prerequisite":
                 self.prerequisites[edge.target].append(edge.source)
+                self.dag.add_edge(edge.source, edge.target)
 
     def get_prerequisite_ratio(self, concept_id: str, delivered_ids: set[str]) -> float:
         """Calculate the proportion of completed prerequisites for a given concept."""
@@ -83,11 +88,25 @@ class DualGraphComparator:
         timestamp_seconds: float,
     ) -> PrerequisiteSkipAlert | None:
         """Check if introducing concept_id at timestamp_seconds violates prerequisite ordering."""
-        reqs = self.prerequisites.get(concept_id, [])
-        if not reqs:
+        # Check all upstream prerequisite ancestors in the sequential DAG
+        if concept_id in self.dag:
+            ancestors = nx.ancestors(self.dag, concept_id)
+        else:
+            ancestors = set(self.prerequisites.get(concept_id, []))
+
+        # Filter out the overarching root main concept from slide skip alert
+        root_key = self.planned_graph.main_concept
+        if root_key:
+            ancestors.discard(root_key)
+
+        if not ancestors:
             return None
 
-        missing = [r for r in reqs if r not in delivered_ids]
+        # Order missing prerequisites according to the planned graph nodes sequence
+        missing = [
+            n.id for n in self.planned_graph.nodes
+            if n.id in ancestors and n.id not in delivered_ids
+        ]
         if not missing:
             return None
 

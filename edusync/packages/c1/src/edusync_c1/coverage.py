@@ -111,6 +111,8 @@ class CoverageTracker:
         classifier: Any = None,
         use_ml_classifier: bool = False,
     ) -> None:
+        self.graph = graph
+        self.main_concept = graph.main_concept
         self.edges = graph.edges
         self.labels: dict[str, str] = {}
         self.canonical_names: list[str] = []
@@ -131,11 +133,13 @@ class CoverageTracker:
 
         for node in graph.nodes:
             label = node.label.strip()
+            clean_name = re.sub(r"^\[Slide\s*\d+\]\s*", "", label).strip()
             if node.id and label:
                 self.labels[node.id] = node.label
-                self.canonical_names.append(node.label)
+                self.canonical_names.append(clean_name or node.label)
+                search_term = clean_name if clean_name else label
                 self._patterns[node.id] = re.compile(
-                    r"(?<!\w)" + re.escape(label) + r"(?!\w)", re.IGNORECASE
+                    r"(?<!\w)" + re.escape(search_term) + r"(?!\w)", re.IGNORECASE
                 )
 
     def _calculate_prereq_ratio(self, concept_id: str) -> float:
@@ -157,6 +161,10 @@ class CoverageTracker:
             if self.matcher is not None:
                 match_res = self.matcher.match(text, self.canonical_names)
                 label_to_id = {v.casefold(): k for k, v in self.labels.items()}
+                for k, v in self.labels.items():
+                    clean_v = re.sub(r"^\[Slide\s*\d+\]\s*", "", v).strip().casefold()
+                    label_to_id[clean_v] = k
+                    label_to_id[k.casefold()] = k
                 for m in match_res.matches:
                     cid = label_to_id.get(m.name.casefold())
                     if cid and cid not in matched:
@@ -187,6 +195,32 @@ class CoverageTracker:
                         matched.append(concept_id)
                         matched_scores[concept_id] = 1.0
 
+        # Synthesize Main Concept coverage from constituent slide content
+        # During live lectures, the overarching main topic title is rarely uttered verbatim.
+        # Once constituent slide topics/points are completed (>= 50% or >= 3), synthesize coverage!
+        if self.main_concept and self.main_concept in self.labels:
+            constituent_ids = [cid for cid in self.labels if cid != self.main_concept]
+            if constituent_ids:
+                covered_constituents = sum(1 for cid in constituent_ids if len(self.evidence[cid]) > 0)
+                thresh_met = (covered_constituents / len(constituent_ids) >= 0.5) or (
+                    len(constituent_ids) >= 4 and covered_constituents >= 3
+                )
+                if thresh_met and len(self.evidence[self.main_concept]) == 0:
+                    self.evidence[self.main_concept].append(
+                        SegmentEvidence(
+                            segment_id=segment.id,
+                            start_seconds=segment.start,
+                            end_seconds=segment.end,
+                            text=f"[Synthesized from {covered_constituents}/{len(constituent_ids)} constituent slide points covered] {text}",
+                            similarity=round(covered_constituents / len(constituent_ids), 2),
+                        )
+                    )
+                    if self.main_concept not in matched:
+                        matched.append(self.main_concept)
+                        matched_scores[self.main_concept] = round(
+                            covered_constituents / len(constituent_ids), 2
+                        )
+
         nodes = []
         for concept_id, label in self.labels.items():
             items = self.evidence[concept_id]
@@ -194,6 +228,8 @@ class CoverageTracker:
             prereq_ratio = self._calculate_prereq_ratio(concept_id)
 
             status_label = _status(count)
+            if concept_id == self.main_concept and count > 0:
+                status_label = "adequately_covered"
             confidence = 1.0
 
             # 3. Model C ML Classifier Prediction (if enabled and loaded)

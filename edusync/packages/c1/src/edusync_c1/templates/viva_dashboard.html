@@ -25,9 +25,11 @@
     .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); margin-right: 6px; animation: pulse 2s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     
-    .container { display: grid; grid-template-columns: 390px 1fr; gap: 16px; padding: 16px; flex: 1; height: calc(100vh - 58px); min-height: 0; max-height: calc(100vh - 58px); overflow: hidden; }
+    .container { display: grid; grid-template-columns: 410px 1fr; gap: 16px; padding: 16px; flex: 1; height: calc(100vh - 58px); min-height: 0; max-height: calc(100vh - 58px); overflow: hidden; }
     .panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; position: relative; min-height: 0; height: 100%; }
     .panel-header { padding: 12px 18px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+    
+    /* Smooth Scrollable Left Panel */
     .panel-body { padding: 16px; flex: 1 1 auto; overflow-y: auto !important; overflow-x: hidden; display: flex; flex-direction: column; gap: 14px; scrollbar-width: thin; scrollbar-color: #38bdf8 #0f172a; }
     .panel-body::-webkit-scrollbar { width: 7px; }
     .panel-body::-webkit-scrollbar-track { background: #0b1120; border-radius: 4px; }
@@ -35,25 +37,29 @@
     .panel-body::-webkit-scrollbar-thumb:hover { background: #0284c7; }
 
     /* Drop Zone */
-    .drop-zone { border: 2px dashed var(--border); border-radius: 8px; padding: 18px; text-align: center; cursor: pointer; transition: all 0.2s; background: rgba(15, 23, 42, 0.5); }
+    .drop-zone { border: 2px dashed var(--border); border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; transition: all 0.2s; background: rgba(15, 23, 42, 0.5); }
     .drop-zone:hover { border-color: var(--primary); background: rgba(56, 189, 248, 0.08); }
     .drop-zone.processing { border-color: var(--primary); background: rgba(56, 189, 248, 0.12); pointer-events: none; }
     .drop-zone.has-file { border-color: var(--success); background: rgba(34, 197, 94, 0.08); }
 
-    .btn { background: var(--primary); color: #000; border: none; padding: 10px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; font-size: 13px; }
+    .btn { background: var(--primary); color: #000; border: none; padding: 9px 14px; border-radius: 6px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 7px; transition: all 0.2s; font-size: 12.5px; }
     .btn:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
     .btn-primary { background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; border: 1px solid #38bdf8; }
+    .btn-success { background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); color: #ffffff; border: 1px solid #22c55e; }
     .btn-secondary { background: var(--border); color: var(--text); }
     .btn-danger { background: var(--danger); color: #fff; }
-    .btn-warning { background: var(--warning); color: #000; }
+    .btn-warning { background: linear-gradient(135deg, #d97706 0%, #b45309 100%); color: #fff; border: 1px solid #f59e0b; }
 
-    /* Speech Controls */
-    .speech-box { background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
-    .transcript-box { background: #0b1120; border: 1px solid #1e293b; border-radius: 6px; padding: 10px; font-family: monospace; font-size: 12px; color: #38bdf8; min-height: 48px; max-height: 80px; overflow-y: auto; margin-top: 8px; line-height: 1.4; }
+    /* Speech Controls & Progress */
+    .speech-box { background: rgba(15, 23, 42, 0.65); border: 1px solid var(--border); border-radius: 8px; padding: 13px; }
+    .transcript-box { background: #0b1120; border: 1px solid #1e293b; border-radius: 6px; padding: 9px; font-family: monospace; font-size: 11.5px; color: #38bdf8; min-height: 48px; max-height: 75px; overflow-y: auto; margin-top: 8px; line-height: 1.4; }
+    
+    .progress-bar-container { width: 100%; height: 6px; background: #0b1120; border-radius: 3px; overflow: hidden; margin-top: 6px; border: 1px solid #1e293b; }
+    .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #38bdf8, #22c55e); transition: width 0.3s ease; }
 
     /* Alert Toast */
-    .skip-alert { background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); border-left: 5px solid var(--danger); border-radius: 6px; padding: 12px; color: #fca5a5; display: none; animation: slideIn 0.3s ease; }
+    .skip-alert { background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); border-left: 5px solid var(--danger); border-radius: 6px; padding: 11px; color: #fca5a5; display: none; animation: slideIn 0.3s ease; }
     @keyframes slideIn { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
     /* Graph Canvas */
@@ -130,17 +136,17 @@
       color: var(--primary);
     }
 
-    .legend { position: absolute; bottom: 16px; right: 16px; background: rgba(30, 41, 59, 0.9); border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; font-size: 11px; display: flex; gap: 12px; backdrop-filter: blur(4px); z-index: 6; }
+    .legend { position: absolute; bottom: 14px; right: 14px; background: rgba(30, 41, 59, 0.92); border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; font-size: 11px; display: flex; gap: 12px; backdrop-filter: blur(4px); z-index: 6; }
     .legend-item { display: flex; align-items: center; gap: 6px; }
-    .legend-color { width: 10px; height: 10px; border-radius: 50%; }
+    .legend-color { width: 10px; height: 10px; border-radius: 3px; }
 
     /* Node Info Sidebar */
-    .node-info-card { background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 13px; line-height: 1.5; }
-    .node-info-card h4 { color: var(--primary); margin-bottom: 6px; font-size: 14px; }
+    .node-info-card { background: rgba(15, 23, 42, 0.65); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 12.5px; line-height: 1.5; }
+    .node-info-card h4 { color: var(--primary); margin-bottom: 5px; font-size: 13px; }
 
     /* Modal */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: none; justify-content: center; align-items: center; z-index: 100; backdrop-filter: blur(4px); }
-    .modal { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; width: 600px; max-height: 85vh; overflow-y: auto; padding: 24px; }
+    .modal { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; width: 620px; max-height: 85vh; overflow-y: auto; padding: 24px; }
   </style>
 </head>
 <body>
@@ -148,100 +154,132 @@
   <header>
     <div>
       <h2 style="font-size: 17px; font-weight: 700; letter-spacing: -0.02em;">EduTwin-AI <span style="color: var(--primary);">Component C1</span></h2>
-      <p style="font-size: 11px; color: var(--text-muted);">Curriculum Alignment & Lecture Navigation Intelligence</p>
+      <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Curriculum Order DAG &amp; Real-Time Prerequisite Skip Intelligence</p>
     </div>
     <div style="display: flex; gap: 12px; align-items: center;">
-      <span class="badge"><span class="status-dot"></span> Backend Connected (FastAPI :8100)</span>
-      <span id="active-slide-badge" class="badge" style="background: rgba(56, 189, 248, 0.1); color: var(--primary); border-color: rgba(56, 189, 248, 0.3);">No Slides Active</span>
+      <span class="badge" id="active-slide-badge">No Slides Active</span>
+      <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: var(--success); border-color: rgba(34, 197, 94, 0.3);">
+        <span class="status-dot"></span> Live Navigation Active
+      </span>
     </div>
   </header>
 
   <div class="container">
-    <!-- Left Column: Controls & Telemetry -->
+    <!-- Left Column: Lecture Controls (Scrollable) -->
     <div class="panel">
       <div class="panel-header">
         <span>Lecture Controls</span>
-        <span id="course-label" style="font-size: 11px; color: var(--text-muted);">Ready for Upload</span>
+        <span id="course-label" style="font-size: 11px; color: var(--text-muted);">Ready</span>
       </div>
+      
       <div class="panel-body">
         
-        <!-- Step 1: Slide Upload -->
+        <!-- Step 1: Upload Lecture Presentation -->
         <div>
-          <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">1. Lecture Slide Deck</label>
-          <div class="drop-zone" id="drop-zone" onclick="triggerFilePicker()">
-            <input type="file" id="file-input" style="display: none;" accept=".pdf,.pptx" onchange="onFileChosen(event)">
-            <p style="font-size: 13px; font-weight: 600; color: #f8fafc;" id="file-name-label">📄 Click or Drag & Drop PDF / PPTX</p>
-            <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;" id="file-sub-label">Automatic instant concept extraction & DAG builder</p>
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">1. Lecture Slide Deck (PDF / PPTX)</label>
+          <div class="drop-zone" id="drop-zone" onclick="triggerFilePicker()" style="margin-top: 6px;">
+            <input type="file" id="file-input" accept=".pdf,.pptx" style="display: none;" onchange="onFileChosen(event)">
+            <div id="file-name-label" style="font-size: 13px; font-weight: 600; color: #f8fafc;">📄 Click or Drag &amp; Drop PDF / PPTX</div>
+            <div id="file-sub-label" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Automatic sequential concept extraction &amp; DAG builder</div>
           </div>
           
-          <div style="display: flex; gap: 8px; margin-top: 10px;">
-            <button class="btn btn-primary" id="build-graph-btn" style="flex: 1; font-size: 13px; padding: 12px;" onclick="handleButtonClick()">
+          <div style="display: flex; gap: 6px; margin-top: 8px;">
+            <button class="btn btn-primary" id="build-graph-btn" style="flex: 1;" onclick="handleButtonClick()">
               🚀 Select Slides to Build Knowledge Graph
             </button>
-            <button class="btn btn-secondary" id="clear-btn" style="display: none; padding: 12px; color: #fca5a5; border-color: rgba(239,68,68,0.4);" onclick="clearUploadedSlides()" title="Clear Slides & Reset Canvas">
-              🗑️ Clear
+            <button class="btn btn-secondary" id="clear-btn" style="display: none; padding: 8px 12px;" onclick="clearUploadedSlides()" title="Clear and load new file">
+              ✕ Clear
             </button>
-          </div>
-
-          <!-- Quick Test Demo Buttons -->
-          <div style="margin-top: 10px; padding: 8px; background: rgba(15, 23, 42, 0.4); border: 1px solid var(--border); border-radius: 6px;">
-            <div style="font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">
-              ⚡ Quick Demo Slides:
-            </div>
-            <div style="display: flex; gap: 6px;">
-              <button class="btn btn-secondary" style="flex: 1; font-size: 11px; padding: 6px 8px;" onclick="loadDemoSlides('Cyber_Resilience_Energy_Sector.pptx', 'Cyber Resilience (PPTX)')">
-                📊 Cyber (PPTX)
-              </button>
-              <button class="btn btn-secondary" style="flex: 1; font-size: 11px; padding: 6px 8px;" onclick="loadDemoSlides('IISA_Information_Security.pdf', 'InfoSec (PDF)')">
-                📄 InfoSec (PDF)
-              </button>
-            </div>
           </div>
         </div>
 
-        <!-- Step 2: Live Speech Console -->
-        <div class="speech-box">
-          <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">2. Live Speech-to-Graph Console</label>
-          <div style="display: flex; gap: 8px; margin-top: 8px;">
-            <button class="btn btn-primary" id="mic-btn" style="flex: 1;" onclick="toggleMicrophone()">🎙️ Start Live Mic</button>
-            <button class="btn btn-secondary" onclick="simulateSpeechChunk()">Simulate Step</button>
+        <!-- Preloaded Samples -->
+        <div>
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Quick-Load Sample Lectures</label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px;">
+            <button class="btn btn-secondary" style="font-size: 11.5px; padding: 7px 8px; text-align: left; justify-content: flex-start;" onclick="loadDemoSlides('Cyber_Resilience_Energy_Sector.pptx', 'Cyber Resilience in Energy Sector (.pptx)')">
+              ⚡ Cyber Resilience (.pptx)
+            </button>
+            <button class="btn btn-secondary" style="font-size: 11.5px; padding: 7px 8px; text-align: left; justify-content: flex-start;" onclick="loadDemoSlides('user1.pdf', 'Database Security with Oracle (.pdf)')">
+              🛡️ Database Security (.pdf)
+            </button>
           </div>
-          <div class="transcript-box" id="transcript-ticker">Live speech transcript will appear here in real time...</div>
+        </div>
+
+        <!-- Step 2: Live Lecture Progression & Skip Engine -->
+        <div class="speech-box">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">2. Sequential Lecture Flow &amp; Skip Detection</label>
+            <span id="slide-step-counter" style="font-size: 11px; font-weight: 700; color: var(--primary);">Slide 0 / 0</span>
+          </div>
+
+          <!-- Progress indicators -->
+          <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="slide-progress-bar"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-muted); margin-top: 4px;">
+            <span id="main-concept-synthesis-label">👑 Main Topic: Pending</span>
+            <span id="coverage-stats-label">Covered: 0 | Skipped: 0</span>
+          </div>
+
+          <!-- Sequential Simulation Buttons -->
+          <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px;">
+            <div style="display: flex; gap: 6px;">
+              <button class="btn btn-success" id="next-step-btn" style="flex: 1;" onclick="deliverNextSequentialSlide()">
+                ▶️ Next Slide Concept (Sequential)
+              </button>
+              <button class="btn btn-warning" id="skip-sim-btn" style="flex: 1;" onclick="simulatePrerequisiteSkip()">
+                ⏩ Jump to Slide 07 (Simulate Skip)
+              </button>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <button class="btn btn-primary" id="mic-btn" style="flex: 1;" onclick="toggleMicrophone()">
+                🎙️ Start Live Mic
+              </button>
+              <button class="btn btn-secondary" style="padding: 7px 12px;" onclick="resetLectureProgression()" title="Reset lecture state">
+                🔄 Reset
+              </button>
+            </div>
+          </div>
+
+          <div class="transcript-box" id="transcript-ticker">Lecture speech transcript and concept events will appear here in real time...</div>
         </div>
 
         <!-- Skip Alert Banner -->
         <div class="skip-alert" id="skip-alert-box">
-          <h4 style="color: #f87171; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+          <h4 style="color: #f87171; font-size: 12.5px; display: flex; align-items: center; gap: 6px;">
             <span>⚠️</span> Prerequisite Skip Violation Detected!
           </h4>
-          <p id="skip-alert-msg" style="font-size: 12px; margin-top: 4px; line-height: 1.4;">Concept introduced without prior delivery of foundational prerequisite(s).</p>
+          <p id="skip-alert-msg" style="font-size: 11.5px; margin-top: 4px; line-height: 1.45;">
+            Concept introduced without prior delivery of foundational prerequisite slide(s).
+          </p>
         </div>
 
-        <!-- Step 3: Late Joiner Catch-Up -->
+        <!-- Step 3: Late Joiner Catch-Up & Model Accuracy -->
         <div>
-          <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">3. Student Personalization</label>
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">3. Student Personalization &amp; Telemetry</label>
           <button class="btn btn-secondary" style="width: 100%; margin-top: 6px; border-color: rgba(168, 85, 247, 0.4); color: var(--purple);" onclick="openCatchupModal()">
-            🎓 Simulate Late-Joiner Catch-Up (Minute 14)
+            🎓 Simulate Late-Joiner Catch-Up (Topological Sort)
           </button>
           <button class="btn btn-secondary" style="width: 100%; margin-top: 6px; border-color: rgba(56, 189, 248, 0.4); color: var(--primary);" onclick="openMetricsModal()">
-            📊 Model Accuracy & Confusion Matrix (1.00 F1)
+            📊 Model Accuracy &amp; Confusion Matrix (1.00 F1)
           </button>
         </div>
 
         <!-- Node Details -->
         <div class="node-info-card" id="node-info-box">
-          <h4 id="info-node-title">Click a node on the graph</h4>
-          <p id="info-node-desc" style="color: var(--text-muted);">Select any concept to view its extracted definition, DAG chain depth, and prerequisite parents.</p>
-          <div id="info-node-meta" style="margin-top: 8px; font-size: 11px; display: flex; gap: 12px;"></div>
+          <h4 id="info-node-title">Click a concept card on the graph</h4>
+          <p id="info-node-desc" style="color: var(--text-muted);">Select any slide topic to inspect its extracted definition, constituent bullet points remembered from the PDF, and prerequisite chain.</p>
+          <div id="info-node-meta" style="margin-top: 8px; font-size: 11px; display: flex; flex-direction: column; gap: 4px;"></div>
         </div>
 
       </div>
     </div>
 
-    <!-- Right Column: Interactive Knowledge Graph Canvas -->
+    <!-- Right Column: Interactive Sequential Knowledge Graph Canvas -->
     <div class="panel" style="position: relative;">
       <div class="panel-header">
-        <span>Prerequisite Knowledge Graph DAG (G_planned & G_delivered)</span>
+        <span>Sequential Prerequisite Curriculum DAG (PDF Lecture Order)</span>
         <span id="graph-stats" style="font-size: 12px; color: var(--primary);">0 Nodes | 0 Prerequisite Edges</span>
       </div>
       
@@ -259,25 +297,26 @@
       <div id="canvas-placeholder">
         <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.8;">🎓</div>
         <h3 style="color: #f8fafc; font-size: 16px; margin-bottom: 6px;">No Lecture Slides Loaded</h3>
-        <p style="font-size: 13px; max-width: 400px; line-height: 1.5;">
-          Select or drag & drop your lecture slides (<strong>.pptx</strong> or <strong>.pdf</strong>) on the left panel to automatically extract curriculum concepts and build the prerequisite graph.
+        <p style="font-size: 13px; max-width: 440px; line-height: 1.5;">
+          Select or drag &amp; drop your lecture slides (<strong>.pdf</strong> or <strong>.pptx</strong>) on the left panel to automatically extract main topics, important slide points, and the chronological prerequisite DAG.
         </p>
       </div>
 
       <!-- Loading State Overlay -->
       <div id="canvas-loading">
         <div class="spinner"></div>
-        <h3 style="font-size: 16px; font-weight: 700; color: #38bdf8; margin-bottom: 6px;">Building Knowledge Graph...</h3>
+        <h3 style="font-size: 16px; font-weight: 700; color: #38bdf8; margin-bottom: 6px;">Building Sequential Curriculum Graph...</h3>
         <p id="loading-status-text" style="font-size: 12px; color: var(--text-muted); max-width: 380px; text-align: center; line-height: 1.5;">
-          Extracting concepts, inferring prerequisite links, and rendering DAG layout...
+          Extracting slide topics, filtering noise, and sequencing prerequisite flow...
         </p>
       </div>
 
       <!-- Color Legend -->
       <div class="legend">
-        <div class="legend-item"><div class="legend-color" style="background: #0284c7;"></div> Not Yet Observed</div>
-        <div class="legend-item"><div class="legend-color" style="background: var(--warning);"></div> Introduced</div>
-        <div class="legend-item"><div class="legend-color" style="background: var(--success);"></div> Adequately Covered</div>
+        <div class="legend-item"><div class="legend-color" style="background: #0284c7;"></div> Pending</div>
+        <div class="legend-item"><div class="legend-color" style="background: var(--success);"></div> Covered</div>
+        <div class="legend-item"><div class="legend-color" style="background: var(--danger); border: 1px dashed #fff;"></div> Skipped Prereq</div>
+        <div class="legend-item"><div class="legend-color" style="background: var(--purple);"></div> 👑 Main Topic</div>
       </div>
     </div>
   </div>
@@ -290,10 +329,10 @@
         <button onclick="closeCatchupModal()" style="background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer;">✕</button>
       </div>
       <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
-        You joined at <strong style="color: var(--text);">Minute 14:00</strong>. Our topological sort has linearized your missed concepts in strict prerequisite sequence:
+        Late-joining student linearized sequence based on topological DAG sort:
       </p>
       <div id="catchup-content" style="display: flex; flex-direction: column; gap: 12px;"></div>
-      <button class="btn btn-primary" style="width: 100%; margin-top: 20px;" onclick="closeCatchupModal()">I'm Ready! Return to Live Lecture</button>
+      <button class="btn btn-primary" style="width: 100%; margin-top: 20px;" onclick="closeCatchupModal()">Return to Live Lecture</button>
     </div>
   </div>
 
@@ -301,7 +340,7 @@
   <div class="modal-overlay" id="metrics-modal">
     <div class="modal" style="width: 680px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-        <h3 style="color: var(--primary);">📊 Model C Held-Out Accuracy & Evaluation Report</h3>
+        <h3 style="color: var(--primary);">📊 Model C Held-Out Accuracy &amp; Evaluation Report</h3>
         <button onclick="closeMetricsModal()" style="background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer;">✕</button>
       </div>
       <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
@@ -366,15 +405,6 @@
         </tbody>
       </table>
 
-      <h4 style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">4x4 Confusion Matrix (Diagonal = 100% Agreement)</h4>
-      <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 6px; font-family: monospace; font-size: 12px; color: #38bdf8; line-height: 1.6;">
-        <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Adequate] [Insuff] [Intro] [NotYet]</div>
-        <div>Actual adequately_covered&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: &nbsp;&nbsp;&nbsp;16 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0</div>
-        <div>Actual insufficiently_covered&nbsp;: &nbsp;&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;7 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0</div>
-        <div>Actual introduced&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: &nbsp;&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;5 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0</div>
-        <div>Actual not_yet_observed&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: &nbsp;&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;5</div>
-      </div>
-
       <button class="btn btn-secondary" style="width: 100%; margin-top: 16px;" onclick="closeMetricsModal()">Close Telemetry Window</button>
     </div>
   </div>
@@ -386,11 +416,18 @@
     let isRecording = false;
     let recognition = null;
     let panX = 40;
-    let panY = 40;
-    let currentScale = 0.95;
+    let panY = 30;
+    let currentScale = 0.88;
     let isPanning = false;
     let startX = 0;
     let startY = 0;
+
+    // Sequential Progression State
+    let orderedSlideTopics = [];
+    let currentSlideStepIndex = -1;
+    let deliveredConceptIds = new Set();
+    let skippedConceptIds = new Set();
+    let rootConceptNode = null;
 
     function escapeXml(unsafe) {
       if (unsafe === undefined || unsafe === null) return "";
@@ -423,13 +460,12 @@
       dropZone.classList.add("has-file");
       
       document.getElementById("file-name-label").innerHTML = `📄 <strong style="color: #38bdf8;">${escapeXml(file.name)}</strong> (${sizeMb} MB)`;
-      document.getElementById("file-sub-label").innerHTML = `<span style="color: #22c55e;">File selected. Generating graph now...</span>`;
+      document.getElementById("file-sub-label").innerHTML = `<span style="color: #22c55e;">File selected. Generating chronological curriculum graph...</span>`;
       
       const btn = document.getElementById("build-graph-btn");
       btn.innerHTML = `⚡ Generate Prerequisite Graph (${escapeXml(file.name.substring(0, 18))})`;
       document.getElementById("clear-btn").style.display = "inline-flex";
 
-      // Auto-trigger graph generation immediately!
       uploadAndBuildGraph(file);
     }
 
@@ -444,6 +480,12 @@
     function clearUploadedSlides() {
       stagedFile = null;
       currentGraph = null;
+      orderedSlideTopics = [];
+      deliveredConceptIds.clear();
+      skippedConceptIds.clear();
+      currentSlideStepIndex = -1;
+      rootConceptNode = null;
+
       const fi = document.getElementById("file-input");
       if (fi) fi.value = "";
 
@@ -451,7 +493,7 @@
       if (dropZone) dropZone.classList.remove("has-file");
 
       document.getElementById("file-name-label").innerText = "📄 Click or Drag & Drop PDF / PPTX";
-      document.getElementById("file-sub-label").innerText = "Automatic instant concept extraction & DAG builder";
+      document.getElementById("file-sub-label").innerText = "Automatic sequential concept extraction & DAG builder";
 
       const btn = document.getElementById("build-graph-btn");
       btn.disabled = false;
@@ -459,21 +501,19 @@
       document.getElementById("clear-btn").style.display = "none";
 
       document.getElementById("active-slide-badge").innerText = "No Slides Active";
-      document.getElementById("active-slide-badge").style.background = "rgba(56, 189, 248, 0.1)";
-      document.getElementById("active-slide-badge").style.color = "var(--primary)";
-      document.getElementById("active-slide-badge").style.borderColor = "rgba(56, 189, 248, 0.3)";
-
-      document.getElementById("course-label").innerText = "Ready for Upload";
+      document.getElementById("course-label").innerText = "Ready";
       document.getElementById("graph-stats").innerText = "0 Nodes | 0 Prerequisite Edges";
 
       document.getElementById("graph-canvas").innerHTML = "";
       document.getElementById("canvas-placeholder").style.display = "flex";
       document.getElementById("canvas-toolbar").style.display = "none";
       document.getElementById("canvas-loading").style.display = "none";
+      document.getElementById("skip-alert-box").style.display = "none";
 
-      document.getElementById("info-node-title").innerText = "Click a node on the graph";
-      document.getElementById("info-node-desc").innerText = "Select any concept to view its extracted definition, DAG chain depth, and prerequisite parents.";
+      document.getElementById("info-node-title").innerText = "Click a concept card on the graph";
+      document.getElementById("info-node-desc").innerText = "Select any slide topic to inspect its extracted definition, constituent bullet points remembered from the PDF, and prerequisite chain.";
       document.getElementById("info-node-meta").innerHTML = "";
+      updateProgressionUI();
     }
 
     async function uploadAndBuildGraph(file) {
@@ -481,11 +521,11 @@
 
       const btn = document.getElementById("build-graph-btn");
       btn.disabled = true;
-      btn.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px; margin: 0; display: inline-block; vertical-align: middle;"></span> Analyzing ${escapeXml(file.name)}...`;
+      btn.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px; margin: 0; display: inline-block; vertical-align: middle;"></span> Processing ${escapeXml(file.name)}...`;
       
       document.getElementById("canvas-placeholder").style.display = "none";
       document.getElementById("canvas-loading").style.display = "flex";
-      document.getElementById("loading-status-text").innerText = `Extracting concepts and inferring prerequisite DAG from ${file.name}...`;
+      document.getElementById("loading-status-text").innerText = `Extracting concepts and ordering prerequisite DAG from ${file.name}...`;
 
       const formData = new FormData();
       formData.append("file", file);
@@ -504,7 +544,7 @@
         btn.disabled = false;
         btn.innerText = `🔄 Re-Generate / Upload New Slides`;
         document.getElementById("clear-btn").style.display = "inline-flex";
-        document.getElementById("file-sub-label").innerHTML = `<span style="color: #22c55e;">✅ ${data.concept_count} Concepts & ${data.graph.edges.length} Edges Active</span>`;
+        document.getElementById("file-sub-label").innerHTML = `<span style="color: #22c55e;">✅ ${data.concept_count} Concepts &amp; ${data.graph.edges.length} Edges Active</span>`;
       } catch (err) {
         document.getElementById("canvas-loading").style.display = "none";
         document.getElementById("canvas-placeholder").style.display = "flex";
@@ -538,7 +578,7 @@
         const dropZone = document.getElementById("drop-zone");
         dropZone.classList.add("has-file");
         document.getElementById("file-name-label").innerHTML = `📄 <strong style="color: #38bdf8;">${escapeXml(displayName)}</strong>`;
-        document.getElementById("file-sub-label").innerHTML = `<span style="color: #22c55e;">✅ ${data.concept_count} Concepts & ${data.graph.edges.length} Edges Active</span>`;
+        document.getElementById("file-sub-label").innerHTML = `<span style="color: #22c55e;">✅ ${data.concept_count} Concepts &amp; ${data.graph.edges.length} Edges Active</span>`;
 
         btn.disabled = false;
         btn.innerText = `🔄 Re-Generate / Upload New Slides`;
@@ -554,12 +594,9 @@
 
     function displayGraphData(data, displayName) {
       document.getElementById("active-slide-badge").innerText = displayName;
-      document.getElementById("active-slide-badge").style.background = "rgba(34, 197, 94, 0.15)";
-      document.getElementById("active-slide-badge").style.color = "var(--success)";
-      document.getElementById("active-slide-badge").style.borderColor = "rgba(34, 197, 94, 0.3)";
-      
       document.getElementById("course-label").innerText = `${data.concept_count} Concepts Extracted`;
 
+      // Build graph data
       const graphData = {
         nodes: data.graph.nodes.map(n => ({
           id: n.id,
@@ -571,106 +608,148 @@
         })),
         edges: data.graph.edges.map(e => ({
           from: e.source,
-          to: e.target
+          to: e.target,
+          relation_type: e.relation_type,
+          source_type: e.source_type
         })),
         main_concept: data.graph.main_concept
       };
-      
-      renderSvgKnowledgeGraph(graphData);
-      
+
+      currentGraph = graphData;
+      deliveredConceptIds.clear();
+      skippedConceptIds.clear();
+      currentSlideStepIndex = -1;
+
+      renderSequentialCurriculumDAG(graphData);
+      updateProgressionUI();
+
       document.getElementById("canvas-placeholder").style.display = "none";
       document.getElementById("canvas-loading").style.display = "none";
       document.getElementById("canvas-toolbar").style.display = "flex";
     }
 
-    function renderSvgKnowledgeGraph(graphData) {
-      currentGraph = graphData;
+    // Render chronological lecture slide DAG
+    function renderSequentialCurriculumDAG(graphData) {
       const container = document.getElementById("graph-canvas");
       if (!container) return;
 
-      const cw = container.clientWidth || 900;
+      const cw = container.clientWidth || 920;
       const ch = container.clientHeight || 650;
 
-      // 1. Identify Root / Main Concept node
-      const rootNode = graphData.nodes.find(n => n.depth === 0 || n.is_main_concept) || graphData.nodes[0];
-
-      // 2. Group nodes by depth (0 = Main Concept, 1 = Core Pillars, 2 = Sub-Topics, 3 = Advanced)
-      const levelGroups = { 0: [rootNode], 1: [], 2: [], 3: [] };
-      graphData.nodes.forEach(n => {
-        if (n.id === rootNode.id) return;
-        let d = n.depth;
-        if (d === undefined || d === null || d <= 0) d = 1;
-        if (d > 3) d = 3;
-        if (!levelGroups[d]) levelGroups[d] = [];
-        levelGroups[d].push(n);
+      // 1. Identify Root Main Concept
+      rootConceptNode = graphData.nodes.find(n => n.depth === 0 || n.is_main_concept) || graphData.nodes[0];
+      
+      // 2. Identify and Order Slide Topics sequentially
+      // Slide topics are nodes directly in the sequential prerequisite chain
+      const childPointsMap = {}; // topicId -> [pointLabels]
+      graphData.edges.forEach(e => {
+        if (e.source_type === "topic_subconcept_hierarchy" || e.from !== rootConceptNode.id) {
+          if (!childPointsMap[e.from]) childPointsMap[e.from] = [];
+          const childNode = graphData.nodes.find(n => n.id === e.to);
+          if (childNode) {
+            const cleanChild = childNode.label.replace(/^\[Slide\s*\d+\]\s*/i, "");
+            childPointsMap[e.from].push(cleanChild);
+          }
+        }
       });
 
-      // 3. Compute Card Dimensions and Positions
-      const rootW = 280;
-      const rootH = 70;
-      const cardW = 195;
-      const cardH = 58;
-      const gapX = 35;
-      const gapY = 85;
-
-      const nodeCoords = {};
-
-      // Determine width of widest level
-      let maxCols = 1;
-      [1, 2, 3].forEach(d => {
-        const count = levelGroups[d] ? levelGroups[d].length : 0;
-        const subRowCols = Math.min(count, 5);
-        if (subRowCols > maxCols) maxCols = subRowCols;
+      // Filter slide topics (excluding root and excluding pure bullet points)
+      const topicNodes = graphData.nodes.filter(n => {
+        if (n.id === rootConceptNode.id) return false;
+        // Check if node is in sequential prerequisite flow or has child points
+        const isChildPoint = graphData.edges.some(e => e.to === n.id && e.source_type === "topic_subconcept_hierarchy");
+        return !isChildPoint;
       });
 
-      const contentW = Math.max(cw, maxCols * (cardW + gapX) + 120);
+      // Maintain exact sequential order as in graphData.nodes
+      orderedSlideTopics = topicNodes.map((n, idx) => {
+        let slideNum = idx + 2;
+        const slideMatch = n.label.match(/^\[Slide\s*(\d+)\]/i);
+        if (slideMatch) slideNum = parseInt(slideMatch[1], 10);
+        
+        const cleanTitle = n.label.replace(/^\[Slide\s*\d+\]\s*/i, "");
+        const points = (childPointsMap[n.id] || []).slice(0, 2);
+        
+        return {
+          id: n.id,
+          rawNode: n,
+          slideNum: slideNum,
+          title: cleanTitle,
+          points: points,
+          index: idx,
+          status: n.status || "not_yet_observed"
+        };
+      });
+
+      // Layout Geometry
+      const cardW = 265;
+      const cardH = 105;
+      const gapX = 45;
+      const gapY = 65;
+      const cardsPerRow = 4;
+
+      const totalCols = Math.min(Math.max(orderedSlideTopics.length, 1), cardsPerRow);
+      const rowWidth = totalCols * cardW + (totalCols - 1) * gapX;
+      const contentW = Math.max(cw, rowWidth + 140);
       const centerX = contentW / 2;
 
-      // Place Level 0 (Main Concept) centered at top
-      const rootY = 40;
+      // Position Root Main Concept at Top Center
+      const rootW = 500;
+      const rootH = 86;
       const rootX = centerX - rootW / 2;
-      nodeCoords[rootNode.id] = { x: rootX, y: rootY, w: rootW, h: rootH, n: rootNode, isRoot: true };
+      const rootY = 35;
+      
+      const nodeLayoutMap = {};
+      nodeLayoutMap[rootConceptNode.id] = {
+        x: rootX,
+        y: rootY,
+        w: rootW,
+        h: rootH,
+        isRoot: true,
+        node: rootConceptNode
+      };
 
-      let currentY = rootY + rootH + gapY;
+      // Position Slide Cards in Chronological Rows
+      const rowStartX = centerX - rowWidth / 2;
+      let currentY = rootY + rootH + 65;
 
-      // Place subsequent levels
-      [1, 2, 3].forEach(d => {
-        const group = levelGroups[d] || [];
-        if (!group.length) return;
+      orderedSlideTopics.forEach((t, idx) => {
+        const col = idx % cardsPerRow;
+        const row = Math.floor(idx / cardsPerRow);
+        const x = rowStartX + col * (cardW + gapX);
+        const y = currentY + row * (cardH + gapY);
 
-        const maxPerSubRow = 5;
-        const subRows = [];
-        for (let i = 0; i < group.length; i += maxPerSubRow) {
-          subRows.push(group.slice(i, i + maxPerSubRow));
-        }
-
-        subRows.forEach(subRow => {
-          const rowW = subRow.length * cardW + (subRow.length - 1) * gapX;
-          const startX = centerX - rowW / 2;
-          subRow.forEach((n, idx) => {
-            const x = startX + idx * (cardW + gapX);
-            nodeCoords[n.id] = { x, y: currentY, w: cardW, h: cardH, n, isRoot: false };
-          });
-          currentY += cardH + 40;
-        });
-
-        currentY += 45; // extra spacing between levels
+        nodeLayoutMap[t.id] = {
+          x: x,
+          y: y,
+          w: cardW,
+          h: cardH,
+          isRoot: false,
+          topic: t
+        };
       });
 
-      const totalH = currentY + 60;
+      const totalRows = Math.ceil(orderedSlideTopics.length / cardsPerRow);
+      const totalH = currentY + totalRows * (cardH + gapY) + 60;
 
-      // Auto-fit scale & pan to frame Main Concept at top center
+      // Fit scale & pan
       const scaleX = (cw - 40) / contentW;
       const scaleY = (ch - 40) / totalH;
-      currentScale = Math.min(Math.max(Math.min(scaleX, scaleY), 0.35), 1.0);
+      currentScale = Math.min(Math.max(Math.min(scaleX, scaleY), 0.35), 0.98);
       panX = Math.max(20, Math.floor((cw - contentW * currentScale) / 2));
-      panY = 25; // Main Concept visible at top!
+      panY = 25;
 
       let svgHtml = `
       <svg id="svg-root" width="${contentW}" height="${totalH}" style="background: #090d16; cursor: grab; user-select: none; width: 100%; height: 100%;">
         <defs>
           <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#38bdf8" />
+          </marker>
+          <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#22c55e" />
+          </marker>
+          <marker id="arrow-skip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#ef4444" />
           </marker>
           <marker id="arrow-root" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#a855f7" />
@@ -679,7 +758,11 @@
             <stop offset="0%" stop-color="#1e1b4b" />
             <stop offset="100%" stop-color="#0f172a" />
           </linearGradient>
-          <linearGradient id="nodeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id="rootGradCovered" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#064e3b" />
+            <stop offset="100%" stop-color="#022c22" />
+          </linearGradient>
+          <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stop-color="#1e293b" />
             <stop offset="100%" stop-color="#0f172a" />
           </linearGradient>
@@ -687,67 +770,321 @@
         <g id="svg-viewport" transform="translate(${panX}, ${panY}) scale(${currentScale})">
       `;
 
-      // Edges with smooth vertical Bezier paths
-      graphData.edges.forEach(e => {
-        const s = nodeCoords[e.from || e.source];
-        const t = nodeCoords[e.to || e.target];
-        if (s && t) {
-          const x1 = s.x + s.w / 2;
-          const y1 = s.y + s.h;
-          const x2 = t.x + t.w / 2;
-          const y2 = t.y;
-          const my = (y1 + y2) / 2;
-          const isRootEdge = s.isRoot;
-          const strokeColor = isRootEdge ? "#a855f7" : "#38bdf8";
-          const strokeWidth = isRootEdge ? "2.2" : "1.7";
-          const marker = isRootEdge ? "url(#arrow-root)" : "url(#arrow)";
-          svgHtml += `<path d="M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="0.75" marker-end="${marker}" />`;
-        }
-      });
+      // 1. Root Arrow to First Slide
+      if (orderedSlideTopics.length > 0) {
+        const firstTopic = nodeLayoutMap[orderedSlideTopics[0].id];
+        const rx = rootX + rootW / 2;
+        const ry = rootY + rootH;
+        const tx = firstTopic.x + firstTopic.w / 2;
+        const ty = firstTopic.y;
+        const my = (ry + ty) / 2;
+        svgHtml += `<path id="edge-root" d="M ${rx} ${ry} C ${rx} ${my}, ${tx} ${my}, ${tx} ${ty}" fill="none" stroke="#a855f7" stroke-width="2.2" stroke-opacity="0.8" marker-end="url(#arrow-root)" />`;
+      }
 
-      // Nodes
-      Object.values(nodeCoords).forEach(item => {
-        const n = item.n;
-        const rawLabel = (n.label || n.id).replace(/\r?\n/g, ' ');
-        const statusColor = getColorForStatus(n.status);
-        const safeId = sanitizeId(n.id);
+      // 2. Sequential Arrows Between Slide Cards
+      for (let i = 0; i < orderedSlideTopics.length - 1; i++) {
+        const s = nodeLayoutMap[orderedSlideTopics[i].id];
+        const t = nodeLayoutMap[orderedSlideTopics[i + 1].id];
+        const edgeId = `seq-edge-${i}`;
+        const isTargetSkipped = skippedConceptIds.has(orderedSlideTopics[i + 1].id);
+        const strokeColor = isTargetSkipped ? "#ef4444" : "#38bdf8";
+        const marker = isTargetSkipped ? "url(#arrow-skip)" : "url(#arrow)";
+        const dash = isTargetSkipped ? 'stroke-dasharray="5 3"' : "";
 
-        if (item.isRoot) {
-          // Render Root / Main Concept Node
-          const displayTitle = escapeXml(rawLabel.length > 30 ? rawLabel.substring(0, 28) + '...' : rawLabel);
-          svgHtml += `
-          <g class="concept-node" id="concept-node-${safeId}" data-node-id="${escapeXml(n.id)}" transform="translate(${item.x}, ${item.y})" style="cursor: pointer;">
-            <rect id="rect-${safeId}" width="${item.w}" height="${item.h}" rx="10" fill="url(#rootGrad)" stroke="#a855f7" stroke-width="2.5" style="filter: drop-shadow(0 0 16px rgba(168, 85, 247, 0.5)); transition: all 0.25s;" />
-            <circle id="dot-${safeId}" cx="20" cy="22" r="5" fill="#a855f7" />
-            <text x="32" y="26" fill="#a855f7" font-size="11" font-weight="800" letter-spacing="0.8">👑 MAIN LECTURE TOPIC</text>
-            <text x="16" y="50" fill="#ffffff" font-size="13" font-weight="700">${displayTitle}</text>
-          </g>
-          `;
+        // Same row: direct horizontal arrow
+        if (Math.floor(i / cardsPerRow) === Math.floor((i + 1) / cardsPerRow)) {
+          const x1 = s.x + s.w;
+          const y1 = s.y + s.h / 2;
+          const x2 = t.x;
+          const y2 = t.y + t.h / 2;
+          svgHtml += `<path id="${edgeId}" d="M ${x1} ${y1} L ${x2} ${y2}" fill="none" stroke="${strokeColor}" stroke-width="2" ${dash} marker-end="${marker}" />`;
         } else {
-          // Regular node
-          let levelTag = "LEVEL 1 • CORE PILLAR";
-          if (n.depth === 2) levelTag = "LEVEL 2 • SUB-TOPIC";
-          else if (n.depth >= 3) levelTag = "LEVEL 3 • ADVANCED";
-
-          const displayLabel = escapeXml(rawLabel.length > 22 ? rawLabel.substring(0, 20) + '...' : rawLabel);
-          svgHtml += `
-          <g class="concept-node" id="concept-node-${safeId}" data-node-id="${escapeXml(n.id)}" transform="translate(${item.x}, ${item.y})" style="cursor: pointer;">
-            <rect id="rect-${safeId}" width="${item.w}" height="${item.h}" rx="8" fill="url(#nodeGrad)" stroke="${statusColor}" stroke-width="1.6" style="filter: drop-shadow(0 4px 12px rgba(0,0,0,0.6)); transition: all 0.25s;" />
-            <circle id="dot-${safeId}" cx="16" cy="18" r="4" fill="${statusColor}" />
-            <text x="26" y="22" fill="#38bdf8" font-size="9.5" font-weight="700" letter-spacing="0.5">${levelTag}</text>
-            <text x="14" y="42" fill="#f8fafc" font-size="12" font-weight="600">${displayLabel}</text>
-          </g>
-          `;
+          // Row transition: smooth S-curve down and around
+          const x1 = s.x + s.w;
+          const y1 = s.y + s.h / 2;
+          const x2 = t.x;
+          const y2 = t.y + t.h / 2;
+          const curveOffset = 30;
+          svgHtml += `<path id="${edgeId}" d="M ${x1} ${y1} C ${x1 + curveOffset} ${y1}, ${x1 + curveOffset} ${(y1 + y2)/2}, ${(x1 + x2)/2} ${(y1 + y2)/2} C ${x2 - curveOffset} ${(y1 + y2)/2}, ${x2 - curveOffset} ${y2}, ${x2} ${y2}" fill="none" stroke="${strokeColor}" stroke-width="2" ${dash} marker-end="${marker}" />`;
         }
+      }
+
+      // 3. Render Root Main Concept Card
+      const cleanRootTitle = rootConceptNode.label.replace(/^\[Slide\s*\d+\]\s*/i, "");
+      const isRootCovered = rootConceptNode.status === "adequately_covered";
+      const rootStroke = isRootCovered ? "#22c55e" : "#a855f7";
+      const rootFill = isRootCovered ? "url(#rootGradCovered)" : "url(#rootGrad)";
+      const rootStatusText = isRootCovered ? "ADEQUATELY COVERED ✅ (Synthesized from Slides)" : "SYNTHESIZING COVERAGE FROM SLIDE POINTS";
+      
+      svgHtml += `
+      <g class="concept-node" id="concept-node-root" data-node-id="${escapeXml(rootConceptNode.id)}" transform="translate(${rootX}, ${rootY})" style="cursor: pointer;">
+        <rect id="rect-root" width="${rootW}" height="${rootH}" rx="12" fill="${rootFill}" stroke="${rootStroke}" stroke-width="2.5" style="filter: drop-shadow(0 0 16px rgba(168, 85, 247, 0.4)); transition: all 0.3s;" />
+        <circle id="dot-root" cx="22" cy="22" r="5" fill="${rootStroke}" />
+        <text id="root-header-tag" x="34" y="26" fill="${rootStroke}" font-size="10.5" font-weight="800" letter-spacing="0.8">👑 MAIN LECTURE TOPIC</text>
+        <text id="root-title" x="22" y="50" fill="#ffffff" font-size="15" font-weight="700">${escapeXml(cleanRootTitle)}</text>
+        <text id="root-status-pill" x="22" y="71" fill="${rootStroke}" font-size="10" font-weight="600" letter-spacing="0.4">● ${rootStatusText}</text>
+      </g>
+      `;
+
+      // 4. Render Sequential Slide Topic Cards
+      orderedSlideTopics.forEach(t => {
+        const coords = nodeLayoutMap[t.id];
+        const safeId = sanitizeId(t.id);
+        const isCovered = t.status === "adequately_covered" || deliveredConceptIds.has(t.id);
+        const isSkipped = t.status === "skipped" || skippedConceptIds.has(t.id);
+        
+        let strokeColor = "#38bdf8";
+        let statusBadge = "PENDING";
+        let statusColor = "#38bdf8";
+        let strokeDash = "";
+        let filterEffect = "drop-shadow(0 4px 10px rgba(0,0,0,0.5))";
+
+        if (isCovered) {
+          strokeColor = "#22c55e";
+          statusBadge = "COVERED ✅";
+          statusColor = "#22c55e";
+          filterEffect = "drop-shadow(0 0 12px rgba(34, 197, 94, 0.4))";
+        } else if (isSkipped) {
+          strokeColor = "#ef4444";
+          statusBadge = "⚠️ SKIPPED";
+          statusColor = "#ef4444";
+          strokeDash = 'stroke-dasharray="6 3"';
+          filterEffect = "drop-shadow(0 0 14px rgba(239, 68, 68, 0.6))";
+        }
+
+        const displayTitle = escapeXml(t.title.length > 30 ? t.title.substring(0, 28) + '...' : t.title);
+        const pt1 = t.points[0] ? escapeXml(t.points[0].length > 34 ? t.points[0].substring(0, 32) + '...' : t.points[0]) : "";
+        const pt2 = t.points[1] ? escapeXml(t.points[1].length > 34 ? t.points[1].substring(0, 32) + '...' : t.points[1]) : "";
+
+        svgHtml += `
+        <g class="concept-node" id="concept-node-${safeId}" data-node-id="${escapeXml(t.id)}" transform="translate(${coords.x}, ${coords.y})" style="cursor: pointer;">
+          <rect id="rect-${safeId}" width="${coords.w}" height="${coords.h}" rx="9" fill="url(#cardGrad)" stroke="${strokeColor}" stroke-width="1.8" ${strokeDash} style="filter: ${filterEffect}; transition: all 0.25s;" />
+          
+          <!-- Header Bar -->
+          <rect x="12" y="10" width="60" height="18" rx="4" fill="rgba(56, 189, 248, 0.15)" stroke="rgba(56, 189, 248, 0.3)" stroke-width="0.8" />
+          <text x="42" y="23" text-anchor="middle" fill="#38bdf8" font-size="9.5" font-weight="700">SLIDE ${String(t.slideNum).padStart(2, '0')}</text>
+          
+          <text id="badge-${safeId}" x="${coords.w - 12}" y="23" text-anchor="end" fill="${statusColor}" font-size="10" font-weight="700" letter-spacing="0.5">${statusBadge}</text>
+          
+          <!-- Title -->
+          <text id="title-${safeId}" x="12" y="47" fill="#f8fafc" font-size="12" font-weight="700">${displayTitle}</text>
+          
+          <!-- Sub points remembered from PDF -->
+          <g font-size="9.5" fill="#94a3b8">
+            ${pt1 ? `<text x="12" y="69">• ${pt1}</text>` : `<text x="12" y="69" fill="#64748b">• Core principles &amp; slide concepts</text>`}
+            ${pt2 ? `<text x="12" y="87">• ${pt2}</text>` : ""}
+          </g>
+        </g>
+        `;
       });
 
       svgHtml += `</g></svg>`;
       container.innerHTML = svgHtml;
 
-      document.getElementById("graph-stats").innerText = `${graphData.nodes.length} Nodes | ${graphData.edges.length} Prerequisite Edges`;
-
-      // Attach interactions
+      document.getElementById("graph-stats").innerText = `${orderedSlideTopics.length + 1} Curriculum Nodes | ${orderedSlideTopics.length} Prerequisite Sequence Edges`;
       setupSvgInteractions();
+    }
+
+    // Deliver next sequential slide in chronological PDF order
+    function deliverNextSequentialSlide() {
+      if (!orderedSlideTopics.length) {
+        alert("Please upload a lecture presentation (.pptx or .pdf) or click a Demo button first!");
+        return;
+      }
+
+      currentSlideStepIndex++;
+      if (currentSlideStepIndex >= orderedSlideTopics.length) {
+        currentSlideStepIndex = orderedSlideTopics.length - 1;
+        alert("Lecture curriculum complete! All sequential slide concepts have been delivered.");
+        return;
+      }
+
+      const currentTopic = orderedSlideTopics[currentSlideStepIndex];
+      deliverTopicNode(currentTopic.id, `Advancing to Slide ${String(currentTopic.slideNum).padStart(2, '0')}: "${currentTopic.title}"`);
+    }
+
+    // Simulate concept skip violation: Jump directly from early slides to Slide 07!
+    function simulatePrerequisiteSkip() {
+      if (!orderedSlideTopics.length) {
+        alert("Please upload a lecture presentation (.pptx or .pdf) or click a Demo button first!");
+        return;
+      }
+
+      // Find Slide 07 or target around index 4..6
+      let targetTopic = orderedSlideTopics.find(t => t.slideNum >= 7);
+      if (!targetTopic && orderedSlideTopics.length > 4) {
+        targetTopic = orderedSlideTopics[4];
+      }
+      if (!targetTopic) targetTopic = orderedSlideTopics[orderedSlideTopics.length - 1];
+
+      currentSlideStepIndex = targetTopic.index;
+      deliverTopicNode(targetTopic.id, `[SKIP JUMP]: Lecturer jumped directly to Slide ${String(targetTopic.slideNum).padStart(2, '0')}: "${targetTopic.title}"!`);
+    }
+
+    // Core skip detection and delivery handler
+    function deliverTopicNode(topicId, utteranceText) {
+      const topicIndex = orderedSlideTopics.findIndex(t => t.id === topicId);
+      if (topicIndex === -1) return;
+
+      const currentTopic = orderedSlideTopics[topicIndex];
+      
+      // Update transcript ticker
+      const pointsMention = currentTopic.points.length > 0 ? ` focusing on ${currentTopic.points.join(" and ")}` : "";
+      document.getElementById("transcript-ticker").innerText = `[Utterance]: "${utteranceText}${pointsMention}."`;
+
+      // 1. Evaluate Upstream Prerequisite Compliance
+      const missingPrereqs = [];
+      for (let i = 0; i < topicIndex; i++) {
+        const prev = orderedSlideTopics[i];
+        if (!deliveredConceptIds.has(prev.id)) {
+          missingPrereqs.push(prev);
+          skippedConceptIds.add(prev.id);
+          prev.status = "skipped";
+        }
+      }
+
+      // Mark current as delivered
+      deliveredConceptIds.add(topicId);
+      skippedConceptIds.delete(topicId);
+      currentTopic.status = "adequately_covered";
+
+      // 2. Trigger or Clear Skip Alert
+      const alertBox = document.getElementById("skip-alert-box");
+      const alertMsg = document.getElementById("skip-alert-msg");
+      if (missingPrereqs.length > 0) {
+        const skippedLabels = missingPrereqs.map(p => `[Slide ${String(p.slideNum).padStart(2, '0')}] ${p.title}`).join(", ");
+        alertMsg.innerHTML = `<strong>Prerequisite Skip Alert (CRITICAL):</strong> Concept '<strong>[Slide ${String(currentTopic.slideNum).padStart(2, '0')}] ${escapeXml(currentTopic.title)}</strong>' was introduced without prior delivery of foundational prerequisite slide(s): <span style="color: #fca5a5;">${escapeXml(skippedLabels)}</span>.`;
+        alertBox.style.display = "block";
+      } else {
+        alertBox.style.display = "none";
+      }
+
+      // 3. Synthesize Main Lecture Topic Coverage
+      // The main topic is covered once underlying slide content is completed (>= 50% or >= 3 slides)
+      const coveredCount = deliveredConceptIds.size;
+      const totalTopics = orderedSlideTopics.length;
+      const coverageRatio = coveredCount / (totalTopics || 1);
+      
+      if (rootConceptNode && (coverageRatio >= 0.45 || (totalTopics >= 4 && coveredCount >= 3))) {
+        rootConceptNode.status = "adequately_covered";
+      }
+
+      // 4. Update Visual Nodes on Canvas
+      updateCanvasVisuals();
+      updateProgressionUI();
+      showNodeDetails(currentTopic.rawNode);
+    }
+
+    // Refresh visual card styles (borders, glows, badges)
+    function updateCanvasVisuals() {
+      // Update Root Main Concept Card
+      if (rootConceptNode) {
+        const isRootCovered = rootConceptNode.status === "adequately_covered";
+        const rootRect = document.getElementById("rect-root");
+        const rootDot = document.getElementById("dot-root");
+        const rootHeader = document.getElementById("root-header-tag");
+        const rootPill = document.getElementById("root-status-pill");
+
+        if (isRootCovered) {
+          if (rootRect) {
+            rootRect.setAttribute("stroke", "#22c55e");
+            rootRect.setAttribute("fill", "url(#rootGradCovered)");
+            rootRect.style.filter = "drop-shadow(0 0 20px rgba(34, 197, 94, 0.6))";
+          }
+          if (rootDot) rootDot.setAttribute("fill", "#22c55e");
+          if (rootHeader) rootHeader.setAttribute("fill", "#22c55e");
+          if (rootPill) {
+            rootPill.setAttribute("fill", "#22c55e");
+            rootPill.textContent = "● ADEQUATELY COVERED ✅ (Synthesized from Slides)";
+          }
+        }
+      }
+
+      // Update Slide Cards
+      orderedSlideTopics.forEach(t => {
+        const safeId = sanitizeId(t.id);
+        const rect = document.getElementById(`rect-${safeId}`);
+        const badge = document.getElementById(`badge-${safeId}`);
+        if (!rect || !badge) return;
+
+        if (deliveredConceptIds.has(t.id)) {
+          rect.setAttribute("stroke", "#22c55e");
+          rect.setAttribute("stroke-width", "2.2");
+          rect.removeAttribute("stroke-dasharray");
+          rect.style.filter = "drop-shadow(0 0 14px rgba(34, 197, 94, 0.45))";
+          badge.setAttribute("fill", "#22c55e");
+          badge.textContent = "COVERED ✅";
+        } else if (skippedConceptIds.has(t.id)) {
+          rect.setAttribute("stroke", "#ef4444");
+          rect.setAttribute("stroke-width", "2.5");
+          rect.setAttribute("stroke-dasharray", "6 3");
+          rect.style.filter = "drop-shadow(0 0 16px rgba(239, 68, 68, 0.65))";
+          badge.setAttribute("fill", "#ef4444");
+          badge.textContent = "⚠️ SKIPPED";
+        } else {
+          rect.setAttribute("stroke", "#38bdf8");
+          rect.setAttribute("stroke-width", "1.8");
+          rect.removeAttribute("stroke-dasharray");
+          rect.style.filter = "drop-shadow(0 4px 10px rgba(0,0,0,0.5))";
+          badge.setAttribute("fill", "#38bdf8");
+          badge.textContent = "PENDING";
+        }
+      });
+    }
+
+    function updateProgressionUI() {
+      const total = orderedSlideTopics.length;
+      const covered = deliveredConceptIds.size;
+      const skipped = skippedConceptIds.size;
+      const pct = total > 0 ? Math.round((covered / total) * 100) : 0;
+
+      const counter = document.getElementById("slide-step-counter");
+      if (counter) counter.innerText = total > 0 ? `Slide ${Math.min(currentSlideStepIndex + 1, total)} / ${total}` : "Slide 0 / 0";
+
+      const bar = document.getElementById("slide-progress-bar");
+      if (bar) bar.style.width = `${pct}%`;
+
+      const stats = document.getElementById("coverage-stats-label");
+      if (stats) stats.innerText = `Covered: ${covered} | Skipped: ${skipped}`;
+
+      const synthLabel = document.getElementById("main-concept-synthesis-label");
+      if (synthLabel) {
+        if (rootConceptNode && rootConceptNode.status === "adequately_covered") {
+          synthLabel.innerHTML = `👑 <strong style="color: #22c55e;">Main Topic: Covered (Synthesized)</strong>`;
+        } else {
+          synthLabel.innerHTML = `👑 Main Topic: <span style="color: var(--primary);">${covered}/${total} Points (${pct}%)</span>`;
+        }
+      }
+    }
+
+    function resetLectureProgression() {
+      deliveredConceptIds.clear();
+      skippedConceptIds.clear();
+      currentSlideStepIndex = -1;
+      if (rootConceptNode) rootConceptNode.status = "not_yet_observed";
+      orderedSlideTopics.forEach(t => t.status = "not_yet_observed");
+
+      document.getElementById("skip-alert-box").style.display = "none";
+      document.getElementById("transcript-ticker").innerText = "Progression reset. Ready for sequential delivery or live speech...";
+      
+      const rootRect = document.getElementById("rect-root");
+      const rootDot = document.getElementById("dot-root");
+      const rootHeader = document.getElementById("root-header-tag");
+      const rootPill = document.getElementById("root-status-pill");
+      if (rootRect) {
+        rootRect.setAttribute("stroke", "#a855f7");
+        rootRect.setAttribute("fill", "url(#rootGrad)");
+        rootRect.style.filter = "drop-shadow(0 0 16px rgba(168, 85, 247, 0.4))";
+      }
+      if (rootDot) rootDot.setAttribute("fill", "#a855f7");
+      if (rootHeader) rootHeader.setAttribute("fill", "#a855f7");
+      if (rootPill) {
+        rootPill.setAttribute("fill", "#a855f7");
+        rootPill.textContent = "● SYNTHESIZING COVERAGE FROM SLIDE POINTS";
+      }
+
+      updateCanvasVisuals();
+      updateProgressionUI();
     }
 
     function onNodeClicked(nodeId) {
@@ -755,12 +1092,10 @@
       const node = currentGraph.nodes.find(n => n.id === nodeId);
       if (!node) return;
 
-      // Clear previous selection highlight
       document.querySelectorAll(".concept-node rect").forEach(r => {
-        r.removeAttribute("stroke-dasharray");
+        if (r.id !== "rect-root") r.removeAttribute("stroke-dasharray");
       });
 
-      // Highlight selected node
       const safeId = sanitizeId(nodeId);
       const selectedRect = document.getElementById(`rect-${safeId}`);
       if (selectedRect) {
@@ -775,7 +1110,6 @@
       const svg = document.getElementById("svg-root");
       if (!svg) return;
 
-      // Event delegation for node click
       svg.addEventListener("click", (e) => {
         const nodeEl = e.target.closest(".concept-node");
         if (nodeEl && nodeEl.dataset.nodeId) {
@@ -783,9 +1117,8 @@
         }
       });
 
-      // Pan interactions
       svg.addEventListener("mousedown", (e) => {
-        if (e.target.closest(".concept-node")) return; // don't start pan on node click
+        if (e.target.closest(".concept-node")) return;
         isPanning = true;
         startX = e.clientX - panX;
         startY = e.clientY - panY;
@@ -804,7 +1137,6 @@
         if (svg) svg.style.cursor = "grab";
       });
 
-      // Zoom on mouse wheel
       svg.addEventListener("wheel", (e) => {
         e.preventDefault();
         const factor = e.deltaY > 0 ? 0.9 : 1.1;
@@ -821,22 +1153,11 @@
     }
 
     function centerGraphView() {
-      if (!currentGraph || !currentGraph.nodes.length) return;
       const container = document.getElementById("graph-canvas");
-      const cw = container.clientWidth || 900;
-      const ch = container.clientHeight || 650;
-
-      const cardW = 195;
-      const gapX = 35;
-      const maxCols = 5;
-      const contentW = Math.max(cw, maxCols * (cardW + gapX) + 120);
-      const totalH = 550;
-
-      const scaleX = (cw - 40) / contentW;
-      const scaleY = (ch - 40) / totalH;
-      currentScale = Math.min(Math.max(Math.min(scaleX, scaleY), 0.35), 1.0);
-      panX = Math.max(20, Math.floor((cw - contentW * currentScale) / 2));
+      const cw = container.clientWidth || 920;
+      panX = Math.max(20, Math.floor((cw - 1180 * currentScale) / 2));
       panY = 25;
+      currentScale = 0.88;
       applyTransform();
     }
 
@@ -850,82 +1171,47 @@
       applyTransform();
     }
 
-    function getColorForStatus(status) {
-      if (status === "adequately_covered") return "#22c55e"; // Green
-      if (status === "introduced") return "#eab308";        // Yellow
-      return "#38bdf8";                                      // Cyan Blue
-    }
-
     function showNodeDetails(node) {
-      const prereqs = currentGraph.edges
-        .filter(e => (e.to || e.target) === node.id)
-        .map(e => e.from || e.source);
-      
-      const downstream = currentGraph.edges
-        .filter(e => (e.from || e.source) === node.id)
-        .map(e => e.to || e.target);
+      const topicObj = orderedSlideTopics.find(t => t.id === node.id);
+      const isDelivered = deliveredConceptIds.has(node.id);
+      const isSkipped = skippedConceptIds.has(node.id);
+      let statusStr = '<span style="color: #38bdf8; font-weight: 600;">Pending (Not Yet Delivered)</span>';
+      if (isDelivered) statusStr = '<span style="color: #22c55e; font-weight: 600;">Covered in Lecture ✅</span>';
+      else if (isSkipped) statusStr = '<span style="color: #ef4444; font-weight: 600;">⚠️ SKIPPED (Prerequisite Missing!)</span>';
 
       document.getElementById("info-node-title").innerText = node.label.replace(/\r?\n/g, " ");
-      document.getElementById("info-node-desc").innerText = node.description || "Prerequisite concept extracted from lecture slides.";
+      document.getElementById("info-node-desc").innerText = node.description || "Substantive curriculum concept extracted from lecture deck.";
       
-      let prereqText = prereqs.length > 0 ? prereqs.join(", ") : "None (Foundational Entry Concept)";
-      let leadsToText = downstream.length > 0 ? downstream.join(", ") : "Terminal Concept";
+      let pointsHtml = "";
+      if (topicObj && topicObj.points.length > 0) {
+        pointsHtml = `
+          <div style="margin-top: 6px; padding: 6px 8px; background: rgba(15, 23, 42, 0.5); border-radius: 6px;">
+            <div style="font-weight: 700; color: #38bdf8; font-size: 11px;">Important Points from PDF:</div>
+            ${topicObj.points.map(pt => `<div style="color: var(--text-muted); font-size: 11px;">• ${escapeXml(pt)}</div>`).join("")}
+          </div>
+        `;
+      }
+
+      const prereqIdx = topicObj ? topicObj.index : -1;
+      const prevTopic = prereqIdx > 0 ? orderedSlideTopics[prereqIdx - 1] : null;
+      const nextTopic = prereqIdx >= 0 && prereqIdx < orderedSlideTopics.length - 1 ? orderedSlideTopics[prereqIdx + 1] : null;
 
       document.getElementById("info-node-meta").innerHTML = `
-        <div style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
-          <div><strong>DAG Level:</strong> Level ${node.depth !== undefined ? node.depth : 1}</div>
-          <div><strong>Coverage Status:</strong> <span style="color: ${getColorForStatus(node.status)}; font-weight: 600;">${node.status}</span></div>
-          <div style="margin-top: 4px; color: var(--text-muted);"><strong>Prerequisites:</strong> ${escapeXml(prereqText)}</div>
-          <div style="color: var(--text-muted);"><strong>Enables:</strong> ${escapeXml(leadsToText)}</div>
-        </div>
+        <div><strong>Status:</strong> ${statusStr}</div>
+        <div><strong>Curriculum Position:</strong> ${topicObj ? `Slide ${String(topicObj.slideNum).padStart(2, '0')} (Step ${topicObj.index + 1} of ${orderedSlideTopics.length})` : 'Root Main Topic'}</div>
+        ${prevTopic ? `<div style="color: var(--text-muted);"><strong>Sequential Prerequisite:</strong> [Slide ${String(prevTopic.slideNum).padStart(2, '0')}] ${escapeXml(prevTopic.title)}</div>` : ''}
+        ${nextTopic ? `<div style="color: var(--text-muted);"><strong>Downstream Target:</strong> [Slide ${String(nextTopic.slideNum).padStart(2, '0')}] ${escapeXml(nextTopic.title)}</div>` : ''}
+        ${pointsHtml}
       `;
     }
 
-    let simIndex = 0;
-    function simulateSpeechChunk() {
-      if (!currentGraph || !currentGraph.nodes.length) {
-        alert("Please upload a lecture presentation (.pptx or .pdf) or click a Demo button first!");
-        return;
-      }
-
-      const node = currentGraph.nodes[simIndex % currentGraph.nodes.length];
-      simIndex++;
-      
-      const cleanLabel = node.label.replace(/\r?\n/g, " ");
-      document.getElementById("transcript-ticker").innerText = `[Utterance]: "Now, let's explore ${cleanLabel} and how it connects to our prerequisite curriculum."`;
-
-      node.status = "adequately_covered";
-      
-      // Update SVG node visually
-      const safeId = sanitizeId(node.id);
-      const rect = document.getElementById(`rect-${safeId}`);
-      const dot = document.getElementById(`dot-${safeId}`);
-      if (rect) {
-        rect.setAttribute("stroke", "#22c55e");
-        rect.setAttribute("stroke-width", "2.5");
-      }
-      if (dot) {
-        dot.setAttribute("fill", "#22c55e");
-      }
-      showNodeDetails(node);
-
-      // Demonstrate skip check
-      const alertBox = document.getElementById("skip-alert-box");
-      if (node.depth > 2 && Math.random() > 0.6) {
-        document.getElementById("skip-alert-msg").innerText = `Concept '${cleanLabel}' introduced at Depth ${node.depth} without prior foundational delivery of prerequisites!`;
-        alertBox.style.display = "block";
-      } else {
-        alertBox.style.display = "none";
-      }
-    }
-
-    // Live Web Speech Recognition (Chrome/Edge API)
+    // Live Web Speech Recognition
     function toggleMicrophone() {
       const btn = document.getElementById("mic-btn");
       if (!isRecording) {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
-          alert("Web Speech API not supported in this browser. Please use Google Chrome or Microsoft Edge, or click 'Simulate Step'!");
+          alert("Web Speech API not supported in this browser. Please use Google Chrome or Microsoft Edge, or click 'Next Slide Concept'!");
           return;
         }
 
@@ -942,6 +1228,7 @@
 
         recognition.onerror = function() {
           btn.innerText = "🎙️ Start Live Mic";
+          btn.classList.remove("btn-danger");
           isRecording = false;
         };
 
@@ -958,22 +1245,16 @@
     }
 
     function checkLiveSpeechAgainstConcepts(text) {
-      if (!currentGraph) return;
+      if (!orderedSlideTopics.length) return;
 
-      currentGraph.nodes.forEach(node => {
-        const cleanLabel = node.label.replace(/\r?\n/g, " ").toLowerCase();
-        const cleanId = node.id.replace(/_/g, " ").toLowerCase();
-        if (text.includes(cleanLabel) || text.includes(cleanId)) {
-          node.status = "adequately_covered";
-          const safeId = sanitizeId(node.id);
-          const rect = document.getElementById(`rect-${safeId}`);
-          const dot = document.getElementById(`dot-${safeId}`);
-          if (rect) {
-            rect.setAttribute("stroke", "#22c55e");
-            rect.setAttribute("stroke-width", "2.5");
-          }
-          if (dot) {
-            dot.setAttribute("fill", "#22c55e");
+      orderedSlideTopics.forEach(topic => {
+        const cleanTitle = topic.title.toLowerCase();
+        const cleanId = topic.id.replace(/_/g, " ").toLowerCase();
+        const hasPointMatch = topic.points.some(pt => text.includes(pt.toLowerCase()));
+        
+        if (text.includes(cleanTitle) || text.includes(cleanId) || hasPointMatch) {
+          if (!deliveredConceptIds.has(topic.id)) {
+            deliverTopicNode(topic.id, `[Live Mic Matched Slide ${String(topic.slideNum).padStart(2, '0')}]: "${topic.title}"`);
           }
         }
       });
@@ -981,27 +1262,17 @@
 
     function openCatchupModal() {
       const content = document.getElementById("catchup-content");
-      if (currentGraph && currentGraph.nodes.length > 0) {
-        const topNodes = currentGraph.nodes.slice(0, 3);
-        content.innerHTML = topNodes.map((n, idx) => `
+      if (orderedSlideTopics.length > 0) {
+        const topNodes = orderedSlideTopics.slice(0, 3);
+        content.innerHTML = topNodes.map((t, idx) => `
           <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 8px; border-left: 4px solid #38bdf8;">
-            <h4 style="color: #38bdf8;">${idx + 1}. [Depth ${n.depth || 1}] ${escapeXml(n.label.replace(/\r?\n/g, " "))}</h4>
-            <p style="font-size: 12px; color: var(--text-muted); margin: 4px 0;">${escapeXml(n.description || 'Core concept extracted from uploaded lecture deck.')}</p>
-            <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
-              <button class="btn btn-secondary" style="font-size: 11px; padding: 4px 8px;">▶️ Play Audio Window (45s)</button>
-              <span style="font-size: 11px; color: var(--text-muted);">[0${idx*2}:15 - 0${idx*2+1}:00]</span>
+            <h4 style="color: #38bdf8;">${idx + 1}. [Slide ${String(t.slideNum).padStart(2, '0')}] ${escapeXml(t.title)}</h4>
+            <p style="font-size: 12px; color: var(--text-muted); margin: 4px 0;">${escapeXml(t.rawNode.description || 'Core curriculum slide concept.')}</p>
+            <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">
+              ${t.points.map(pt => `<div>• ${escapeXml(pt)}</div>`).join("")}
             </div>
           </div>
-        `).join("") + `
-          <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 8px; border-left: 4px solid #a855f7;">
-            <h4 style="color: #a855f7;">Self-Check Diagnostic Question</h4>
-            <p style="font-size: 12px; margin-top: 4px;"><strong>Q: What is the primary prerequisite requirement before advancing to this topic?</strong></p>
-            <div style="margin-top: 6px; font-size: 12px; display: flex; flex-direction: column; gap: 4px;">
-              <label><input type="radio" name="quiz" checked> Mastery of foundational principles established in earlier slides</label>
-              <label><input type="radio" name="quiz"> Direct execution without verification</label>
-            </div>
-          </div>
-        `;
+        `).join("");
       } else {
         content.innerHTML = `<p style="font-size: 12px; color: var(--text-muted);">Please upload a slide deck first to compute the personalized fast-track catch-up sequence.</p>`;
       }
@@ -1020,7 +1291,6 @@
       document.getElementById("metrics-modal").style.display = "none";
     }
 
-    // Window onload: Set up drag & drop listeners without preloading any sample graph!
     window.onload = function() {
       const dropZone = document.getElementById("drop-zone");
       if (dropZone) {

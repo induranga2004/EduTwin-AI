@@ -77,15 +77,32 @@ def build_timeline_compatibility(
         result = matcher.match(segment.text, concepts, threshold=similarity_threshold)
         scores = {m.name.casefold(): m.similarity for m in result.matches}
 
-        nodes = []
         for node in graph.nodes:
             if node.id in scores:
                 counts[node.id] += 1
+
+        # Synthesize coverage for the main concept when its constituent slide concepts are covered
+        main_id = graph.main_concept
+        if main_id and main_id in counts:
+            constituent_nodes = [n for n in graph.nodes if n.id != main_id]
+            if constituent_nodes:
+                covered_constituents = sum(1 for n in constituent_nodes if counts[n.id] > 0)
+                if (covered_constituents / len(constituent_nodes) >= 0.5) or (
+                    len(constituent_nodes) >= 4 and covered_constituents >= 3
+                ):
+                    if counts[main_id] == 0:
+                        counts[main_id] = covered_constituents
+
+        nodes = []
+        for node in graph.nodes:
+            status = "not_yet_observed"
+            if counts[node.id] > 0:
+                status = "adequately_covered" if (counts[node.id] >= 2 or node.id == main_id) else "introduced"
             nodes.append(
                 TimelineNode(
                     **node.model_dump(),
                     evidence_count=counts[node.id],
-                    status="introduced" if counts[node.id] else "not_yet_observed",
+                    status=status,
                     latest_similarity=scores.get(node.id),
                 )
             )
