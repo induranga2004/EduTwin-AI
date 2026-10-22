@@ -24,14 +24,17 @@ from edusync_c4.schemas import (
     EventImportResponse,
     GroupAnalysis,
     GroupingConfig,
+    LectureSummary,
     NormalizedAnnotation,
     ShapeType,
     SlideInfo,
     SlideUpsert,
+    SpeechInfo,
+    SpeechSegment,
 )
 from edusync_c4.timeline import build_timeline
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS events (
@@ -80,7 +83,31 @@ CREATE TABLE IF NOT EXISTS slides (
     updated_at TEXT NOT NULL,
     PRIMARY KEY (lecture_id, slide_id)
 );
+CREATE TABLE IF NOT EXISTS speech_segments (
+    lecture_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    segment_id TEXT NOT NULL,
+    start_seconds REAL NOT NULL,
+    end_seconds REAL NOT NULL,
+    text TEXT NOT NULL,
+    PRIMARY KEY (lecture_id, position)
+);
+CREATE TABLE IF NOT EXISTS speech_meta (
+    lecture_id TEXT PRIMARY KEY,
+    offset_seconds REAL NOT NULL,
+    method TEXT NOT NULL,
+    source TEXT,
+    sync_shape_id TEXT,
+    updated_at TEXT NOT NULL
+);
 """
+
+
+def _shape_of(item: Any) -> str | None:
+    """Shape id of a raw event dict (as stored) or a NormalizedAnnotation."""
+    if isinstance(item, NormalizedAnnotation):
+        return item.shape_id
+    return normalize_event(item).shape_id
 
 
 def _canonical(obj: Any) -> str:
@@ -226,6 +253,11 @@ class AnnotationRepository:
                         lecture_start_ms=row["lecture_start_ms"],
                     )
                 )
+        sync_shape = self._sync_shape(lecture_id)
+        if sync_shape:  # the cue mark drawn to line up speech is not lecture content
+            items = [i for i in items if _shape_of(i) != sync_shape]
+            if not items:
+                return None
         timeline = build_timeline(items, lecture_id=lecture_id, slide_id=slide_id)
         for ann in [*timeline.events, *timeline.unplaced]:
             ann.raw_payload = originals.get(ann.event_id, ann.raw_payload)
@@ -382,7 +414,120 @@ class AnnotationRepository:
         counts: dict[str, int] = {}
         with self._connect() as conn:
             conn.execute("DELETE FROM analyses WHERE lecture_id = ?", (lecture_id,))
-            for table in ("groups", "slides", "events"):
+            for table in ("groups", "slides", "events", "speech_segments", "speech_meta"):
                 cur = conn.execute(f"DELETE FROM {table} WHERE lecture_id = ?", (lecture_id,))
                 counts[table] = cur.rowcount
         return counts
+
+    # ------------------------------------------------------------------ speech
+
+    def _sync_shape(self, lecture_id: str) -> str | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT sync_shape_id FROM speech_meta WHERE lecture_id = ?", (lecture_id,)
+            ).fetchone()
+        return row["sync_shape_id"] if row is not None else None
+
+    def first_annotation(self, lecture_id: str) -> tuple[str, float] | None:
+        """(shape id, meeting second) of the earliest drawn item: the sync mark, if one was made."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT shape_id, timestamp_seconds FROM events WHERE lecture_id = ? "
+                "AND timestamp_valid = 1 AND is_deleted = 0 AND is_clear = 0 "
+                "ORDER BY timestamp_seconds, rowid LIMIT 1",
+                (lecture_id,),
+            ).fetchone()
+        return (row["shape_id"], row["timestamp_seconds"]) if row is not None else None
+
+    def save_speech(
+        self,
+        lecture_id: str,
+        segments: list[SpeechSegment],
+        offset_seconds: float,
+        method: str,
+        source: str | None,
+        sync_shape_id: str | None,
+    ) -> SpeechInfo:
+        """Replace all stored speech for a lecture (times stay in recording time)."""
+        with self._connect() as conn:
+            conn.execute("DELETE FROM speech_segments WHERE lecture_id = ?", (lecture_id,))
+            conn.executemany(
+                "INSERT INTO speech_segments VALUES (?,?,?,?,?,?)",
+                [
+                    (lecture_id, i, str(seg.id), seg.start, seg.end, seg.text)
+                    for i, seg in enumerate(segments)
+                ],
+            )
+            conn.execute(
+                "INSERT OR REPLACE INTO speech_meta VALUES (?,?,?,?,?,?)",
+                (lecture_id, offset_seconds, method, source, sync_shape_id, _now()),
+            )
+            # cached groups and analyses were built from the old timeline/speech
+            conn.execute("DELETE FROM groups WHERE lecture_id = ?", (lecture_id,))
+        return SpeechInfo(
+            lecture_id=lecture_id,
+            segment_count=len(segments),
+            offset_seconds=offset_seconds,
+            method=method,
+            source=source,
+            sync_shape_id=sync_shape_id,
+        )
+
+    def load_speech(self, lecture_id: str) -> tuple[SpeechInfo, list[SpeechSegment]] | None:
+        """Stored speech with every time moved onto the meeting clock (recording + offset)."""
+        with self._connect() as conn:
+            meta = conn.execute(
+                "SELECT * FROM speech_meta WHERE lecture_id = ?", (lecture_id,)
+            ).fetchone()
+            if meta is None:
+                return None
+            rows = conn.execute(
+                "SELECT * FROM speech_segments WHERE lecture_id = ? ORDER BY position",
+                (lecture_id,),
+            ).fetchall()
+        shift = meta["offset_seconds"]
+        segments = [
+            SpeechSegment(
+                id=r["segment_id"],
+                start=max(0.0, r["start_seconds"] + shift),
+                end=max(0.0, r["end_seconds"] + shift),
+                text=r["text"],
+            )
+            for r in rows
+        ]
+        info = SpeechInfo(
+            lecture_id=lecture_id,
+            segment_count=len(segments),
+            offset_seconds=shift,
+            method=meta["method"],
+            source=meta["source"],
+            sync_shape_id=meta["sync_shape_id"],
+        )
+        return info, segments
+
+    # ------------------------------------------------------------------ lectures
+
+    def list_lectures(self) -> list[LectureSummary]:
+        """All stored lectures, most recently imported first."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT e.lecture_id AS lecture_id, COUNT(*) AS events, "
+                "COUNT(DISTINCT e.slide_id) AS slides, "
+                "MIN(CASE WHEN e.timestamp_valid = 1 THEN e.timestamp_seconds END) AS first_s, "
+                "MAX(CASE WHEN e.timestamp_valid = 1 THEN e.timestamp_seconds END) AS last_s, "
+                "MAX(e.imported_at) AS last_imported, "
+                "EXISTS(SELECT 1 FROM speech_meta m WHERE m.lecture_id = e.lecture_id) AS speech "
+                "FROM events e GROUP BY e.lecture_id ORDER BY last_imported DESC"
+            ).fetchall()
+        return [
+            LectureSummary(
+                lecture_id=r["lecture_id"],
+                event_count=r["events"],
+                slide_count=r["slides"],
+                first_seconds=r["first_s"],
+                last_seconds=r["last_s"],
+                last_imported=r["last_imported"],
+                has_speech=bool(r["speech"]),
+            )
+            for r in rows
+        ]

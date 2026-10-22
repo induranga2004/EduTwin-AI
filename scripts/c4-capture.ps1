@@ -34,7 +34,11 @@ function Invoke-Native([string[]]$CommandLine, [switch]$Quiet) {
         $code = $LASTEXITCODE
     }
     finally { $ErrorActionPreference = $previous }
-    if ($code -ne 0) { throw "Command failed ($code): $($CommandLine -join ' ')" }
+    if ($code -ne 0) {
+        # show what the command printed before it failed: that is where the reason is
+        $out | ForEach-Object { Write-Host ("    " + $_) }
+        throw "Command failed ($code): $($CommandLine -join ' ')"
+    }
     return $out
 }
 

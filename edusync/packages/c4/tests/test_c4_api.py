@@ -253,9 +253,9 @@ def test_database_lives_under_data_dir(tmp_path):
 
 def test_sqlite_schema_version_and_foreign_keys(repo):
     with sqlite3.connect(repo.db_path) as conn:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 3
         tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    assert {"events", "groups", "analyses", "slides"} <= tables
+    assert {"events", "groups", "analyses", "slides", "speech_segments", "speech_meta"} <= tables
 
 
 def test_slide_ids_containing_slashes_work_in_paths(client):
@@ -355,13 +355,17 @@ def test_delete_lecture_removes_everything_and_only_that_lecture(client):
     other = {"lecture_id": "keep", "slide_id": S, "events": [_txt("k", 1)]}
     client.post(f"{BASE}/events/import", json=other)
     counts = client.delete(f"{BASE}/lectures/{L}").json()
-    assert counts == {"groups": 2, "slides": 1, "events": 3}
+    assert counts == {
+        "groups": 2,
+        "slides": 1,
+        "events": 3,
+        "speech_segments": 0,
+        "speech_meta": 0,
+    }
     assert client.get(f"{BASE}/lectures/{L}/events").status_code == 404
     assert client.get(f"{BASE}/lectures/{L}/slides").json() == []
     assert client.get(f"{BASE}/lectures/{L}/catchup").status_code == 404
     assert len(client.get(f"{BASE}/lectures/keep/events").json()) == 1
-    assert client.delete(f"{BASE}/lectures/nothing").json() == {
-        "groups": 0,
-        "slides": 0,
-        "events": 0,
-    }
+    assert client.delete(f"{BASE}/lectures/nothing").json() == dict.fromkeys(
+        ("groups", "slides", "events", "speech_segments", "speech_meta"), 0
+    )

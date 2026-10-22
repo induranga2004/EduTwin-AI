@@ -28,6 +28,7 @@ from edusync_c4.schemas import (
     NormalizedAnnotation,
     ShapeType,
     SlideInfo,
+    SpeechSegment,
 )
 from edusync_c4.timeline import reconstruct_snapshot
 
@@ -404,7 +405,52 @@ def _shape_label(ann: NormalizedAnnotation) -> str:
     return TYPE_LABEL.get(ann.shape_type, "Item")
 
 
-def _timeline_rows(view: SlideView, visible_ids: set[str]) -> str:
+SAID_BEFORE = 8.0  # seconds of speech before the first mark that still belongs to it
+SAID_AFTER = 12.0
+SAID_MAX_SPAN = 60.0  # long editing sessions only look this far ahead for matching speech
+MAX_QUOTES = 3
+MAX_QUOTE_CHARS = 220
+
+
+def said_at(speech: list[SpeechSegment] | None, start: float, end: float) -> list[SpeechSegment]:
+    """Speech segments overlapping the moment something was drawn (meeting-clock seconds)."""
+    if not speech:
+        return []
+    lo = start - SAID_BEFORE
+    hi = min(end, start + SAID_MAX_SPAN) + SAID_AFTER
+    hits = [s for s in speech if s.end >= lo and s.start <= hi and s.text.strip()]
+    return sorted(hits, key=lambda s: s.start)[:MAX_QUOTES]
+
+
+def _said_html(segments: list[SpeechSegment]) -> str:
+    if not segments:
+        return ""
+    parts = []
+    for seg in segments:
+        text = " ".join(seg.text.split())
+        if len(text) > MAX_QUOTE_CHARS:
+            text = text[: MAX_QUOTE_CHARS - 1].rstrip() + "\u2026"
+        parts.append(f'<q>{escape(text)}</q> <span class="muted">({clock(seg.start)})</span>')
+    return '<div class="said"><b>Said:</b> ' + " &middot; ".join(parts) + "</div>"
+
+
+def _transcript_html(speech: list[SpeechSegment] | None) -> str:
+    if not speech:
+        return ""
+    rows = "".join(
+        f'<li><span class="t">{clock(s.start)}</span> {escape(" ".join(s.text.split()))}</li>'
+        for s in sorted(speech, key=lambda g: g.start)
+        if s.text.strip()
+    )
+    return (
+        f"<details><summary>Lecture transcript ({len(speech)} segments)</summary>"
+        f'<ol class="timeline">{rows}</ol></details>'
+    )
+
+
+def _timeline_rows(
+    view: SlideView, visible_ids: set[str], speech: list[SpeechSegment] | None = None
+) -> str:
     by_shape: dict[str, list[NormalizedAnnotation]] = {}
     clears: list[float] = []
     for ev in view.timeline.events:
@@ -431,7 +477,9 @@ def _timeline_rows(view: SlideView, visible_ids: set[str]) -> str:
             (
                 first.timestamp_seconds,
                 f'<li><span class="t">{clock(first.timestamp_seconds)}</span> '
-                f"<b>{escape(_shape_label(last))}</b> {quote}{extra}</li>",
+                f"<b>{escape(_shape_label(last))}</b> {quote}{extra}"
+                f"{_said_html(said_at(speech, first.timestamp_seconds, last.timestamp_seconds))}"
+                "</li>",
             )
         )
     for t in clears:
@@ -455,12 +503,13 @@ def _groups_rows(view: SlideView) -> str:
     return '<ul class="groups">' + "".join(items) + "</ul>"
 
 
-def _diagram_rows(diagrams: list[Diagram]) -> str:
+def _diagram_rows(diagrams: list[Diagram], speech: list[SpeechSegment] | None = None) -> str:
     items = []
     for d in diagrams:
         lines = "".join(f"<div>{escape(s)}</div>" for s in d.sentences)
         stamp = f'<span class="t">{clock(d.first_seconds)}</span>'
-        items.append(f'<li>{stamp}<span class="dg">{lines}</span></li>')
+        said = _said_html(said_at(speech, d.first_seconds, d.first_seconds + SAID_MAX_SPAN))
+        items.append(f'<li>{stamp}<span class="dg">{lines}{said}</span></li>')
     return '<ul class="groups">' + "".join(items) + "</ul>" if items else ""
 
 
@@ -487,6 +536,7 @@ svg.board{width:100%;height:auto;display:block;border:1px solid #d1d5db}
 .t{display:inline-block;min-width:64px;font-variant-numeric:tabular-nums;color:#374151;
   font-weight:bold}
 .dg{display:inline-block;vertical-align:top}
+.said{margin:4px 0 0 64px;color:#374151;font-size:14px}
 figure{margin:0 0 14px}figcaption{font-size:13px;color:#374151;margin:0 0 4px}
 q{color:#111}details{margin-top:12px}summary{cursor:pointer;color:#374151}
 pre{white-space:pre-wrap;background:#f9fafb;padding:10px;border-radius:6px;font-size:13px}
@@ -502,6 +552,7 @@ def build_report_html(
     views: list[SlideView],
     at_seconds: float | None = None,
     generated: datetime | None = None,
+    speech: list[SpeechSegment] | None = None,
 ) -> str:
     """The whole report page. Without `at_seconds` each slide shows its fullest board (and the
     final board when that differs); with it, the board at that second."""
@@ -544,10 +595,11 @@ def build_report_html(
                 f"<details><summary>Slide text</summary><pre>{escape(view.info.text.strip())}"
                 "</pre></details>"
             )
+        diagram_html = _diagram_rows(list(diagrams.values()), speech)
         sections.append(
             f'<section class="slide"><h2>{_slide_title(view)}</h2>{"".join(figures)}'
-            f"{'<h3>Diagrams</h3>' + _diagram_rows(list(diagrams.values())) if diagrams else ''}"
-            f"<h3>What was written and drawn</h3>{_timeline_rows(view, visible_ids)}"
+            f"{'<h3>Diagrams</h3>' + diagram_html if diagrams else ''}"
+            f"<h3>What was written and drawn</h3>{_timeline_rows(view, visible_ids, speech)}"
             f"{'<h3>Grouped items</h3>' + _groups_rows(view) if view.groups else ''}"
             f"{slide_text}</section>"
         )
@@ -564,7 +616,8 @@ def build_report_html(
         f'<h1>Lecture report</h1><p class="summary muted">Meeting {escape(lecture_id)}. '
         f"{len(views)} slide{'s' if len(views) != 1 else ''} with annotations, {count} items "
         f"written or drawn, between {clock(first)} and {clock(last)} after the meeting started."
-        f"</p>{body}<footer>Generated {escape(stamp)}. Times are measured from the start of the "
-        "meeting. Drawings are shown where the lecturer placed them on each slide.</footer>"
+        f"</p>{body}{_transcript_html(speech)}<footer>Generated {escape(stamp)}. "
+        "Times are measured from the start of the meeting. "
+        "Drawings are shown where the lecturer placed them on each slide.</footer>"
         "</main></body></html>"
     )

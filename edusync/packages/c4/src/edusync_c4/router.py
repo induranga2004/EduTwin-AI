@@ -1,5 +1,6 @@
 """C4 HTTP routes."""
 
+import re
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
@@ -15,6 +16,7 @@ from edusync_c4.mock_data import MOCK_COMPREHENSION, MOCK_CONCEPTS, MOCK_SLIDE_T
 from edusync_c4.report import SlideView, build_report_html, fullest_time
 from edusync_c4.repository import AnnotationRepository
 from edusync_c4.schemas import (
+    SYNC_ALIASES,
     AnalyzeRequest,
     AnalyzeResponse,
     AnnotationGroup,
@@ -25,6 +27,7 @@ from edusync_c4.schemas import (
     EventImportRequest,
     EventImportResponse,
     GroupingConfig,
+    LectureSummary,
     NormalizedAnnotation,
     ReconcileRequest,
     ReconcileResponse,
@@ -32,6 +35,9 @@ from edusync_c4.schemas import (
     SlideSnapshot,
     SlideText,
     SlideUpsert,
+    SpeechInfo,
+    SpeechResponse,
+    SpeechUpload,
 )
 from edusync_c4.timeline import reconstruct_snapshot
 from edusync_core import CoreSettings, get_settings
@@ -157,7 +163,8 @@ def analyze(
         groups = group_timeline(timeline, cfg)
         repo.replace_groups(lecture_id, slide_id, groups, cfg)
 
-    speech = req.speech if req.speech is not None else MOCK_TRANSCRIPT
+    stored = repo.load_speech(lecture_id) if req.speech is None else None
+    speech = req.speech if req.speech is not None else (stored[1] if stored else MOCK_TRANSCRIPT)
     slide_text = SlideText(
         slide_id=slide_id,
         text=req.slide_text if req.slide_text is not None else MOCK_SLIDE_TEXT.text,
@@ -187,7 +194,7 @@ def analyze(
         lecture_id=lecture_id,
         slide_id=slide_id,
         inputs_are_mock={
-            "speech": req.speech is None,
+            "speech": req.speech is None and stored is None,
             "slide_text": req.slide_text is None,
             "concepts": req.concepts is None,
             "c2": req.use_mock_c2,
@@ -276,8 +283,9 @@ def report(
     views.sort(
         key=lambda v: (v.info.number if v.info and v.info.number is not None else 10**6, v.slide_id)
     )
+    stored = repo.load_speech(lecture_id)
     return HTMLResponse(
-        build_report_html(lecture_id, views, at),
+        build_report_html(lecture_id, views, at, speech=stored[1] if stored else None),
         headers={"Content-Security-Policy": REPORT_CSP},
     )
 
@@ -293,3 +301,51 @@ def slide_diagrams(
     timeline = _timeline_or_404(repo, lecture_id, slide_id)
     when = timestamp if timestamp is not None else fullest_time(timeline)
     return build_diagrams(timeline.get_active_annotations(when))
+
+
+def _find_sync_time(segments, word: str) -> float | None:
+    """Recording time at which `word` (or a common mis-hearing of it) was first spoken."""
+    words = SYNC_ALIASES.get(word.lower(), (word.lower(),))
+    pattern = re.compile(r"(?<!\w)(" + "|".join(re.escape(w) for w in words) + r")(?!\w)", re.I)
+    for seg in sorted(segments, key=lambda g: g.start):
+        if pattern.search(seg.text):
+            return seg.start
+    return None
+
+
+@router.get("/lectures")
+def list_lectures(repo: RepoDep) -> list[LectureSummary]:
+    """Every stored lecture, newest first (use the id in the other endpoints)."""
+    return repo.list_lectures()
+
+
+@router.put("/lectures/{lecture_id}/speech")
+def put_speech(lecture_id: str, upload: SpeechUpload, repo: RepoDep) -> SpeechInfo:
+    """Store the lecturer's transcript and line it up with the meeting clock."""
+    sync_shape: str | None = None
+    if upload.offset_seconds is not None:
+        offset, method = upload.offset_seconds, "manual"
+    elif upload.sync_word:
+        spoken = _find_sync_time(upload.segments, upload.sync_word)
+        if spoken is None:
+            raise HTTPException(
+                422, f"The word {upload.sync_word!r} was not found in the transcript."
+            )
+        first = repo.first_annotation(lecture_id)
+        if first is None:
+            raise HTTPException(422, f"No annotations stored for lecture {lecture_id!r} yet.")
+        sync_shape, drawn = first
+        offset, method = drawn - spoken, "sync_word"
+    else:
+        offset, method = 0.0, "none"
+    return repo.save_speech(lecture_id, upload.segments, offset, method, upload.source, sync_shape)
+
+
+@router.get("/lectures/{lecture_id}/speech")
+def get_speech(lecture_id: str, repo: RepoDep) -> SpeechResponse:
+    """The stored transcript with times on the meeting clock."""
+    stored = repo.load_speech(lecture_id)
+    if stored is None:
+        raise HTTPException(404, f"No speech stored for lecture {lecture_id!r}.")
+    info, segments = stored
+    return SpeechResponse(**info.model_dump(), segments=segments)

@@ -423,3 +423,49 @@ class Diagram(BaseModel):
     shape_ids: list[str]
     dangling_arrow_ids: list[str] = Field(default_factory=list)
     first_seconds: float
+
+
+# --- Demo Step 4: the lecturer's speech ---
+
+MAX_SPEECH_SEGMENTS = 5000
+# Whisper often writes the cue word "sync" as one of these.
+SYNC_ALIASES = {"sync": ("sync", "sink", "synch", "sinc", "cinq")}
+
+
+class SpeechUpload(BaseModel):
+    """Transcript segments in *recording* time, plus how to line them up with the meeting clock.
+
+    Give `offset_seconds` (meeting time = recording time + offset), or `sync_word`: the lecturer
+    said that word at the same moment as drawing the first mark, so the offset is the first
+    annotation's time minus the time the word was spoken. With neither, the offset is 0.
+    """
+
+    segments: list[SpeechSegment] = Field(max_length=MAX_SPEECH_SEGMENTS)
+    offset_seconds: float | None = None
+    sync_word: str | None = Field(default=None, min_length=2, max_length=30)
+    source: str | None = Field(default=None, max_length=200)
+
+
+class SpeechInfo(BaseModel):
+    lecture_id: str
+    segment_count: int
+    offset_seconds: float
+    method: str  # "manual" | "sync_word" | "none"
+    source: str | None = None
+    sync_shape_id: str | None = None
+
+
+class SpeechResponse(SpeechInfo):
+    """Stored speech with times already moved onto the meeting clock."""
+
+    segments: list[SpeechSegment]
+
+
+class LectureSummary(BaseModel):
+    lecture_id: str
+    event_count: int
+    slide_count: int
+    first_seconds: float | None = None
+    last_seconds: float | None = None
+    last_imported: str
+    has_speech: bool = False
