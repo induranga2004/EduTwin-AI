@@ -224,3 +224,19 @@ def test_said_at_window_and_limits():
     assert said_at([SpeechSegment(id=0, start=0, end=1, text="  ")], 0, 1) == []
     far = [SpeechSegment(id=0, start=500, end=510, text="late")]
     assert said_at(far, 0, 5) == []
+
+
+def test_said_at_prefers_sentences_that_share_the_items_words():
+    speech = [
+        SpeechSegment(id=0, start=95, end=99, text="and transactions per day"),
+        SpeechSegment(id=1, start=100, end=104, text="lock contention means two users wait"),
+        SpeechSegment(id=2, start=105, end=108, text="think about the weather"),
+    ]
+    target = {"lock", "contention"}
+    assert [s.text for s in said_at(speech, 100, 100, target)] == [
+        "lock contention means two users wait"
+    ]
+    # no item words given: plain time order, as before
+    assert len(said_at(speech, 100, 100)) == 3
+    # nothing shares a word: falls back to the earliest segments in the window
+    assert [s.id for s in said_at(speech, 100, 100, {"zebra"})] == [0, 1, 2]

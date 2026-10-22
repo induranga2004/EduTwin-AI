@@ -21,6 +21,7 @@ from html import escape
 from typing import Any
 
 from edusync_c4.diagram import build_diagrams
+from edusync_c4.local_explain import pick_relevant, terms
 from edusync_c4.schemas import (
     AnnotationGroup,
     AnnotationTimeline,
@@ -414,13 +415,20 @@ MAX_QUOTES = 3
 MAX_QUOTE_CHARS = 220
 
 
-def said_at(speech: list[SpeechSegment] | None, start: float, end: float) -> list[SpeechSegment]:
+def said_at(
+    speech: list[SpeechSegment] | None,
+    start: float,
+    end: float,
+    target: set[str] | None = None,
+) -> list[SpeechSegment]:
     """Speech segments overlapping the moment something was drawn (meeting-clock seconds)."""
     if not speech:
         return []
     lo = start - SAID_BEFORE
     hi = min(end, start + SAID_MAX_SPAN) + SAID_AFTER
     hits = [s for s in speech if s.end >= lo and s.start <= hi and s.text.strip()]
+    if target:  # prefer what was said about the item's own words
+        return pick_relevant(hits, target, MAX_QUOTES)
     return sorted(hits, key=lambda s: s.start)[:MAX_QUOTES]
 
 
@@ -475,12 +483,15 @@ def _timeline_rows(
             note.append("not visible at the chosen time")
         quote = f"<q>{escape(text)}</q>" if text else ""
         extra = f' <span class="muted">({escape(", ".join(note))})</span>' if note else ""
+        said_html = _said_html(
+            said_at(speech, first.timestamp_seconds, last.timestamp_seconds, terms(text or ""))
+        )
         rows.append(
             (
                 first.timestamp_seconds,
                 f'<li><span class="t">{clock(first.timestamp_seconds)}</span> '
                 f"<b>{escape(_shape_label(last))}</b> {quote}{extra}"
-                f"{_said_html(said_at(speech, first.timestamp_seconds, last.timestamp_seconds))}"
+                f"{said_html}"
                 "</li>",
             )
         )
@@ -510,7 +521,8 @@ def _diagram_rows(diagrams: list[Diagram], speech: list[SpeechSegment] | None = 
     for d in diagrams:
         lines = "".join(f"<div>{escape(s)}</div>" for s in d.sentences)
         stamp = f'<span class="t">{clock(d.first_seconds)}</span>'
-        said = _said_html(said_at(speech, d.first_seconds, d.first_seconds + SAID_MAX_SPAN))
+        words = terms(" ".join(d.sentences))
+        said = _said_html(said_at(speech, d.first_seconds, d.first_seconds + SAID_MAX_SPAN, words))
         items.append(f'<li>{stamp}<span class="dg">{lines}{said}</span></li>')
     return '<ul class="groups">' + "".join(items) + "</ul>" if items else ""
 

@@ -94,9 +94,27 @@ def rank_speech(
         key=lambda item: (-item[0], distance(item[1]), item[1].start),
     )
     if related:
-        chosen = [s for _, s in related[:limit]]
+        # keep only sentences about as relevant as the best one, not weak one-word matches
+        floor = max(1, (related[0][0] + 1) // 2)
+        chosen = [s for score, s in related if score >= floor][:limit]
     else:
         chosen = sorted(usable, key=lambda s: (distance(s), s.start))[:limit]
+    return sorted(chosen, key=lambda s: s.start)
+
+
+def pick_relevant(segments, target: set[str], limit: int):
+    """From time-nearby segments, the ones sharing the most words with `target`.
+
+    Falls back to the earliest ones when nothing shares a word. Works on any object with `.text`
+    and `.start`.
+    """
+    scored = [(len(target & terms(s.text)), s) for s in segments]
+    related = sorted((item for item in scored if item[0] > 0), key=lambda i: (-i[0], i[1].start))
+    if related:
+        floor = max(1, (related[0][0] + 1) // 2)
+        chosen = [s for score, s in related if score >= floor][:limit]
+    else:
+        chosen = sorted(segments, key=lambda s: s.start)[:limit]
     return sorted(chosen, key=lambda s: s.start)
 
 

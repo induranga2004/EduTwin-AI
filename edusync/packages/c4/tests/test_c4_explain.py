@@ -317,3 +317,23 @@ def test_stored_ai_style_explanation_wins_over_the_live_one(client, tmp_path):
     assert "A model-written sentence." in html
     assert "AI-generated (test-model)" in html
     assert "Rule-based summary (not AI)" in html  # the other group still uses the live one
+
+
+def test_weak_one_word_matches_are_dropped_when_a_better_sentence_exists():
+    ctx = context(
+        [
+            speech_ev(0, 60, 64, "user feels this delay", "before"),
+            speech_ev(1, 106, 110, "latency means the delay of one request", "after"),
+        ],
+        native="latency delay request",
+    )
+    chosen = rank_speech(ctx, terms("latency delay request"))
+    assert [s.evidence_id for s in chosen] == ["speech:1"]
+    # two similarly relevant sentences are both kept
+    both = context(
+        [
+            speech_ev(0, 99, 101, "latency is the delay"),
+            speech_ev(1, 106, 110, "the delay of one request", "after"),
+        ]
+    )
+    assert len(rank_speech(both, terms("latency delay request"))) == 2

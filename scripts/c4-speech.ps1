@@ -92,7 +92,8 @@ if ($Check) {
 if ($FromBbb) {
     if (-not $Lecture) {
         Write-Host '==> Find the newest lecture stored in C4'
-        $lectures = @(Invoke-RestMethod -Uri ("https://{0}/edusync/api/c4/lectures" -f (Get-BbbHost)) -TimeoutSec 30)
+        # Windows PowerShell 5.1 hands a JSON array back as ONE object; ForEach-Object unrolls it.
+        $lectures = @(Invoke-RestMethod -Uri ("https://{0}/edusync/api/c4/lectures" -f (Get-BbbHost)) -TimeoutSec 30 | ForEach-Object { $_ })
         if ($lectures.Count -eq 0) { throw 'No lecture is stored in C4 yet. Run scripts\c4-capture.ps1 during the lecture.' }
         $Lecture = $lectures[0].lecture_id
     }
