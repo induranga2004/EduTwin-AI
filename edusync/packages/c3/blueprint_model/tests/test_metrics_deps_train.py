@@ -111,7 +111,9 @@ def test_selection_score_prefers_positive_recall_then_macro_f1() -> None:
     assert selection_score(high_recall, "positive_recall", "1") > selection_score(
         high_f1, "positive_recall", "1"
     )
-    assert selection_score(high_f1, "macro_f1", None) > selection_score(high_recall, "macro_f1", None)
+    assert selection_score(high_f1, "macro_f1", None) > selection_score(
+        high_recall, "macro_f1", None
+    )
     same = summarize(y_true, np.array([0, 0, 0, 0, 1, 1, 1, 1]), labels)
     assert selection_score(same, "positive_recall", "1") > selection_score(
         high_recall, "positive_recall", "1"
@@ -135,6 +137,7 @@ def test_selection_score_recall_floor() -> None:
     score = lambda s: selection_score(s, "macro_f1_with_recall_floor", "1", 0.99)  # noqa: E731
     assert b["macro_f1"] > a["macro_f1"]
     assert score(b) > score(a)  # both meet the floor, so the higher macro-F1 wins
-    assert score(a) > score(c) and score(b) > score(c)  # below the floor always loses
+    assert score(a) > score(c)  # below the floor always loses
+    assert score(b) > score(c)
     # raw positive_recall would still prefer A
     assert selection_score(a, "positive_recall", "1") > selection_score(b, "positive_recall", "1")

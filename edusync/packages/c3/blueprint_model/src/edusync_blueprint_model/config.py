@@ -68,7 +68,7 @@ class TrainConfig(_Section):
     dropout: float = Field(ge=0.0, lt=1.0)
     threads: int = Field(ge=0, default=0)
     seed: int = 42
-    # Which validation score picks the best epoch. "positive_recall" and "macro_f1_with_recall_floor"
+    # Which validation score picks the best epoch. The two recall-based modes
     # need [decision] positive_label. positive_recall: highest recall, ties by macro-F1.
     # macro_f1_with_recall_floor: highest macro-F1 among epochs with recall >= recall_floor
     # (if none reach it, the highest recall).
@@ -145,7 +145,9 @@ class BlueprintConfig(_Section):
     def _selection_metric_has_what_it_needs(self) -> "BlueprintConfig":
         needs_label = self.train.select_by in ("positive_recall", "macro_f1_with_recall_floor")
         if needs_label and self.decision.positive_label is None:
-            raise ValueError(f"train.select_by = '{self.train.select_by}' needs decision.positive_label")
+            raise ValueError(
+                f"train.select_by = '{self.train.select_by}' needs decision.positive_label"
+            )
         return self
 
 

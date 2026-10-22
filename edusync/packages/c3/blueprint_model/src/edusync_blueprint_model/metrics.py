@@ -78,7 +78,9 @@ def selection_score(
         return (summary["macro_f1"],)
     if select_by in ("positive_recall", "macro_f1_with_recall_floor"):
         if positive_label not in summary["per_class"]:
-            raise ValueError(f"positive_label {positive_label!r} not in {list(summary['per_class'])}")
+            raise ValueError(
+                f"positive_label {positive_label!r} not in {list(summary['per_class'])}"
+            )
         recall = summary["per_class"][positive_label]["recall"]
         if select_by == "positive_recall":
             return (recall, summary["macro_f1"])

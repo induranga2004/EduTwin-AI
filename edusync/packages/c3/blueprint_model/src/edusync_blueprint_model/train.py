@@ -65,7 +65,7 @@ def _encode(tokenizer: Any, examples: list[Example], max_length: int) -> Any:  #
 def _predict(  # pragma: no cover - needs torch
     model: Any, tokenizer: Any, examples: list[Example], cfg: BlueprintConfig, labels: list[str]
 ) -> Any:
-    """Predictions for ``examples`` (eval mode, no grad): argmax, or the [decision] threshold rule."""
+    """Predictions for ``examples`` (eval mode, no grad): argmax, or the [decision] rule."""
     import torch
 
     model.eval()
@@ -176,7 +176,9 @@ def train(  # pragma: no cover - needs torch + weights
 
     model.load_state_dict(best["state"])
     y_test = np.array([labels.id_of(e.label) for e in splits.test])
-    test = summarize(y_test, _predict(model, tokenizer, splits.test, cfg, labels.labels), labels.labels)
+    test = summarize(
+        y_test, _predict(model, tokenizer, splits.test, cfg, labels.labels), labels.labels
+    )
 
     out = cfg.artifacts.finetuned_dir
     out.mkdir(parents=True, exist_ok=True)
