@@ -459,9 +459,8 @@ def _diagram_rows(diagrams: list[Diagram]) -> str:
     items = []
     for d in diagrams:
         lines = "".join(f"<div>{escape(s)}</div>" for s in d.sentences)
-        items.append(
-            f'<li><span class="t">{clock(d.first_seconds)}</span><span>{lines}</span></li>'
-        )
+        stamp = f'<span class="t">{clock(d.first_seconds)}</span>'
+        items.append(f'<li>{stamp}<span class="dg">{lines}</span></li>')
     return '<ul class="groups">' + "".join(items) + "</ul>" if items else ""
 
 
@@ -487,6 +486,7 @@ svg.board{width:100%;height:auto;display:block;border:1px solid #d1d5db}
 .timeline li,.groups li{padding:6px 0;border-bottom:1px solid #eee;line-height:1.4}
 .t{display:inline-block;min-width:64px;font-variant-numeric:tabular-nums;color:#374151;
   font-weight:bold}
+.dg{display:inline-block;vertical-align:top}
 figure{margin:0 0 14px}figcaption{font-size:13px;color:#374151;margin:0 0 4px}
 q{color:#111}details{margin-top:12px}summary{cursor:pointer;color:#374151}
 pre{white-space:pre-wrap;background:#f9fafb;padding:10px;border-radius:6px;font-size:13px}
