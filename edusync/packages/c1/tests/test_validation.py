@@ -55,6 +55,7 @@ def test_limits():
     assert recording_limit_bytes(200) == 200 * 1024 * 1024
 
 
+@pytest.mark.anyio
 @pytest.mark.parametrize(
     ("content", "limit", "status"),
     [(b"", 10, 400), (b"x" * 11, 10, 413)],
@@ -66,5 +67,6 @@ async def test_read_upload_errors(content, limit, status):
     assert err.value.status_code == status
 
 
+@pytest.mark.anyio
 async def test_read_upload_ok():
     assert await read_upload(UploadFile(io.BytesIO(b"abc"), filename="f"), 10) == b"abc"
