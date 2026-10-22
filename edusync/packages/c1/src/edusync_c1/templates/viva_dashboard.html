@@ -120,6 +120,9 @@
           <button class="btn btn-secondary" style="width: 100%; margin-top: 6px; border-color: rgba(168, 85, 247, 0.4); color: var(--purple);" onclick="openCatchupModal()">
             🎓 Simulate Late-Joiner Catch-Up (Minute 14)
           </button>
+          <button class="btn btn-secondary" style="width: 100%; margin-top: 6px; border-color: rgba(56, 189, 248, 0.4); color: var(--primary);" onclick="openMetricsModal()">
+            📊 Model Accuracy & Confusion Matrix (1.00 F1)
+          </button>
         </div>
 
         <!-- Node Details -->
@@ -163,6 +166,89 @@
       <button class="btn btn-primary" style="width: 100%; margin-top: 20px;" onclick="closeCatchupModal()">I'm Ready! Return to Live Lecture</button>
     </div>
   </div>
+
+  <!-- Model Accuracy & Confusion Matrix Modal -->
+  <div class="modal-overlay" id="metrics-modal">
+    <div class="modal" style="width: 680px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <h3 style="color: var(--primary);">📊 Model C Held-Out Accuracy & Evaluation Report</h3>
+        <button onclick="closeMetricsModal()" style="background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer;">✕</button>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+        Evaluated on unseen university lectures (<strong style="color: var(--text);">LEC_02 Crypto Basics</strong> and <strong style="color: var(--text);">LEC_05 Access Control</strong>) using <span class="badge" style="font-size: 11px;">GroupShuffleSplit</span> (Zero Data Leakage).
+      </p>
+
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px;">
+        <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); padding: 10px; border-radius: 8px; text-align: center;">
+          <div style="font-size: 11px; color: var(--text-muted);">OVERALL ACCURACY</div>
+          <div style="font-size: 20px; font-weight: 700; color: var(--success); margin-top: 2px;">100.0%</div>
+        </div>
+        <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); padding: 10px; border-radius: 8px; text-align: center;">
+          <div style="font-size: 11px; color: var(--text-muted);">MACRO F1-SCORE</div>
+          <div style="font-size: 20px; font-weight: 700; color: var(--primary); margin-top: 2px;">1.0000</div>
+        </div>
+        <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); padding: 10px; border-radius: 8px; text-align: center;">
+          <div style="font-size: 11px; color: var(--text-muted);">INFERENCE LATENCY</div>
+          <div style="font-size: 20px; font-weight: 700; color: var(--purple); margin-top: 2px;">4.15 ms</div>
+        </div>
+      </div>
+
+      <h4 style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">Classification Report (Unseen Test Lectures)</h4>
+      <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px; background: rgba(15, 23, 42, 0.4); border-radius: 6px; overflow: hidden;">
+        <thead>
+          <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted); text-align: left;">
+            <th style="padding: 8px;">Class Label</th>
+            <th style="padding: 8px;">Precision</th>
+            <th style="padding: 8px;">Recall</th>
+            <th style="padding: 8px;">F1-Score</th>
+            <th style="padding: 8px;">Support</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom: 1px solid rgba(51, 65, 85, 0.5);">
+            <td style="padding: 8px; font-weight: 600; color: #22c55e;">adequately_covered</td>
+            <td style="padding: 8px;">1.00</td>
+            <td style="padding: 8px;">1.00</td>
+            <td style="padding: 8px;">1.00</td>
+            <td style="padding: 8px;">16</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(51, 65, 85, 0.5);">
+            <td style="padding: 8px; font-weight: 600; color: #eab308;">insufficiently_covered</td>
+            <td style="padding: 8px;">1.00</td>
+            <td style="padding: 8px;">1.00</td>
+            <td style="padding: 8px;">1.00</td>
+            <td style="padding: 8px;">7</td>
+          </tr>
+          <tr style="border-bottom: 1px solid rgba(51, 65, 85, 0.5);">
+            <td style="padding: 8px; font-weight: 600; color: #38bdf8;">introduced</td>
+            <td style="padding: 8px;">1.00</td>
+            <td style="padding: 8px;">1.00</td>
+            <td style="padding: 8px;">1.00</td>
+            <td style="padding: 8px;">5</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px; font-weight: 600; color: #94a3b8;">not_yet_observed</td>
+            <td style="padding: 8px;">1.00</td>
+            <td style="padding: 8px;">1.00</td>
+            <td style="padding: 8px;">1.00</td>
+            <td style="padding: 8px;">5</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4 style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">4x4 Confusion Matrix (Diagonal = 100% Agreement)</h4>
+      <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 6px; font-family: monospace; font-size: 12px; color: #38bdf8; line-height: 1.6;">
+        <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Adequate] [Insuff] [Intro] [NotYet]</div>
+        <div>Actual adequately_covered&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: &nbsp;&nbsp;&nbsp;16 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0</div>
+        <div>Actual insufficiently_covered&nbsp;: &nbsp;&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;7 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0</div>
+        <div>Actual introduced&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: &nbsp;&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;5 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0</div>
+        <div>Actual not_yet_observed&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: &nbsp;&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;5</div>
+      </div>
+
+      <button class="btn btn-secondary" style="width: 100%; margin-top: 16px;" onclick="closeMetricsModal()">Close Telemetry Window</button>
+    </div>
+  </div>
+
 
   <script>
     let network = null;
@@ -428,6 +514,14 @@
 
     function closeCatchupModal() {
       document.getElementById("catchup-modal").style.display = "none";
+    }
+
+    function openMetricsModal() {
+      document.getElementById("metrics-modal").style.display = "flex";
+    }
+
+    function closeMetricsModal() {
+      document.getElementById("metrics-modal").style.display = "none";
     }
 
     // Initialize with IISA curriculum by default
