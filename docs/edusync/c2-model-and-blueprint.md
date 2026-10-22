@@ -25,7 +25,7 @@ class DifficultyModel(Protocol):
 
 - **Input** `FusionInput`: `concept_id`, `text` (concept label, description and slide text, built by
   `fusion.build_fusion_input`) and `features`, one `FusionFeature` per registry entry in registry order
-  (`registry.FEATURE_NAMES`, 24 names), each with `value`, `status` and a `missing` flag (unavailable features, and
+  (`registry.FEATURE_NAMES`, 26 names), each with `value`, `status` and a `missing` flag (unavailable features, and
   mocked ones by default, are missing with `value = None`).
 - **Output** one entry per input, in order: a `ModelOutput` (`label`, optional `score`, optional `probabilities`,
   `explanation`) or `None` when that concept cannot be predicted.
@@ -193,8 +193,8 @@ the same properties the decks expose, so it only tests plumbing and must never b
 | # | Layer | Content | Status |
 |---|---|---|---|
 | 1 | Input | lecture file (PPTX/PDF) to slide records (`materials.py`); C1 graph, real or labelled mock (`graph.py`, `providers.py`); concept alignment (`concepts.py`) | exists |
-| 2 | Feature | the 24 registry features in groups A to D with provenance (computed, mocked, unavailable) | exists |
-| 2b | Learned feature models (optional) | replace the placeholders `lang.unfamiliar_vocab_ratio` (mock), `expl.semantic_support_score` (mock) and `dens.visual_complexity` (todo); each outputs one number into the registry slot, so feature order and schema hash do not change | proposed |
+| 2 | Feature | the 26 registry features in groups A to D with provenance (computed, mocked, unavailable) | exists |
+| 2b | Learned feature models (optional) | replace the remaining placeholders `expl.semantic_support_score` (mock) and `dens.visual_complexity` (todo); each outputs one number into its existing registry slot, which keeps feature order and schema hash unchanged. Adding a feature does change both: Feature A did (24 to 26 features, new hash), which was safe because no trained artifact exists yet. The hash is recomputed from the registry, so Phase 3 starts from the schema as it is frozen at that point (26 features today), and any change after a model is trained needs retraining | proposed |
 | 3 | Group experts | four models, each predicting overall difficulty from one group's inputs only | proposed |
 | 4 | Combiner | small stacking model over the four group outputs, tolerant of a missing group | proposed |
 | 5 | Calibration | calibrates the combiner probabilities; until evaluated, `probabilities` and `confidence` stay `None` | proposed |
@@ -213,12 +213,12 @@ Lecturers label one difficulty per concept, so a per-group target would need ext
 
 | Group | Features | Inputs | Model type |
 |---|---|---|---|
-| A language | 6 `lang.*` | text plus features | MiniLM plus numeric head |
+| A language | 8 `lang.*` | text plus features | MiniLM plus numeric head |
 | B prerequisites | 5 `prereq.*` | features only (from the C1 graph) | small tabular model |
 | C explanation | 5 `expl.*` | text plus features | MiniLM plus numeric head, or tabular |
 | D density | 8 `dens.*` | features only | small tabular model |
 
-6 + 5 + 5 + 8 = 24, matching `registry.FEATURE_SPECS`.
+8 + 5 + 5 + 8 = 26, matching `registry.FEATURE_SPECS`.
 
 Requirements and cautions:
 - The combiner must be trained on out-of-fold expert predictions, split by lecture, otherwise it overfits.
@@ -230,9 +230,9 @@ Requirements and cautions:
 
 ### 7.3 Changes the artifact spec would need
 
-The Phase 1 validator (`OnnxFusionModel.from_artifacts`) requires all 24 names and one hash. For group experts:
+The Phase 1 validator (`OnnxFusionModel.from_artifacts`) requires all 26 names and one hash. For group experts:
 - `feature_schema.json` `names` equal to `registry.features_of(group)` and a per-group hash (the current
-  `feature_schema_hash()` covers all 24 features and would need a per-group variant);
+  `feature_schema_hash()` covers all 26 features and would need a per-group variant);
 - one artifact folder per expert plus one for the combiner;
 - a factory that builds the experts and the combiner. The contract suite applies to each model unchanged.
 

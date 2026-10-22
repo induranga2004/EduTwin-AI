@@ -23,7 +23,7 @@ replaced one at a time without changing the response shape. What exists:
 
 - a parser for PPTX and PDF lecture files;
 - a way to accept C1's graph (as a request payload) or build a clearly labelled mock graph from slide titles;
-- 24 registered features in four groups: 15 computed from the lecture file (3 of them PPTX only), 6 that need the C1 graph, 2 mocked placeholders and 1 TODO (see section 4);
+- 26 registered features in four groups: 18 computed from the lecture file (3 of them PPTX only), 6 that need the C1 graph, 1 mocked placeholder and 1 TODO (see section 4; the vocabulary features of group A became real in Phase 2, milestone M1, see "Feature A method" in section 4);
 - ordered, mask-aware fusion input;
 - a transparent rule baseline (`RuleBaselineModel`) that produces a label and a raw score, with no probabilities and no
   confidence;
@@ -44,7 +44,7 @@ flowchart LR
   MK --> GV
   M --> CO["concepts.py<br/>concepts located on slides<br/>+ MockConceptFilter"]
   GV --> CO
-  CO --> FE["features/ A B C D<br/>24 features + provenance"]
+  CO --> FE["features/ A B C D<br/>26 features + provenance"]
   GV --> FE
   FE --> FU["fusion.py<br/>ordered values + missing mask + text"]
   FU --> MO["models.py<br/>RuleBaselineModel"]
@@ -61,7 +61,7 @@ Flow in `difficulty/pipeline.py` (`DifficultyPipeline.run`):
 3. `concepts.build_concepts` takes concepts from the C1 nodes (fallback: the C1 `concepts` list), locates each one on
    the slides (whole-phrase, case-insensitive match of label or id in title or text) and passes them through the
    concept filter. `MockConceptFilter` keeps all of them.
-4. `features.compute_all_features` produces all 24 features for each concept, each with a status and a source.
+4. `features.compute_all_features` produces all 26 features for each concept, each with a status and a source.
 5. `fusion.build_fusion_input` orders the features by registry, marks unavailable (and, by default, mocked) ones as
    missing, and builds the concept text (concept label + description + slide text, max 1500 characters).
 6. The model predicts a label per concept (`None` when too few features were computed).
@@ -83,19 +83,23 @@ All paths are under `edusync/packages/c2/src/edusync_c2/`.
 | `difficulty/graph.py` | `GraphView`: valid prerequisite edges and per-concept metrics |
 | `difficulty/providers.py` | Graph providers: `PayloadGraphProvider`, `MockC1GraphProvider`, `C1ApiGraphProvider` (TODO, raises `NotImplementedError`) |
 | `difficulty/concepts.py` | Concepts from graph nodes, slide alignment, `ConceptFilter`, `MockConceptFilter` |
-| `difficulty/registry.py` | `FEATURE_SPECS` (the 24 features, in order), `PHASE1_TODO` |
+| `difficulty/registry.py` | `FEATURE_SPECS` (the 26 features, in order), `PHASE1_TODO` |
 | `difficulty/features/language.py` | Group A processor and `lexical_difficulty` |
+| `difficulty/features/vocab.py` | `VocabularyAnalyzer`: word-piece fragmentation, unfamiliar share and domain-term share; shared default analyzer with one cached first load |
+| `difficulty/features/wordpiece.py` | Pure-Python BERT WordPiece (uncased) over the vendored MiniLM vocabulary |
+| `difficulty/features/lexicon.py` | Loader and plural fold of the curated CS/IT domain lexicon |
+| `difficulty/resources/` | Vendored data: `bert_uncased_vocab.txt`, `domain_terms.txt`, `NOTICE`, `LICENSE-APACHE-2.0.txt`, `.gitattributes` (LF line endings) |
 | `difficulty/features/prerequisites.py` | Group B processor |
 | `difficulty/features/explanation.py` | Group C processor (definition/example/step regexes, diagram count) |
 | `difficulty/features/density.py` | Group D processor |
-| `difficulty/features/__init__.py` | `compute_all_features`: all 24 in registry order |
+| `difficulty/features/__init__.py` | `compute_all_features`: all 26 in registry order |
 | `difficulty/fusion.py` | `build_fusion_input`, `to_vector`, `summarize_features` |
 | `difficulty/models.py` | `DifficultyModel` protocol, `RuleBaselineModel`, `MiniLMFusionModel` (TODO) |
 | `difficulty/pipeline.py` | `DifficultyPipeline`: orchestration, stage statuses, warnings |
 | `difficulty/synthetic.py` | Seeded synthetic decks (PPTX/PDF), C1 graphs (v0/v1), rule labels |
 | `scripts/make_synthetic_data.py` | CLI around `synthetic.py` (one level up, in `edusync/packages/c2/`) |
 
-## 4. The 24 features
+## 4. The 26 features
 
 Source of truth: `difficulty/registry.py`. The column "Phase 1" is the registry's `phase1` field:
 `real` computed from the lecture file; `real_needs_structure` computed for PPTX only (PDF: unavailable); `graph` needs
@@ -108,32 +112,112 @@ the C1 graph (from a mock graph the status is `mocked`); `mock` placeholder valu
 | 3 | `lang.long_word_ratio` | A | real | Share of words with 9+ letters (technical proxy). |
 | 4 | `lang.lexical_score` | A | real | Transparent lexical difficulty heuristic in [0, 1]. |
 | 5 | `lang.concept_term_density` | A | real | Concept mentions per 100 words on its slides. |
-| 6 | `lang.unfamiliar_vocab_ratio` | A | mock | TODO: share of words outside a domain list. |
-| 7 | `prereq.direct_count` | B | graph | Number of direct prerequisites. |
-| 8 | `prereq.chain_depth` | B | graph | Longest prerequisite chain below the concept. |
-| 9 | `prereq.transitive_count` | B | graph | All distinct (transitive) prerequisites. |
-| 10 | `prereq.mean_confidence` | B | graph | Mean confidence of direct prerequisites. |
-| 11 | `prereq.curriculum_defined_share` | B | graph | Share of direct prerequisites from the curriculum. |
-| 12 | `expl.definition_count` | C | real | Definition phrases on the concept's slides. |
-| 13 | `expl.example_count` | C | real | Worked-example phrases on the concept's slides. |
-| 14 | `expl.step_count` | C | real | Step-by-step markers (Step 1, numbered lists). |
-| 15 | `expl.diagram_support` | C | real_needs_structure | Pictures + charts on its slides (PPTX). |
-| 16 | `expl.semantic_support_score` | C | mock | TODO: semantic definition/example detection. |
-| 17 | `dens.words_per_slide` | D | real | Mean words per concept slide. |
-| 18 | `dens.concepts_per_slide` | D | real | Mean distinct C1 concepts per concept slide. |
-| 19 | `dens.formula_presence` | D | real | Share of concept slides that look like formulas. |
-| 20 | `dens.code_presence` | D | real | Share of concept slides that look like code. |
-| 21 | `dens.max_bullet_depth` | D | real_needs_structure | Deepest bullet level on its slides (PPTX). |
-| 22 | `dens.shape_count_mean` | D | real_needs_structure | Mean shapes per concept slide (PPTX). |
-| 23 | `dens.concept_frequency` | D | graph | C1 node frequency of the concept. |
-| 24 | `dens.visual_complexity` | D | todo | TODO: diagram/visual complexity analysis. |
+| 6 | `lang.unfamiliar_vocab_ratio` | A | real | Share of words that need 2+ MiniLM word pieces (or are `[UNK]`). |
+| 7 | `lang.subword_fragmentation` | A | real | Mean MiniLM word pieces per word. |
+| 8 | `lang.domain_term_ratio` | A | real | Share of words in the curated CS/IT lexicon. |
+| 9 | `prereq.direct_count` | B | graph | Number of direct prerequisites. |
+| 10 | `prereq.chain_depth` | B | graph | Longest prerequisite chain below the concept. |
+| 11 | `prereq.transitive_count` | B | graph | All distinct (transitive) prerequisites. |
+| 12 | `prereq.mean_confidence` | B | graph | Mean confidence of direct prerequisites. |
+| 13 | `prereq.curriculum_defined_share` | B | graph | Share of direct prerequisites from the curriculum. |
+| 14 | `expl.definition_count` | C | real | Definition phrases on the concept's slides. |
+| 15 | `expl.example_count` | C | real | Worked-example phrases on the concept's slides. |
+| 16 | `expl.step_count` | C | real | Step-by-step markers (Step 1, numbered lists). |
+| 17 | `expl.diagram_support` | C | real_needs_structure | Pictures + charts on its slides (PPTX). |
+| 18 | `expl.semantic_support_score` | C | mock | TODO: semantic definition/example detection. |
+| 19 | `dens.words_per_slide` | D | real | Mean words per concept slide. |
+| 20 | `dens.concepts_per_slide` | D | real | Mean distinct C1 concepts per concept slide. |
+| 21 | `dens.formula_presence` | D | real | Share of concept slides that look like formulas. |
+| 22 | `dens.code_presence` | D | real | Share of concept slides that look like code. |
+| 23 | `dens.max_bullet_depth` | D | real_needs_structure | Deepest bullet level on its slides (PPTX). |
+| 24 | `dens.shape_count_mean` | D | real_needs_structure | Mean shapes per concept slide (PPTX). |
+| 25 | `dens.concept_frequency` | D | graph | C1 node frequency of the concept. |
+| 26 | `dens.visual_complexity` | D | todo | TODO: diagram/visual complexity analysis. |
 
 Groups: A = technical vocabulary and language complexity, B = prerequisite and concept complexity, C = explanation and
 example support, D = information density and structure.
 
-Notes on the real features: they are regex and counting heuristics over the text of the slides that mention the
+Notes on the real features: they are regex and counting heuristics (the three vocabulary features count word pieces and lexicon hits, see below) over the text of the slides that mention the
 concept (`definition`/`example`/`step` cues in `features/explanation.py`; formula and code hints in `materials.py`).
 They are cheap proxies, not measurements of how a student experiences the slide.
+
+### Feature A method (vocabulary, Phase 2 milestone M1)
+
+Three group A features measure vocabulary. They replace the earlier 0.0 placeholder of `lang.unfamiliar_vocab_ratio`
+and add two siblings (24 features became 26; group sizes are now A = 8, B = 5, C = 5, D = 8). The five other group A
+features are untouched and keep their regex word rule (`[A-Za-z][A-Za-z'-]*`).
+
+| Feature | Definition | Range |
+|---------|------------|-------|
+| `lang.unfamiliar_vocab_ratio` | share of words that need `MIN_PIECES_UNFAMILIAR = 2` or more word pieces, or are `[UNK]` | 0..1 |
+| `lang.subword_fragmentation` | mean word pieces per word (`[UNK]` counts as 1 piece) | >= 1.0 |
+| `lang.domain_term_ratio` | share of words in the curated CS/IT lexicon | 0..1 |
+
+Order inside group A (registry order): the five old features, `lang.unfamiliar_vocab_ratio`, then
+`lang.subword_fragmentation` and `lang.domain_term_ratio`. Adding two features changed the registry order and
+`feature_schema_hash()`; no trained model artifact exists yet, so nothing recorded the old hash.
+
+**Word rule (the three new features only).** Words are runs of Unicode letters (`[^\W\d_]+`), so hyphens, apostrophes,
+digits and underscores split words ("real-time" is two words, "don't" is "don" and "t", which is ignored). Words with
+fewer than 2 letters are ignored. Each word is lowercased before lookup; the tokenizer also strips accents.
+
+**Tokenizer.** A pure-Python BERT WordPiece (uncased) in `features/wordpiece.py` over the MiniLM vocabulary, vendored as
+`difficulty/resources/bert_uncased_vocab.txt` (30,522 entries; SHA-256
+`07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3`; source `sentence-transformers/all-MiniLM-L6-v2`, revision
+`1110a243fdf4706b3f48f1d95db1a4f5529b4d41`; Apache License 2.0). `NOTICE` and `LICENSE-APACHE-2.0.txt` sit beside it, and
+a nested `.gitattributes` keeps the file LF-only so the hash is stable on Windows checkouts. The file is an unmodified
+copy; no model weights are included and no dependency was added. A word of more than 100 characters, or one the greedy
+longest-match cannot segment, becomes `[UNK]`. Parity with the Hugging Face `tokenizers` library is checked on 53 inputs
+(accents, CJK, emoji, code, URLs, acronyms, 99/100/101-character words): `tests/difficulty/golden/wordpiece_pieces.json`
+is the committed result (written by `scripts/make_wordpiece_golden.py`, which needs `tokenizers`), so CI checks parity
+without that library; a test marked `ml` compares against the library live.
+
+**Lexicon.** `difficulty/resources/domain_terms.txt` holds 851 single-word lowercase terms and acronyms of computer
+science, IT and machine learning, written for this project (not copied from a glossary; the header says so). A word
+counts if it is in the list, or after stripping a trailing `es` or `s` (not `ss`) it is ("databases", "indexes").
+
+**Statuses.**
+
+| Case | Result |
+|------|--------|
+| Concept not found on any slide | all eight group A features `unavailable`, note "concept not found in materials" |
+| Slides found, no words (regex rule of the old five features) | all eight `unavailable`, note "no words on the concept's slides" |
+| Words exist, but none under the new word rule (for example only one-letter words) | the three vocabulary features `unavailable`, note "no words for vocabulary analysis" |
+| Vocabulary resources missing or unreadable | the three vocabulary features `unavailable`, note "vocabulary resources unavailable"; one WARNING `vocab_unavailable` per process; never an exception |
+| Otherwise | all three `computed`; `source` is `materials:wordpiece` (unfamiliar ratio, fragmentation) or `materials:lexicon` (domain ratio) |
+
+The old mocked 0.0 is gone, so `lang.unfamiliar_vocab_ratio` is never `mocked` any more. The analyzer is built once per
+process under a lock and shared by the pipeline's worker threads; a load failure is cached too (restart the process to
+retry). `DifficultyPipeline(vocab=...)` and `compute_all_features(..., vocab=...)` accept an injected analyzer. Logging:
+see the `vocab_loaded` and `vocab_unavailable` events below; no slide text or words are logged.
+
+**Illustrative fixture values.** Hand-written paragraphs of 61 to 67 words in `tests/difficulty/test_vocab.py`
+(`EASY`, `MEDIUM`, `HARD`). These are illustrative fixture values, not a validation:
+
+| Text | `lang.subword_fragmentation` | `lang.unfamiliar_vocab_ratio` | `lang.domain_term_ratio` |
+|------|------------------------------|-------------------------------|--------------------------|
+| easy (everyday narrative) | 1.0 | 0.0 | 0.0 |
+| medium (database basics) | 1.044776 | 0.044776 | 0.059701 |
+| hard (machine learning and cryptography jargon) | 1.557377 | 0.344262 | 0.295082 |
+
+**Limits, stated plainly.**
+
+- The features measure general-English rarity (via the MiniLM vocabulary) plus listed jargon. They do not measure
+  pedagogical difficulty or how a student experiences the slides.
+- `MIN_PIECES_UNFAMILIAR = 2` and the lexicon are unvalidated choices; no labelled data was used to set them.
+- Inflection adds noise: "minimizes" needs 2 pieces and counts as unfamiliar although it is an ordinary word.
+- The tokenizer alone misses most jargon. In a feasibility check on technical words only about 21% had 3 or more
+  pieces; many (encryption, gradient, authentication, kernel, database) are single tokens. That is why the lexicon is a
+  separate feature and is not folded into the tokenizer feature.
+- The lexicon is CS/IT/ML-oriented and will not fit every course; for other subjects `lang.domain_term_ratio` is
+  mostly 0 and says little.
+- The seeded synthetic decks are almost constant for these features (about 96% of their words are single tokens), so
+  they must not be used to judge them. Use the fixtures above or real lecture text instead.
+- The baseline model weights are unchanged and the baseline scores and labels of the synthetic decks are identical to
+  before; `tests/difficulty/test_baseline_golden.py` proves it.
+
+Tests: `test_wordpiece.py`, `test_lexicon.py`, `test_vocab.py`, `test_vocab_resources.py`, `test_features_language.py`
+under `edusync/packages/c2/tests/difficulty/`.
 
 ## 5. Statuses and provenance
 
@@ -144,8 +228,8 @@ Every `FeatureValue` in the response has a `status`, a `source` and a `note`.
 | Status | Meaning | Rule in the code |
 |--------|---------|------------------|
 | `computed` | Real value from real inputs | Language, explanation and density features with slides found; group B from a caller-supplied graph; `dens.concept_frequency` from a caller graph |
-| `mocked` | Placeholder, or computed from a mocked input; never treated as real | `lang.unfamiliar_vocab_ratio` (0.0) and `expl.semantic_support_score` (0.0) always; every group B feature and `dens.concept_frequency` when the graph is the mock graph |
-| `unavailable` | Cannot be produced; carries no value | No prerequisite edges in the graph -> all five group B features, note "C1 graph has no prerequisite edges"; concept id unknown to the graph -> group B; PDF -> `expl.diagram_support`, `dens.max_bullet_depth`, `dens.shape_count_mean`; concept not found on any slide -> every slide-based feature of groups A, C, D; no direct prerequisites -> `prereq.mean_confidence` and `prereq.curriculum_defined_share`; `dens.visual_complexity` always (TODO) |
+| `mocked` | Placeholder, or computed from a mocked input; never treated as real | `expl.semantic_support_score` (0.0) always; every group B feature and `dens.concept_frequency` when the graph is the mock graph |
+| `unavailable` | Cannot be produced; carries no value | No prerequisite edges in the graph -> all five group B features, note "C1 graph has no prerequisite edges"; concept id unknown to the graph -> group B; PDF -> `expl.diagram_support`, `dens.max_bullet_depth`, `dens.shape_count_mean`; concept not found on any slide -> every slide-based feature of groups A, C, D; vocabulary resources missing, or no words under the vocabulary word rule -> the three vocabulary features of group A (see "Feature A method"); no direct prerequisites -> `prereq.mean_confidence` and `prereq.curriculum_defined_share`; `dens.visual_complexity` always (TODO) |
 
 A computed value never hides a mock: a feature derived from the mock graph is `mocked`, not `computed`.
 
@@ -157,8 +241,8 @@ The materials are always `real`; the graph is `real` when the caller supplied it
 `mocked` (the concept stage is `mocked` while `MockConceptFilter` is in use; the graph stage is `mocked` for a mock
 graph).
 
-A prediction itself has `status` `ok` (all 24 features computed), `partial` (some mocked or unavailable) or `failed`
-(not enough computed features, `difficulty` is `null`). Because two features are always mocked and one is always
+A prediction itself has `status` `ok` (all 26 features computed), `partial` (some mocked or unavailable) or `failed`
+(not enough computed features, `difficulty` is `null`). Because one feature is always mocked and one is always
 unavailable, a Phase 1 prediction is expected to be `partial`.
 
 ## 6. Fusion and the baseline model
@@ -208,7 +292,7 @@ Routes (mounted by the API under `/api/c2`, see `router.py`):
 | Route | Notes |
 |-------|-------|
 | `POST /api/c2/difficulty` | multipart form: `file` (required, `.pptx` or `.pdf`), `c1_graph` (optional text field holding C1's JSON exactly as C1 returns it) |
-| `GET /api/c2/difficulty/info` | model info, graph provider name, concept filter name, the 24 `FeatureSpec`s and the TODO list |
+| `GET /api/c2/difficulty/info` | model info, graph provider name, concept filter name, the 26 `FeatureSpec`s and the TODO list |
 | `GET /api/c2/health` | component health |
 | `POST /api/c2/comprehension/evaluate` | unchanged; belongs to the later live stage (Phase 5 code) |
 
@@ -307,12 +391,13 @@ from synthetic text and say nothing about real lectures.
 
 1. Real C1 connection (`C1ApiGraphProvider`); the graph is a mock unless supplied by the caller.
 2. Concept filter: alias merging (TDE = Transparent Data Encryption) and generic phrases.
-3. Feature A: unfamiliar-vocabulary score from a domain word list.
-4. Feature C: semantic definition/example detection.
-5. Feature D: visual/diagram complexity analysis.
-6. `MiniLMFusionModel` and learned feature fusion (Phase 3, trained on lecturer labels).
-7. Calibrated confidence and probabilities (never invented before a trained, evaluated model).
-8. Prediction persistence for Phase 5 comparison with live comprehension.
+3. Feature C: semantic definition/example detection.
+4. Feature D: visual/diagram complexity analysis.
+5. `MiniLMFusionModel` and learned feature fusion (Phase 3, trained on lecturer labels).
+6. Calibrated confidence and probabilities (never invented before a trained, evaluated model).
+7. Prediction persistence for Phase 5 comparison with live comprehension.
+
+The former item "Feature A: unfamiliar-vocabulary score from a domain word list" was removed when Feature A became real (Phase 2, M1).
 
 Per-module mocks and TODOs found in the code:
 
@@ -322,7 +407,7 @@ Per-module mocks and TODOs found in the code:
 | `providers.C1ApiGraphProvider` | Not implemented (`NotImplementedError`) |
 | `providers.PayloadGraphProvider` | The caller's graph is trusted as C1's output; C2 does not verify that it matches the file |
 | `concepts.MockConceptFilter` | Keeps every concept (name `mock_keep_all`) |
-| `features/language.py` | `lang.unfamiliar_vocab_ratio` is a 0.0 placeholder (mocked) |
+| `features/language.py`, `features/vocab.py` | No mock left in group A. Limits: the vocabulary features measure general-English rarity plus a CS/IT/ML lexicon, with unvalidated thresholds (see "Feature A method") |
 | `features/explanation.py` | `expl.semantic_support_score` is a 0.0 placeholder (mocked); definition/example/step counts are regex cues only |
 | `features/density.py` | `dens.visual_complexity` unavailable (TODO) |
 | `models.MiniLMFusionModel` | Not implemented (Phase 3) |
@@ -386,7 +471,7 @@ Paths are relative to `edusync/packages/c2/` unless they start with `docs/`. Tes
 | # | Item | Status | Evidence | Remaining gap |
 |---|------|--------|----------|---------------|
 | 1 | End-to-end pre-lecture difficulty pipeline implemented | Done | `src/edusync_c2/difficulty/pipeline.py`; `POST /api/c2/difficulty` in `router.py`; `test_pipeline.py` (`test_v1_payload`, `test_v0_payload_group_b_unavailable`, `test_mock_provider`, `test_deterministic_and_roundtrip`), `test_router.py` (`test_with_graph`, `test_without_graph`, `test_pdf`) | The model is a rule baseline, not trained |
-| 2 | Four feature modules have defined inputs, outputs and test coverage | Done | `difficulty/features/{language,prerequisites,explanation,density}.py`; registry in `difficulty/registry.py`; `test_features_language.py`, `test_features_prerequisites.py`, `test_features_explanation.py`, `test_features_density.py`, `test_features_registry.py` (`test_names_and_order`, `test_statuses_real_deck`) | Some features are mocked or unavailable by design (see the register in section 8) |
+| 2 | Four feature modules have defined inputs, outputs and test coverage | Done | `difficulty/features/{language,prerequisites,explanation,density}.py`; registry in `difficulty/registry.py`; `test_features_language.py`, `test_features_prerequisites.py`, `test_features_explanation.py`, `test_features_density.py`, `test_features_registry.py` (`test_names_and_order`, `test_statuses_real_deck`); group A vocabulary features: `test_vocab.py`, `test_wordpiece.py`, `test_lexicon.py`, `test_vocab_resources.py`, `test_baseline_golden.py` | Some features are mocked or unavailable by design (see the register in section 8) |
 | 3 | C1 knowledge-graph integration has a documented interface and can be tested with sample data | Partially done / pending C1 | Interface and contract: `docs/edusync/c1-c2-graph-contract.md`; `difficulty/graph.py`, `providers.py`; validator `difficulty/contract_check.py` and `scripts/validate_c1_graph.py`; synthetic v0/v1 graphs from `scripts/make_synthetic_data.py`; tests `test_contract_check.py`, `test_validate_script.py`, `test_providers.py`, `test_graph.py`, `test_synthetic.py` | C1's real v1 sample file is not on GitHub, so the contract has never been checked against real C1 output. `C1ApiGraphProvider` is not implemented |
 | 4 | Feature fusion and the MiniLM prediction interface are defined and connected | Partially done | Fusion: `difficulty/fusion.py`, `test_fusion.py`. Interface, factory and artifact spec: `difficulty/models.py` (`create_model`, `OnnxFusionModel.from_artifacts`, `MiniLMFusionModel`), `docs/edusync/c2-model-and-blueprint.md`; `test_model_contract.py` (reusable contract checks), `test_model_artifacts.py`, `test_models.py`; HTTP 501 selection in `test_router.py` (`test_minilm_is_501_and_not_cached`, `test_artifact_error_is_501`, `test_model_not_implemented_at_inference_is_501`) | Only the rule baseline can predict. `OnnxFusionModel` validates its artifacts but does not run inference, and `MiniLMFusionModel` is a TODO marker; both wait for Phase 3 |
 | 5 | The existing MiniLM blueprint has been located and assessed for reuse | Done | Assessment and the copy-in-Phase-3 decision in `docs/edusync/c2-model-and-blueprint.md`, section 5 | The assessment is documentation only; no blueprint code has been copied or run |
@@ -426,6 +511,8 @@ What remains before Phase 1 can be called fully closed: merge PR #19 and these c
 | `fusion` | INFO | `inputs`, `features_per_input` |
 | `model` | INFO | `name`, `kind`, `predicted`, `none` |
 | `done` | INFO | `concepts`, `duration_ms` |
+| `vocab_loaded` | INFO | `words` (vocabulary entries), `lexicon` (terms), `sha` (first 8 hex digits of the vocabulary SHA-256); logged once per process, lazily on the first analysis (so during the first request's `features` step, before its `features` line), by `edusync_c2.difficulty.features.vocab` |
+| `vocab_unavailable` | WARNING | `reason` (exception class name); logged once per process when the vocabulary resources cannot be loaded |
 | `materials_rejected` | WARNING | `status`, `reason` |
 | `graph_warning` | WARNING | `count` |
 | `graph_cycle` | WARNING | `concepts` |
@@ -434,7 +521,7 @@ What remains before Phase 1 can be called fully closed: merge PR #19 and these c
 
 **Request id.** The router sets a short request id (`set_request_id(new_request_id())`) for each `POST /difficulty` call and resets it afterwards, so all lines of one request share the id in the `[...]` field (`-` outside a request). The id is used in logs only and is not returned in the response.
 
-**Privacy.** Never log slide text, speaker notes or file names (the file type is enough). Concept ids appear only at DEBUG. Test: `test_pipeline_logging.py::test_privacy_nothing_sensitive_logged`.
+**Privacy.** Never log slide text, speaker notes or file names (the file type is enough). The vocabulary events carry sizes and a hash prefix only, never slide words. Concept ids appear only at DEBUG. Test: `test_pipeline_logging.py::test_privacy_nothing_sensitive_logged`.
 
 **Timings only in logs.** `duration_ms` is logged on the `done` line and never put in the response, so responses stay deterministic (`test_response_independent_of_log_level`).
 
@@ -457,7 +544,7 @@ What remains before Phase 1 can be called fully closed: merge PR #19 and these c
 
 **Phase 2 - real features, one at a time.** Each replaces a mock or TODO without changing the response shape:
 
-1. Feature A: `lang.unfamiliar_vocab_ratio` from a domain vocabulary list.
+1. Feature A: done in milestone M1. `lang.unfamiliar_vocab_ratio` is now real (MiniLM word pieces), with `lang.subword_fragmentation` and `lang.domain_term_ratio` added (section 4, "Feature A method"). Open: validate the thresholds and the lexicon against real lectures.
 2. Feature D: `dens.visual_complexity`.
 3. Feature C: `expl.semantic_support_score` (semantic definition/example detection).
 4. Feature B against the real C1 graph (needs the v1 contract to exist; see the contract doc and its contract tests).

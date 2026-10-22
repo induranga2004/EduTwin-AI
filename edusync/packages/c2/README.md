@@ -30,7 +30,7 @@ Without `c1_graph` the graph is a mock built from slide titles (labelled `mock` 
 | Route | Description |
 |-------|-------------|
 | `POST /difficulty` | multipart: `file` (.pptx/.pdf), optional `c1_graph` (C1's JSON as returned). Errors: 400 wrong type, corrupt or encrypted; 413 too large; 422 no text or invalid `c1_graph` |
-| `GET /difficulty/info` | model, graph provider, concept filter, the 24 features, TODO list |
+| `GET /difficulty/info` | model, graph provider, concept filter, the 26 features, TODO list |
 | `GET /health` | component health |
 | `POST /comprehension/evaluate` | rule-based poll flagging (later stage, unchanged) |
 
@@ -51,13 +51,28 @@ packages/c2/
       materials.py                    # PPTX/PDF parser
       graph.py, providers.py          # C1 graph view, payload/mock/TODO providers
       concepts.py                     # concepts on slides, mock filter
-      registry.py                     # 24 features, PHASE1_TODO
-      features/                       # groups A-D
+      registry.py                     # 26 features, PHASE1_TODO
+      features/                       # groups A-D; vocab.py, wordpiece.py, lexicon.py for the vocabulary features
+      resources/                      # vendored vocabulary + domain lexicon (see Vendored resources)
       fusion.py, models.py            # ordered features + mask; RuleBaselineModel
       pipeline.py, schemas.py         # orchestration; contracts
       synthetic.py                    # synthetic data helpers
   tests/                              # test_c2.py, difficulty/
 ```
+
+## Vendored resources
+
+`src/edusync_c2/difficulty/resources/` holds the data of the three vocabulary features of group A (`lang.unfamiliar_vocab_ratio`,
+`lang.subword_fragmentation`, `lang.domain_term_ratio`):
+
+- `bert_uncased_vocab.txt`: unmodified copy of the `vocab.txt` of `sentence-transformers/all-MiniLM-L6-v2` (30,522 entries, SHA-256
+  `07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3`), Apache License 2.0. `NOTICE` records the source and revision and
+  `LICENSE-APACHE-2.0.txt` is the licence text; keep both with the file. A nested `.gitattributes` forces LF line endings. No model
+  weights are included and no dependency was added; the word-piece tokenizer is pure Python.
+- `domain_terms.txt`: 851 CS/IT/ML terms written for this project (not copied from a glossary).
+
+If these files cannot be loaded, the three features become `unavailable` and the rest of the response is unaffected.
+Method and limits: [design document](../../../docs/edusync/c2-difficulty.md), section 4, "Feature A method".
 
 ## Docs
 
