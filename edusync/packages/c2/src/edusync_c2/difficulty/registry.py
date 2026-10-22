@@ -17,8 +17,10 @@ from edusync_c2.difficulty.schemas import FeatureSpec, Maturity, Requires
 #   0.1  Phase 1: 24 features (the first registry)
 #   0.2  Phase 2 M1: vocabulary features (26 features) and the versioned schema hash
 #   0.3  pre-registers the nine Phase 2 features (35 features), all planned
-# To be frozen as 1.0 at the end of Phase 2. A trained model records version and hash.
-FEATURE_SCHEMA_VERSION = "0.3"
+#   1.0  frozen at the end of Phase 2; any change to names, groups, order or meaning of a
+#        feature now requires a version bump and retraining
+# A trained model records version and hash.
+FEATURE_SCHEMA_VERSION = "1.0"
 
 
 def _f(
@@ -278,11 +280,13 @@ FEATURE_SPECS: tuple[FeatureSpec, ...] = (
 FEATURE_NAMES: tuple[str, ...] = tuple(s.name for s in FEATURE_SPECS)
 
 PHASE1_TODO: tuple[str, ...] = (
-    "Real C1 connection (C1ApiGraphProvider); the graph is a mock unless supplied by the caller.",
-    "Concept filter: alias merging (TDE = Transparent Data Encryption) and generic phrases.",
+    "Real C1 v1 graph and sample: C1ApiGraphProvider exists but is off by default, "
+    "and no real v1 graph has been checked yet.",
+    "Concept filter: the heuristic stays opt-in until it is validated on real C1 output.",
     "MiniLMFusionModel and learned feature fusion (Phase 3, trained on lecturer labels).",
     "Calibrated confidence and probabilities (never invented before a trained, evaluated model).",
     "Prediction persistence for Phase 5 comparison with live comprehension.",
+    "Validation of the thresholds (unfamiliar vocabulary, semantic scorer, visual complexity).",
 )
 
 

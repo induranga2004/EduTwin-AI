@@ -2,18 +2,22 @@
 
 import hashlib
 import itertools
+import json
+from pathlib import Path
 
 import pytest
 
 from edusync_c2.difficulty import models
+from edusync_c2.difficulty.models import RuleBaselineModel
 from edusync_c2.difficulty.registry import (
     FEATURE_NAMES,
     FEATURE_SCHEMA_VERSION,
     FEATURE_SPECS,
+    PHASE1_TODO,
     feature_schema_hash,
     spec_of,
 )
-from edusync_c2.difficulty.schemas import FeatureGroup, FeatureSpec
+from edusync_c2.difficulty.schemas import DifficultyResponse, FeatureGroup, FeatureSpec
 
 # The mapping the registry used before maturity/requires existed (phase1 per feature name).
 LEGACY_PHASE1 = {
@@ -81,7 +85,46 @@ def _spec(maturity, requires, description="d"):
 
 
 def test_version_constant():
-    assert FEATURE_SCHEMA_VERSION == "0.3"
+    assert FEATURE_SCHEMA_VERSION == "1.0"
+
+
+def test_frozen_snapshot_matches_registry():
+    snapshot = json.loads(
+        (Path(__file__).parent / "golden" / "registry_snapshot.json").read_text(encoding="utf-8")
+    )
+    assert snapshot["version"] == "1.0" == FEATURE_SCHEMA_VERSION
+    assert snapshot["hash"] == feature_schema_hash()
+    assert snapshot["features"] == [[s.name, s.group.value] for s in FEATURE_SPECS]
+
+
+def test_response_metadata_for_phase2():
+    response = DifficultyResponse(
+        filename="x.pptx",
+        file_type="pptx",
+        slide_count=0,
+        inputs=[],
+        stages=[],
+        model=RuleBaselineModel().info,
+        predictions=[],
+    )
+    assert response.pipeline_version == "0.2.0-phase2"
+    for phrase in (
+        "Rule-based baseline",
+        "not from a trained model",
+        "have not been validated",
+        "Mocked or unavailable",
+        "No probabilities or accuracy are claimed",
+    ):
+        assert phrase in response.disclaimer
+
+
+def test_open_items_list_names_only_what_is_still_open():
+    text = " ".join(PHASE1_TODO)
+    assert len(PHASE1_TODO) == 6
+    for open_item in ("C1ApiGraphProvider", "heuristic", "MiniLMFusionModel", "Calibrated"):
+        assert open_item in text
+    assert "Prediction persistence" in text
+    assert "Validation of the thresholds" in text
 
 
 @pytest.mark.parametrize(

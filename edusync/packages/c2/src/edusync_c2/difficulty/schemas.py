@@ -280,7 +280,7 @@ class ConceptPrediction(BaseModel):
 
 
 class DifficultyResponse(BaseModel):
-    pipeline_version: str = "0.1.0-phase1"
+    pipeline_version: str = "0.2.0-phase2"
     lecture_id: str | None = None
     filename: str
     file_type: Literal["pptx", "pdf"]
@@ -292,8 +292,10 @@ class DifficultyResponse(BaseModel):
     todo: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     disclaimer: str = (
-        "Phase 1 baseline: rule-based labels from simple features, not a trained model. "
-        "No probabilities or accuracy are claimed; mocked inputs and features are labelled."
+        "Rule-based baseline: the labels come from fixed rules over lecture features, not from a "
+        "trained model. The labels and thresholds have not been validated against lecturer "
+        "judgements. Mocked or unavailable inputs and features are labelled as such. "
+        "No probabilities or accuracy are claimed."
     )
 
 

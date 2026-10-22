@@ -1,6 +1,6 @@
 {
- "version": "0.3",
- "hash": "704824d7cc146540b170421ddaff2ce81ff3b1b8aac305b6392493cb859ae488",
+ "version": "1.0",
+ "hash": "a3861d7787d4e4b52cad3d3025a402e6c068fba78e949479bb1e621dfda33e6f",
  "features": [
   [
    "lang.avg_sentence_length",
