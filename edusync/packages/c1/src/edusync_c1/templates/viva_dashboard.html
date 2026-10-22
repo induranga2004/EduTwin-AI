@@ -25,10 +25,14 @@
     .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); margin-right: 6px; animation: pulse 2s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     
-    .container { display: grid; grid-template-columns: 390px 1fr; gap: 16px; padding: 16px; flex: 1; height: calc(100vh - 58px); }
-    .panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-    .panel-header { padding: 12px 18px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
-    .panel-body { padding: 16px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+    .container { display: grid; grid-template-columns: 390px 1fr; gap: 16px; padding: 16px; flex: 1; height: calc(100vh - 58px); min-height: 0; max-height: calc(100vh - 58px); overflow: hidden; }
+    .panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; position: relative; min-height: 0; height: 100%; }
+    .panel-header { padding: 12px 18px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+    .panel-body { padding: 16px; flex: 1 1 auto; overflow-y: auto !important; overflow-x: hidden; display: flex; flex-direction: column; gap: 14px; scrollbar-width: thin; scrollbar-color: #38bdf8 #0f172a; }
+    .panel-body::-webkit-scrollbar { width: 7px; }
+    .panel-body::-webkit-scrollbar-track { background: #0b1120; border-radius: 4px; }
+    .panel-body::-webkit-scrollbar-thumb { background: #38bdf8; border-radius: 4px; }
+    .panel-body::-webkit-scrollbar-thumb:hover { background: #0284c7; }
 
     /* Drop Zone */
     .drop-zone { border: 2px dashed var(--border); border-radius: 8px; padding: 18px; text-align: center; cursor: pointer; transition: all 0.2s; background: rgba(15, 23, 42, 0.5); }
