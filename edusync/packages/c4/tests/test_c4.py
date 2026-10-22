@@ -716,7 +716,7 @@ def test_group_preserves_event_ids_and_native_text():
     tl = build_timeline(events, slide_id="sl")
     (g,) = group_timeline(tl)
     assert sorted(g.event_ids) == sorted(e.event_id for e in tl.events)
-    assert g.native_text == "Force / Force = ma"
+    assert g.native_text == "Force = ma"  # final text only, not every edit
     assert g.primary_type == ShapeType.TEXT
 
 
@@ -938,3 +938,102 @@ def test_c4_does_not_import_other_components():
             elif isinstance(node, ast.ImportFrom) and node.module:
                 mods = [node.module]
             assert not {m.split(".")[0] for m in mods} & banned, path.name
+
+
+# --- Grouping fixes from the live BBB test (SYNTHETIC copy of the real sequence) ---
+
+
+def _note(shape, ts, text, x=621, y=322, **extra):
+    return {
+        "id": shape,
+        "type": "note",
+        "x": x,
+        "y": y,
+        "timestamp": ts,
+        "props": {"text": text},
+        **extra,
+    }
+
+
+def _stroke(shape, ts, x, y):
+    pts = [[0, 0, 0.5], [40, 10, 0.5], [80, 0, 0.5]]
+    return {
+        "id": shape,
+        "type": "draw",
+        "x": x,
+        "y": y,
+        "timestamp": ts,
+        "props": {"segments": [{"points": pts}]},
+    }
+
+
+def test_group_text_is_final_text_not_every_keystroke():
+    steps = ["a", "d", "do", "don", "dont", "dont k", "dont know"]
+    events = [_note("n", 10 + i, t) for i, t in enumerate(steps)]
+    (g,) = _groups(events)
+    assert g.native_text == "dont know"
+
+
+def test_undo_restores_do_not_merge_unrelated_shapes():
+    events = [
+        {
+            "id": "arrow",
+            "type": "arrow",
+            "timestamp": 0,
+            "props": {"start": {"x": 0, "y": 0}, "end": {"x": 24, "y": 44}},
+            "x": 727,
+            "y": 358,
+        },
+        _note("n", 4.68, "x"),
+        _note("n", 29.4, "dont know", x=730, y=405),
+        _geo("g", 838.85, 348, 531, w=261, h=134),
+        _del("g", 862.6),
+        _del("n", 862.6),
+        _note("n", 867.37, "dont know", x=730, y=405),  # undo of the note's delete
+        _geo("g", 869.98, 348, 531, w=261, h=134),  # undo of the geo's delete
+        _del("g", 871.06),
+    ]
+    groups = _groups(events)
+    by_members = sorted(g.shape_ids for g in groups)
+    assert by_members == [["arrow", "n"], ["g"]]
+
+
+def test_restore_after_clear_is_not_an_authored_edit():
+    clear = {"eventName": "ClearWhiteboardEvent", "timestamp": 50}
+    events = [
+        _geo("a", 1, 0, 0),
+        _geo("b", 100, 20, 0),
+        clear,
+        _geo("a", 102, 0, 0),  # undo of the clear brings 'a' back at 102 s
+    ]
+    # 'a' was drawn at 1 s and 'b' at 100 s: far apart. The restore at 102 s must not link them.
+    assert len(_groups(events)) == 2
+
+
+def test_real_edit_after_the_gap_still_links():
+    events = [_geo("a", 1, 0, 0), _geo("b", 100, 20, 0), _geo("a", 101, 0, 0)]
+    # no deletion in between: 'a' was really edited at 101 s, next to 'b' at 100 s
+    assert len(_groups(events)) == 1
+
+
+def test_partial_clear_only_affects_the_clearing_users_shapes():
+    def run(clearing_user):
+        clear = {
+            "eventName": "ClearWhiteboardEvent",
+            "timestamp": 50,
+            "fullClear": False,
+            "userId": clearing_user,
+        }
+        return _groups(
+            [
+                _geo("a", 1, 0, 0, userId="u1"),
+                _geo("b", 100, 20, 0, userId="u2"),
+                clear,
+                _geo("a", 102, 0, 0, userId="u1"),
+            ]
+        )
+
+    # u1 cleared their own shape 'a': its return at 102 s is a restore, so 'a' stays far from 'b'
+    assert len(run("u1")) == 2
+    # u2 cleared, which never touched u1's 'a': the edit at 102 s is genuine and links to 'b'
+    assert len(run("u2")) == 1

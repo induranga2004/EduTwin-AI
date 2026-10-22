@@ -1,8 +1,15 @@
 """Rule-based candidate grouping of annotations on a slide.
 
 `SpatioTemporalClusterer` is a deterministic baseline: two shapes are linked when their
-bounding boxes are within `max_distance` AND their active time spans are within
-`max_gap_seconds`; groups are the connected components of that link graph (single linkage).
+bounding boxes are within `max_distance` AND the closest pair of their *authored edit times* is
+within `max_gap_seconds`; groups are the connected components of that link graph (single
+linkage).
+
+Authored edit times are the timestamps of a shape's versions, EXCLUDING restores. A restore is a
+version that reappears after a deletion or a whiteboard clear (BBB's undo re-submits the shape),
+so undoing a delete is not treated as the presenter drawing it again. A group's own
+`start_seconds`/`end_seconds` still cover the shapes' full lifetimes, including retraction.
+A group's `native_text` is the final text of each text-bearing shape, not every typing step.
 
 Known limitations (by design, not bugs):
   * Single linkage chains: A~B and B~C put A and C together even if far apart.
@@ -14,6 +21,7 @@ Known limitations (by design, not bugs):
 Replaceable via the `Clusterer` protocol (e.g. a learned segmenter later).
 """
 
+import bisect
 import hashlib
 import math
 from collections import Counter
@@ -28,7 +36,7 @@ from edusync_c4.schemas import (
     ShapeType,
 )
 
-METHOD = "spatiotemporal-single-linkage-v1"
+METHOD = "spatiotemporal-single-linkage-v2"
 
 
 class Clusterer(Protocol):
@@ -59,11 +67,33 @@ def time_gap(a: tuple[float, float], b: tuple[float, float]) -> float:
     return max(0.0, max(a[0], b[0]) - min(a[1], b[1]))
 
 
-class _Shape:
-    """All versions of one shape, collapsed to a union box and a time span."""
+def closest_gap(a: list[float], b: list[float]) -> float:
+    """Smallest absolute difference between two sorted, non-empty time lists."""
+    best = math.inf
+    for t in a:
+        i = bisect.bisect_left(b, t)
+        if i < len(b):
+            best = min(best, b[i] - t)
+        if i > 0:
+            best = min(best, t - b[i - 1])
+    return best
 
-    def __init__(self, versions: list[NormalizedAnnotation]) -> None:
+
+class _Shape:
+    """All versions of one shape, collapsed to a union box, a lifetime and its edit times."""
+
+    def __init__(self, versions: list[NormalizedAnnotation], retractions: list[float]) -> None:
         self.versions = versions
+        # A version is a restore when a deletion/clear happened since the previous version.
+        self.edit_times = sorted(
+            v.timestamp_seconds
+            for i, v in enumerate(versions)
+            if i == 0
+            or not any(
+                versions[i - 1].timestamp_seconds <= r <= v.timestamp_seconds for r in retractions
+            )
+        )
+        self.final_text = next((v.text_content for v in reversed(versions) if v.text_content), None)
         self.shape_id = versions[0].shape_id
         self.bounds = _union_bounds([v.bounds for v in versions])
         self.start = min(v.timestamp_seconds for v in versions)
@@ -83,12 +113,27 @@ class SpatioTemporalClusterer:
         cfg = config or GroupingConfig()
 
         by_shape: dict[str, list[NormalizedAnnotation]] = {}
+        deletions: dict[str, list[float]] = {}
+        clears: list[NormalizedAnnotation] = []
         for ev in timeline.events:
-            if ev.is_deleted or ev.is_clear:
-                continue
-            by_shape.setdefault(ev.shape_id, []).append(ev)
+            if ev.is_clear:
+                clears.append(ev)
+            elif ev.is_deleted:
+                deletions.setdefault(ev.shape_id, []).append(ev.timestamp_seconds)
+            else:
+                by_shape.setdefault(ev.shape_id, []).append(ev)
+
+        def retractions_for(versions: list[NormalizedAnnotation]) -> list[float]:
+            times = list(deletions.get(versions[0].shape_id, []))
+            authors = {v.user_id for v in versions}
+            for clear in clears:
+                # fullClear=False only removes the clearing user's own shapes
+                if clear.raw_payload.get("fullClear") is not False or clear.user_id in authors:
+                    times.append(clear.timestamp_seconds)
+            return times
+
         shapes = sorted(
-            (_Shape(vs) for vs in by_shape.values()),
+            (_Shape(vs, retractions_for(vs)) for vs in by_shape.values()),
             key=lambda s: (s.start, s.shape_id),
         )
         if not cfg.include_retracted:
@@ -107,7 +152,7 @@ class SpatioTemporalClusterer:
                 b = shapes[j]
                 if (
                     box_distance(a.bounds, b.bounds) <= cfg.max_distance
-                    and time_gap((a.start, a.end), (b.start, b.end)) <= cfg.max_gap_seconds
+                    and closest_gap(a.edit_times, b.edit_times) <= cfg.max_gap_seconds
                 ):
                     parent[find(j)] = find(i)
 
@@ -128,9 +173,9 @@ class SpatioTemporalClusterer:
         top = max(types.values())
         primary: ShapeType = sorted((t for t, n in types.items() if n == top), key=str)[0]
         texts: list[str] = []
-        for v in versions:
-            if v.text_content and v.text_content not in texts:
-                texts.append(v.text_content)
+        for s in sorted(members, key=lambda m: (m.start, m.shape_id)):
+            if s.final_text and s.final_text not in texts:
+                texts.append(s.final_text)
         digest = hashlib.sha1("|".join(shape_ids).encode("utf-8")).hexdigest()[:10]
         return AnnotationGroup(
             group_id=f"grp:{timeline.slide_id}:{digest}",
