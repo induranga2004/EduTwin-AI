@@ -1,8 +1,25 @@
-"""C4: live visual evidence (slides, whiteboard) and reconciliation with speech evidence."""
+"""C4: live visual evidence, temporal reconstruction, and speech reconciliation."""
 
 from edusync_c4.annotations import parse_annotation_text
 from edusync_c4.evidence import merge_evidence, reconcile
+from edusync_c4.normalizer import (
+    apply_delta,
+    compute_bounds,
+    extract_stroke_points,
+    normalize_event,
+    normalize_events,
+)
 from edusync_c4.router import router
+from edusync_c4.schemas import (
+    BoundingBox,
+    EventImportRequest,
+    EventImportResponse,
+    NormalizedAnnotation,
+    ReconcileRequest,
+    ReconcileResponse,
+    ShapeType,
+    StrokePoint,
+)
 from edusync_core import Component
 
 COMPONENT = Component(
@@ -12,4 +29,23 @@ COMPONENT = Component(
     router=router,
 )
 
-__all__ = ["COMPONENT", "merge_evidence", "parse_annotation_text", "reconcile", "router"]
+__all__ = [
+    "COMPONENT",
+    "BoundingBox",
+    "EventImportRequest",
+    "EventImportResponse",
+    "NormalizedAnnotation",
+    "ReconcileRequest",
+    "ReconcileResponse",
+    "ShapeType",
+    "StrokePoint",
+    "apply_delta",
+    "compute_bounds",
+    "extract_stroke_points",
+    "merge_evidence",
+    "normalize_event",
+    "normalize_events",
+    "parse_annotation_text",
+    "reconcile",
+    "router",
+]

@@ -19,8 +19,9 @@ def _collect(node: Any, parts: list[str]) -> None:
 
 
 def parse_annotation_text(annotation_info: dict | str | None) -> str | None:
-    """Return the text of a shape (``props.text`` or nested ``props.richText``), else None.
+    """Return the text of a shape, else None.
 
+    Inspects ``props.text``, ``props.name``, ``props.questionText``, or nested ``props.richText``.
     Accepts a dict or a JSON string; malformed input yields None.
     """
     data = annotation_info
@@ -37,6 +38,13 @@ def parse_annotation_text(annotation_info: dict | str | None) -> str | None:
     text = props.get("text")
     if isinstance(text, str) and text.strip():
         return text.strip()
+    name = props.get("name")
+    if isinstance(name, str) and name.strip():
+        return name.strip()
+    for q_key in ("questionText", "question"):
+        q = props.get(q_key)
+        if isinstance(q, str) and q.strip():
+            return q.strip()
     for key in ("richText", "document"):
         parts: list[str] = []
         _collect(props.get(key), parts)
