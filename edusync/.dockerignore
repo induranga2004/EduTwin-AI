@@ -9,6 +9,9 @@
 .coverage
 htmlcov
 data/*
+packages/c2_difficulty_model/data
+packages/c2_difficulty_model/cache
+packages/c2_difficulty_model/runs
 fixtures
 **/tests
 .git

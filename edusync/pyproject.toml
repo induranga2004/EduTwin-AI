@@ -16,6 +16,7 @@ edusync-c3 = { workspace = true }
 edusync-c4 = { workspace = true }
 edusync-api = { workspace = true }
 edusync-blueprint-model = { workspace = true }
+edusync-c2-model = { workspace = true }
 # CPU-only PyTorch (never a CUDA wheel); macOS uses the default PyPI build, which is CPU too.
 torch = [{ index = "pytorch-cpu", marker = "platform_system != 'Darwin'" }]
 
@@ -33,6 +34,7 @@ dev = [
     "ruff>=0.8",
     "pre-commit>=4.0",
     "edusync-blueprint-model",
+    "edusync-c2-model",
 ]
 
 [tool.ruff]
@@ -52,6 +54,7 @@ known-first-party = [
     "edusync_c4",
     "edusync_api",
     "edusync_blueprint_model",
+    "edusync_c2_model",
 ]
 
 [tool.pytest.ini_options]
@@ -69,6 +72,7 @@ source = [
     "packages/c3/src",
     "packages/c4/src",
     "packages/blueprint_model/src",
+    "packages/c2_difficulty_model/src",
     "apps/api/src",
 ]
 
