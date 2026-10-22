@@ -22,6 +22,8 @@ class ConceptNode(BaseModel):
     label: str
     frequency: int = 0
     description: str = ""
+    depth: int = 1
+    is_main_concept: bool = False
 
 
 class EdgeEvidence(BaseModel):
@@ -48,6 +50,7 @@ class KnowledgeGraph(BaseModel):
     nodes: list[ConceptNode]
     edges: list[ConceptEdge]
     note: str
+    main_concept: str | None = None
 
 
 class TranscriptSegment(BaseModel):

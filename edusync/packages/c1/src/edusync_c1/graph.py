@@ -13,6 +13,7 @@ from typing import Any
 
 import networkx as nx
 
+from edusync_c1.concepts import extract_main_concept
 from edusync_c1.schemas import (
     Concept,
     ConceptEdge,
@@ -148,9 +149,21 @@ def build_knowledge_graph(
     concept_sentences: dict[str, list[tuple[int, str]]] = {}
     first_seen_pages: dict[str, int] = {}
 
+    # 0. Identify Main Concept / Topic Root
+    main_concept_title = extract_main_concept(pages, concepts)
+    main_key = main_concept_title.casefold() if main_concept_title else None
+    if main_key and main_concept_title:
+        patterns[main_key] = re.compile(r"(?<!\w)" + re.escape(main_key) + r"(?!\w)")
+        canonical_labels[main_key] = main_concept_title
+        concept_frequencies[main_key] = 100
+        concept_sentences[main_key] = []
+        first_seen_pages[main_key] = 1
+
     for concept in concepts:
         name = concept.name.strip()
         key = name.casefold()
+        if main_key and key != main_key and key in main_key and len(key) < 25:
+            continue
         if name and key not in patterns:
             patterns[key] = re.compile(r"(?<!\w)" + re.escape(key) + r"(?!\w)")
             canonical_labels[key] = name
@@ -180,25 +193,69 @@ def build_knowledge_graph(
                 raw_sentences.append(sentence)
                 pair_evidence[pair] = (count + 1, evidence, raw_sentences)
 
-    # 1. Build Concept Nodes (enriched with descriptions prioritized from introductory slide)
+    # 1. Build Concept Nodes (Rooted at Main Concept)
+    total_pages = max(len(pages), 1)
     nodes: list[ConceptNode] = []
-    for key, label in canonical_labels.items():
+    
+    # Process main concept first so it is nodes[0]
+    keys_order = list(canonical_labels.keys())
+    if main_key and main_key in keys_order:
+        keys_order.remove(main_key)
+        keys_order.insert(0, main_key)
+
+    for key in keys_order:
+        label = canonical_labels[key]
         all_sentences = concept_sentences.get(key, [])
-        first_page = first_seen_pages.get(key, 999999)
+        first_page = first_seen_pages.get(key, 1)
         intro_sentences = [s for p, s in all_sentences if p == first_page]
         chosen_candidates = intro_sentences if intro_sentences else [s for _, s in all_sentences]
         desc = extract_concept_description(label, chosen_candidates, matcher=matcher)
+        
+        is_root = (key == main_key)
+        if is_root:
+            depth = 0
+            if not desc:
+                desc = f"Central lecture theme and overarching curriculum topic: {label}"
+        else:
+            ratio = first_page / total_pages
+            if ratio <= 0.35:
+                depth = 1
+            elif ratio <= 0.70:
+                depth = 2
+            else:
+                depth = 3
+
         nodes.append(
             ConceptNode(
                 id=key,
                 label=label,
                 frequency=concept_frequencies.get(key, 0),
                 description=desc,
+                depth=depth,
+                is_main_concept=is_root,
             )
         )
 
     # 2. Infer Directed Prerequisite Edges & Co-occurrences
     candidate_edges: list[ConceptEdge] = []
+    
+    # Connect Main Concept (Root) to all Level 1 Core Pillars
+    if main_key and main_concept_title:
+        for node in nodes:
+            if node.depth == 1 and node.id != main_key:
+                candidate_edges.append(
+                    ConceptEdge(
+                        source=main_key,
+                        target=node.id,
+                        relation_type="prerequisite",
+                        direction="source_is_prerequisite_of_target",
+                        confidence=1.0,
+                        source_type="main_topic_hierarchy",
+                        evidence_count=1,
+                        evidence=[EdgeEvidence(page=1, sentence=f"Core curriculum pillar branching directly from {main_concept_title}.")],
+                    )
+                )
+
     ranked_pairs = sorted(pair_evidence.items(), key=lambda item: (-item[1][0], item[0]))
 
     for (k1, k2), (count, evidence, raw_sentences) in ranked_pairs:
@@ -362,4 +419,5 @@ def build_knowledge_graph(
         nodes=nodes,
         edges=final_edges,
         note=note,
+        main_concept=main_key,
     )

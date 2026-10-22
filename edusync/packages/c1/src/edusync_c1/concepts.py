@@ -1,9 +1,15 @@
-"""Heuristic concept extraction from lecture text (a transparent baseline, not a trained model)."""
+"""Heuristic concept extraction from lecture text and slides."""
+
+from __future__ import annotations
 
 import re
 from collections import Counter
+from typing import TYPE_CHECKING
 
 from edusync_c1.schemas import Concept
+
+if TYPE_CHECKING:
+    from edusync_c1.schemas import Page
 
 # Common words that are not useful concepts when extracted as standalone phrases.
 STOP_WORDS = frozenset(
@@ -16,15 +22,29 @@ STOP_WORDS = frozenset(
         "there", "here", "they", "them", "you", "we", "it", "is", "in", "on", "at",
         "to", "of", "by", "as", "an", "a", "or", "be", "do", "does",
     }
-)  # fmt: skip
+)
+
+# Academic, metadata, and citation words to discard from concept lists
+ACADEMIC_DISCARD = frozenset(
+    {
+        "page", "pages", "slide", "slides", "lecture", "presentation", "course", "module",
+        "chapter", "unit", "overview", "agenda", "outline", "thank you", "thanks", "questions",
+        "conclusion", "objectives", "summary", "fig", "figure", "table", "et al", "bmj",
+        "ieee", "acm", "csur", "tsg", "springer", "elsevier", "applied sciences", "prisma",
+        "prisma 2020", "statement", "survey", "review", "paper", "report", "doi", "vol",
+        "volume", "references", "bibliography", "cited", "citation", "liyanage", "author",
+        "university", "department", "faculty", "school", "institute", "sliit", "malabe",
+        "sri lanka", "email", "student", "supervisor", "computing", "it4041", "key references",
+        "a survey", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11",
+    }
+)
 
 _PATTERNS = tuple(
     re.compile(p)
     for p in (
-        # Capitalised phrases, e.g. "Binary Search Tree"
-        r"\b[A-Z][a-zA-Z0-9]+(?:[-'][A-Za-z0-9]+)*"
-        r"(?:\s+[A-Z][a-zA-Z0-9]+(?:[-'][A-Za-z0-9]+)*){0,3}\b",
-        # Acronyms, e.g. "TCP-IP"
+        # Capitalised phrases, e.g. "Binary Search Tree", "Smart Grids"
+        r"\b[A-Z][a-zA-Z0-9]+(?:[-'][A-Za-z0-9]+)*(?:\s+[a-zA-Z][a-zA-Z0-9]+){0,3}\b",
+        # Acronyms, e.g. "TCP-IP", "DER", "SCADA"
         r"\b[A-Z]{2,}(?:[- ][A-Z0-9]{2,}){0,2}\b",
         # Lower-case multi-word phrases, e.g. "gradient descent"
         r"\b[a-zA-Z][a-zA-Z0-9-]*(?:\s+[a-zA-Z][a-zA-Z0-9-]*){1,2}\b",
@@ -40,17 +60,70 @@ def extract_concepts(text: str, max_concepts: int = 30) -> list[Concept]:
     cleaned = re.sub(r"\s+", " ", text)
     counts: Counter[str] = Counter()
     display: dict[str, str] = {}
+    
     for pattern in _PATTERNS:
         for match in pattern.finditer(cleaned):
-            phrase = match.group(0).strip(" -")
+            phrase = match.group(0).strip(" -:•|[]()")
             words = phrase.split()
-            if len(phrase) < 3 or len(words) > 4:
+            
+            # Strip leading and trailing stop words (e.g. "Cyber Resilience in" -> "Cyber Resilience")
+            while words and words[0].casefold() in STOP_WORDS:
+                words.pop(0)
+            while words and words[-1].casefold() in STOP_WORDS:
+                words.pop()
+                
+            if not words or len(words) > 4:
                 continue
-            if all(word.casefold() in STOP_WORDS for word in words):
+                
+            clean_phrase = " ".join(words)
+            if len(clean_phrase) < 3:
                 continue
-            key = " ".join(words).casefold()
+                
+            key = clean_phrase.casefold()
+            if key in ACADEMIC_DISCARD or any(d in key for d in ("liyanage", "acm csur", "page et al", "prisma 2020", "ieee tsg")):
+                continue
+                
             counts[key] += 1
-            display.setdefault(key, phrase)
+            display.setdefault(key, clean_phrase)
 
     ranked = sorted(counts, key=lambda key: (-counts[key], key))
     return [Concept(name=display[key], frequency=counts[key]) for key in ranked[:max_concepts]]
+
+
+def extract_main_concept(pages: list[Page] | None = None, concepts: list[Concept] | None = None) -> str | None:
+    """Identify the overarching lecture topic / main concept from the title slide or concepts."""
+    if pages and len(pages) > 0:
+        p1 = pages[0].text
+        lines = [line.strip() for line in p1.splitlines() if line.strip()]
+        candidate_parts: list[str] = []
+        for line in lines[:8]:
+            lower = line.casefold()
+            # Skip author, affiliation, course code, single numbers, emails
+            if any(term in lower for term in ("it4041", "email", "@", "faculty", "department", "university", "malabe", "liyanage", "student", "lecturer", "sliit")):
+                continue
+            if re.match(r"^\d{1,2}$", line):
+                continue
+            if lower.startswith("course:"):
+                raw = line.split(":", 1)[1].strip()
+                return _format_title(raw)
+            if lower.startswith("unit 1:") or lower.startswith("unit:"):
+                raw = line.split(":", 1)[1].strip()
+                return _format_title(raw)
+            candidate_parts.append(line)
+            if len(candidate_parts) >= 2:
+                break
+        
+        if candidate_parts:
+            combined = " ".join(candidate_parts)
+            title = re.sub(r"\s+", " ", combined).strip()
+            if 5 <= len(title) <= 65:
+                return _format_title(title)
+
+    if concepts and len(concepts) > 0:
+        return _format_title(concepts[0].name)
+    return None
+
+
+def _format_title(title: str) -> str:
+    words = title.split()
+    return " ".join(w.capitalize() if w.lower() not in STOP_WORDS else w.lower() for w in words)

@@ -562,12 +562,14 @@
           label: n.label,
           description: n.description || "Prerequisite concept extracted from uploaded document.",
           depth: n.depth !== undefined ? n.depth : 1,
+          is_main_concept: Boolean(n.is_main_concept),
           status: "not_yet_observed"
         })),
         edges: data.graph.edges.map(e => ({
           from: e.source,
           to: e.target
-        }))
+        })),
+        main_concept: data.graph.main_concept
       };
       
       renderSvgKnowledgeGraph(graphData);
@@ -581,53 +583,97 @@
       const container = document.getElementById("graph-canvas");
       if (!container) return;
 
-      const cw = container.clientWidth || 800;
-      const ch = container.clientHeight || 600;
-      
-      const cardW = 190;
-      const cardH = 58;
-      const gapX = 35;
-      const gapY = 55;
-      const padX = 40;
-      const padY = 40;
+      const cw = container.clientWidth || 900;
+      const ch = container.clientHeight || 650;
 
-      // Responsive column count based on container width
-      let cols = 5;
-      if (cw < 600) cols = 2;
-      else if (cw < 900) cols = 3;
-      else if (cw < 1200) cols = 4;
-      else cols = 5;
+      // 1. Identify Root / Main Concept node
+      const rootNode = graphData.nodes.find(n => n.depth === 0 || n.is_main_concept) || graphData.nodes[0];
 
-      // Sort nodes by depth
-      const sortedNodes = [...graphData.nodes].sort((a, b) => (a.depth || 1) - (b.depth || 1));
-
-      const nodeCoords = {};
-      sortedNodes.forEach((n, idx) => {
-        const col = idx % cols;
-        const row = Math.floor(idx / cols);
-        const x = padX + col * (cardW + gapX);
-        const y = padY + row * (cardH + gapY);
-        nodeCoords[n.id] = { x, y, n };
+      // 2. Group nodes by depth (0 = Main Concept, 1 = Core Pillars, 2 = Sub-Topics, 3 = Advanced)
+      const levelGroups = { 0: [rootNode], 1: [], 2: [], 3: [] };
+      graphData.nodes.forEach(n => {
+        if (n.id === rootNode.id) return;
+        let d = n.depth;
+        if (d === undefined || d === null || d <= 0) d = 1;
+        if (d > 3) d = 3;
+        if (!levelGroups[d]) levelGroups[d] = [];
+        levelGroups[d].push(n);
       });
 
-      const totalCols = Math.min(sortedNodes.length, cols);
-      const totalRows = Math.ceil(sortedNodes.length / cols);
-      const contentW = padX * 2 + totalCols * (cardW + gapX) - gapX;
-      const contentH = padY * 2 + totalRows * (cardH + gapY) - gapY;
+      // 3. Compute Card Dimensions and Positions
+      const rootW = 280;
+      const rootH = 70;
+      const cardW = 195;
+      const cardH = 58;
+      const gapX = 35;
+      const gapY = 85;
 
-      // Auto fit initial scale and pan
+      const nodeCoords = {};
+
+      // Determine width of widest level
+      let maxCols = 1;
+      [1, 2, 3].forEach(d => {
+        const count = levelGroups[d] ? levelGroups[d].length : 0;
+        const subRowCols = Math.min(count, 5);
+        if (subRowCols > maxCols) maxCols = subRowCols;
+      });
+
+      const contentW = Math.max(cw, maxCols * (cardW + gapX) + 120);
+      const centerX = contentW / 2;
+
+      // Place Level 0 (Main Concept) centered at top
+      const rootY = 40;
+      const rootX = centerX - rootW / 2;
+      nodeCoords[rootNode.id] = { x: rootX, y: rootY, w: rootW, h: rootH, n: rootNode, isRoot: true };
+
+      let currentY = rootY + rootH + gapY;
+
+      // Place subsequent levels
+      [1, 2, 3].forEach(d => {
+        const group = levelGroups[d] || [];
+        if (!group.length) return;
+
+        const maxPerSubRow = 5;
+        const subRows = [];
+        for (let i = 0; i < group.length; i += maxPerSubRow) {
+          subRows.push(group.slice(i, i + maxPerSubRow));
+        }
+
+        subRows.forEach(subRow => {
+          const rowW = subRow.length * cardW + (subRow.length - 1) * gapX;
+          const startX = centerX - rowW / 2;
+          subRow.forEach((n, idx) => {
+            const x = startX + idx * (cardW + gapX);
+            nodeCoords[n.id] = { x, y: currentY, w: cardW, h: cardH, n, isRoot: false };
+          });
+          currentY += cardH + 40;
+        });
+
+        currentY += 45; // extra spacing between levels
+      });
+
+      const totalH = currentY + 60;
+
+      // Auto-fit scale & pan to frame Main Concept at top center
       const scaleX = (cw - 40) / contentW;
-      const scaleY = (ch - 40) / contentH;
-      currentScale = Math.min(Math.max(Math.min(scaleX, scaleY), 0.35), 1.05);
+      const scaleY = (ch - 40) / totalH;
+      currentScale = Math.min(Math.max(Math.min(scaleX, scaleY), 0.35), 1.0);
       panX = Math.max(20, Math.floor((cw - contentW * currentScale) / 2));
-      panY = Math.max(20, Math.floor((ch - contentH * currentScale) / 2));
+      panY = 25; // Main Concept visible at top!
 
       let svgHtml = `
-      <svg id="svg-root" width="100%" height="100%" style="background: #090d16; cursor: grab; user-select: none;">
+      <svg id="svg-root" width="${contentW}" height="${totalH}" style="background: #090d16; cursor: grab; user-select: none; width: 100%; height: 100%;">
         <defs>
           <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#38bdf8" />
           </marker>
+          <marker id="arrow-root" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#a855f7" />
+          </marker>
+          <linearGradient id="rootGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#1e1b4b" />
+            <stop offset="100%" stop-color="#0f172a" />
+          </linearGradient>
           <linearGradient id="nodeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stop-color="#1e293b" />
             <stop offset="100%" stop-color="#0f172a" />
@@ -636,35 +682,58 @@
         <g id="svg-viewport" transform="translate(${panX}, ${panY}) scale(${currentScale})">
       `;
 
-      // Directed prerequisite Bezier curves
+      // Edges with smooth vertical Bezier paths
       graphData.edges.forEach(e => {
         const s = nodeCoords[e.from || e.source];
         const t = nodeCoords[e.to || e.target];
         if (s && t) {
-          const x1 = s.x + cardW / 2;
-          const y1 = s.y + cardH;
-          const x2 = t.x + cardW / 2;
+          const x1 = s.x + s.w / 2;
+          const y1 = s.y + s.h;
+          const x2 = t.x + t.w / 2;
           const y2 = t.y;
           const my = (y1 + y2) / 2;
-          svgHtml += `<path d="M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}" fill="none" stroke="#38bdf8" stroke-width="1.8" stroke-opacity="0.65" marker-end="url(#arrow)" />`;
+          const isRootEdge = s.isRoot;
+          const strokeColor = isRootEdge ? "#a855f7" : "#38bdf8";
+          const strokeWidth = isRootEdge ? "2.2" : "1.7";
+          const marker = isRootEdge ? "url(#arrow-root)" : "url(#arrow)";
+          svgHtml += `<path d="M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}" fill="none" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="0.75" marker-end="${marker}" />`;
         }
       });
 
       // Nodes
-      sortedNodes.forEach(n => {
-        const item = nodeCoords[n.id];
+      Object.values(nodeCoords).forEach(item => {
+        const n = item.n;
         const rawLabel = (n.label || n.id).replace(/\r?\n/g, ' ');
-        const displayLabel = escapeXml(rawLabel.length > 22 ? rawLabel.substring(0, 20) + '...' : rawLabel);
         const statusColor = getColorForStatus(n.status);
         const safeId = sanitizeId(n.id);
-        svgHtml += `
-        <g class="concept-node" id="concept-node-${safeId}" data-node-id="${escapeXml(n.id)}" transform="translate(${item.x}, ${item.y})" style="cursor: pointer;">
-          <rect id="rect-${safeId}" width="${cardW}" height="${cardH}" rx="8" fill="url(#nodeGrad)" stroke="${statusColor}" stroke-width="1.6" style="filter: drop-shadow(0 4px 12px rgba(0,0,0,0.6)); transition: all 0.25s;" />
-          <circle id="dot-${safeId}" cx="16" cy="18" r="4" fill="${statusColor}" />
-          <text x="26" y="22" fill="#38bdf8" font-size="10" font-weight="700" letter-spacing="0.5">LEVEL ${n.depth || 1}</text>
-          <text x="14" y="42" fill="#f8fafc" font-size="12" font-weight="600">${displayLabel}</text>
-        </g>
-        `;
+
+        if (item.isRoot) {
+          // Render Root / Main Concept Node
+          const displayTitle = escapeXml(rawLabel.length > 30 ? rawLabel.substring(0, 28) + '...' : rawLabel);
+          svgHtml += `
+          <g class="concept-node" id="concept-node-${safeId}" data-node-id="${escapeXml(n.id)}" transform="translate(${item.x}, ${item.y})" style="cursor: pointer;">
+            <rect id="rect-${safeId}" width="${item.w}" height="${item.h}" rx="10" fill="url(#rootGrad)" stroke="#a855f7" stroke-width="2.5" style="filter: drop-shadow(0 0 16px rgba(168, 85, 247, 0.5)); transition: all 0.25s;" />
+            <circle id="dot-${safeId}" cx="20" cy="22" r="5" fill="#a855f7" />
+            <text x="32" y="26" fill="#a855f7" font-size="11" font-weight="800" letter-spacing="0.8">👑 MAIN LECTURE TOPIC</text>
+            <text x="16" y="50" fill="#ffffff" font-size="13" font-weight="700">${displayTitle}</text>
+          </g>
+          `;
+        } else {
+          // Regular node
+          let levelTag = "LEVEL 1 • CORE PILLAR";
+          if (n.depth === 2) levelTag = "LEVEL 2 • SUB-TOPIC";
+          else if (n.depth >= 3) levelTag = "LEVEL 3 • ADVANCED";
+
+          const displayLabel = escapeXml(rawLabel.length > 22 ? rawLabel.substring(0, 20) + '...' : rawLabel);
+          svgHtml += `
+          <g class="concept-node" id="concept-node-${safeId}" data-node-id="${escapeXml(n.id)}" transform="translate(${item.x}, ${item.y})" style="cursor: pointer;">
+            <rect id="rect-${safeId}" width="${item.w}" height="${item.h}" rx="8" fill="url(#nodeGrad)" stroke="${statusColor}" stroke-width="1.6" style="filter: drop-shadow(0 4px 12px rgba(0,0,0,0.6)); transition: all 0.25s;" />
+            <circle id="dot-${safeId}" cx="16" cy="18" r="4" fill="${statusColor}" />
+            <text x="26" y="22" fill="#38bdf8" font-size="9.5" font-weight="700" letter-spacing="0.5">${levelTag}</text>
+            <text x="14" y="42" fill="#f8fafc" font-size="12" font-weight="600">${displayLabel}</text>
+          </g>
+          `;
+        }
       });
 
       svgHtml += `</g></svg>`;
@@ -749,32 +818,20 @@
     function centerGraphView() {
       if (!currentGraph || !currentGraph.nodes.length) return;
       const container = document.getElementById("graph-canvas");
-      const cw = container.clientWidth || 800;
-      const ch = container.clientHeight || 600;
+      const cw = container.clientWidth || 900;
+      const ch = container.clientHeight || 650;
 
-      const cardW = 190;
-      const cardH = 58;
+      const cardW = 195;
       const gapX = 35;
-      const gapY = 55;
-      const padX = 40;
-      const padY = 40;
-
-      let cols = 5;
-      if (cw < 600) cols = 2;
-      else if (cw < 900) cols = 3;
-      else if (cw < 1200) cols = 4;
-      else cols = 5;
-
-      const totalCols = Math.min(currentGraph.nodes.length, cols);
-      const totalRows = Math.ceil(currentGraph.nodes.length / cols);
-      const contentW = padX * 2 + totalCols * (cardW + gapX) - gapX;
-      const contentH = padY * 2 + totalRows * (cardH + gapY) - gapY;
+      const maxCols = 5;
+      const contentW = Math.max(cw, maxCols * (cardW + gapX) + 120);
+      const totalH = 550;
 
       const scaleX = (cw - 40) / contentW;
-      const scaleY = (ch - 40) / contentH;
-      currentScale = Math.min(Math.max(Math.min(scaleX, scaleY), 0.35), 1.05);
+      const scaleY = (ch - 40) / totalH;
+      currentScale = Math.min(Math.max(Math.min(scaleX, scaleY), 0.35), 1.0);
       panX = Math.max(20, Math.floor((cw - contentW * currentScale) / 2));
-      panY = Math.max(20, Math.floor((ch - contentH * currentScale) / 2));
+      panY = 25;
       applyTransform();
     }
 
