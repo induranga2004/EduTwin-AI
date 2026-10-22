@@ -108,7 +108,11 @@ Metrics per concept (the concept's id is the node id; "prerequisites of X" = val
 
 Cycles: the chain-depth search does not follow an edge back into a node already on the current path, so cycles cannot
 loop forever; the metric then reflects the acyclic part. `PrerequisiteMetrics.has_cycle` records that a cycle was met,
-but C2 does not currently turn it into a warning. Transitive count is a reachability set and is unaffected.
+and the pipeline turns it into a warning: a `graph_cycle` WARNING log line (count only), and for each concept whose
+prerequisite chain meets a cycle the prediction warning `prerequisite cycle found below this concept; the back edge was ignored`
+(`CONCEPT_CYCLE_WARNING` in `pipeline.py`; test `tests/difficulty/test_cycle_warning.py`). Transitive count is a reachability set and is unaffected.
+
+Id convention (`difficulty/ids.py`): v0 graphs, the mock provider and the fallback concept list use **casefold ids** (`casefold_id`: casefolded label, whitespace collapsed, so `Loss  Function` becomes `loss function`). v1 graphs use **hyphen slugs** (`slug_id`: lowercase letters and digits joined by single hyphens, so `TCP/IP` becomes `tcp-ip`; rule C1-018). `providers.slugify` is a historical alias of `casefold_id`, despite its name. The two conventions never mix inside one graph (C1-021).
 
 Other fields used: `dens.concept_frequency` = node `frequency`; the node `description` is added to the model text.
 

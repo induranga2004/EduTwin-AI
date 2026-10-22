@@ -30,7 +30,7 @@ Without `c1_graph` the graph is a mock built from slide titles (labelled `mock` 
 | Route | Description |
 |-------|-------------|
 | `POST /difficulty` | multipart: `file` (.pptx/.pdf), optional `c1_graph` (C1's JSON as returned). Errors: 400 wrong type, corrupt or encrypted; 413 too large; 422 no text or invalid `c1_graph` |
-| `GET /difficulty/info` | model, graph provider, concept filter, the 26 features, TODO list |
+| `GET /difficulty/info` | model, graph provider, concept filter, the 35 features (with `maturity` and `requires`), `feature_schema_version`, TODO list |
 | `GET /health` | component health |
 | `POST /comprehension/evaluate` | rule-based poll flagging (later stage, unchanged) |
 
@@ -43,6 +43,7 @@ packages/c2/
   pyproject.toml
   scripts/make_synthetic_data.py      # CLI: seeded synthetic decks, C1 graphs, labels
   scripts/validate_c1_graph.py        # CLI: check a C1 graph file against the contract
+  scripts/feature_report.py           # CLI: per-feature report; regenerates the registry snapshot
   data/synthetic/                     # generated; .pptx/.pdf git-ignored; labels are circular
   src/edusync_c2/
     router.py                         # HTTP routes
@@ -51,7 +52,7 @@ packages/c2/
       materials.py                    # PPTX/PDF parser
       graph.py, providers.py          # C1 graph view, payload/mock/TODO providers
       concepts.py                     # concepts on slides, mock filter
-      registry.py                     # 26 features, PHASE1_TODO
+      registry.py                     # 35 features, FEATURE_SCHEMA_VERSION, PHASE1_TODO
       features/                       # groups A-D; vocab.py, wordpiece.py, lexicon.py for the vocabulary features
       resources/                      # vendored vocabulary + domain lexicon (see Vendored resources)
       fusion.py, models.py            # ordered features + mask; RuleBaselineModel
@@ -92,6 +93,22 @@ Read from environment variables (prefix `EDUSYNC_C2_`, see `src/edusync_c2/setti
 | `EDUSYNC_C2_MODEL_DIR` | folder path | unset | Model artifact folder for `minilm` (spec in the model doc above) |
 
 Logging conventions and the checklist for new features: see the "Logging and development conventions" section of the [design document](../../../docs/edusync/c2-difficulty.md).
+
+## Feature report and registry snapshot
+
+The registry (`difficulty/registry.py`) has 35 features (A = 8, B = 7, C = 7, D = 13): 24 implemented, 1 mock and 10 planned. Planned
+features are always `unavailable` (`todo:<name>`) until their milestone. The schema is versioned (`FEATURE_SCHEMA_VERSION`, now `0.3`)
+and pinned by `tests/difficulty/golden/registry_snapshot.json`, checked by `tests/difficulty/test_registry_snapshot.py`.
+`scripts/feature_report.py` prints, per feature, maturity, status counts and distinct computed values over the seeded synthetic decks,
+and flags constant, all-unavailable, planned and partial features (synthetic data makes some features constant by construction). From `edusync/`:
+
+```bash
+uv run python packages/c2/scripts/feature_report.py                  # optional: --json, --seed, --lectures, --concepts
+uv run python packages/c2/scripts/feature_report.py --write-snapshot packages/c2/tests/difficulty/golden/registry_snapshot.json
+```
+
+Exit code 0 ok, 2 bad arguments. Run the second command only after a deliberate registry change and a version bump; see "Schema versioning
+policy" in the [design document](../../../docs/edusync/c2-difficulty.md).
 
 ## Validate a C1 graph
 

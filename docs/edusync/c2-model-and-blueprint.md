@@ -25,7 +25,7 @@ class DifficultyModel(Protocol):
 
 - **Input** `FusionInput`: `concept_id`, `text` (concept label, description and slide text, built by
   `fusion.build_fusion_input`) and `features`, one `FusionFeature` per registry entry in registry order
-  (`registry.FEATURE_NAMES`, 26 names), each with `value`, `status` and a `missing` flag (unavailable features, and
+  (`registry.FEATURE_NAMES`, 35 names), each with `value`, `status` and a `missing` flag (unavailable features, and
   mocked ones by default, are missing with `value = None`).
 - **Output** one entry per input, in order: a `ModelOutput` (`label`, optional `score`, optional `probabilities`,
   `explanation`) or `None` when that concept cannot be predicted.
@@ -78,12 +78,14 @@ task.
 | folder | exists and is a directory |
 | `model_int8.onnx` or `model_fp32.onnx` | at least one present; if both, int8 is used |
 | `labels.json` | JSON list exactly `["Low", "Medium", "High"]` in that order (a bare list, not `{"labels": [...]}`) |
-| `feature_schema.json` | object with `schema_version` (non-empty string); `names` equal to `FEATURE_NAMES` in order; `hash` equal to `feature_schema_hash()`. A mismatch says the registry changed since training |
+| `feature_schema.json` | object with `schema_version` (string, must equal `registry.FEATURE_SCHEMA_VERSION`, currently `0.3`); `names` equal to `FEATURE_NAMES` in order; `hash` equal to `feature_schema_hash()`. A mismatch says the registry changed since training |
 | `inference_config.json` | object with `max_length` (int, 1..512, not a bool), `base_model` and `base_revision` (non-empty strings); optional `trained_on` (string) becomes `ModelInfo.trained_on` |
 | `tokenizer.json` | present and non-empty |
 | any JSON file | must parse; otherwise `<file> is not readable valid JSON` |
 
-`feature_schema_hash()` is the sha256 of `name|group` lines in registry order. Adding, removing, renaming or
+`feature_schema_hash()` is the sha256 of the header `edusync-c2-feature-schema
+version=<v>
+` followed by `name|group` lines in registry order (maturity, requires and description are not hashed). Adding, removing, renaming or
 reordering a feature, or moving it to another group, changes the hash and invalidates every trained artifact.
 
 Phase 3 hand-off checklist: the trained package must export
@@ -193,8 +195,8 @@ the same properties the decks expose, so it only tests plumbing and must never b
 | # | Layer | Content | Status |
 |---|---|---|---|
 | 1 | Input | lecture file (PPTX/PDF) to slide records (`materials.py`); C1 graph, real or labelled mock (`graph.py`, `providers.py`); concept alignment (`concepts.py`) | exists |
-| 2 | Feature | the 26 registry features in groups A to D with provenance (computed, mocked, unavailable) | exists |
-| 2b | Learned feature models (optional) | replace the remaining placeholders `expl.semantic_support_score` (mock) and `dens.visual_complexity` (todo); each outputs one number into its existing registry slot, which keeps feature order and schema hash unchanged. Adding a feature does change both: Feature A did (24 to 26 features, new hash), which was safe because no trained artifact exists yet. The hash is recomputed from the registry, so Phase 3 starts from the schema as it is frozen at that point (26 features today), and any change after a model is trained needs retraining | proposed |
+| 2 | Feature | the 35 registry features in groups A to D with provenance (computed, mocked, unavailable; 24 implemented, 1 mock, 10 planned) | exists |
+| 2b | Learned feature models (optional) | replace the remaining placeholders `expl.semantic_support_score` (mock) and `dens.visual_complexity` (todo); each outputs one number into its existing registry slot. Turning a planned or mock feature into an implemented one does not change names, groups or order, so it does not change the hash or the version (maturity is not hashed), unless the meaning of an existing feature changes, which bumps `FEATURE_SCHEMA_VERSION`. Adding, removing, renaming or reordering a feature changes the hash and the version: Feature A did (24 to 26 features, version 0.2) and the nine pre-registered planned features did (35 features, version 0.3), which was safe because no trained artifact exists yet. Phase 2 may still change the schema; it is to be frozen as `1.0` at its end, and after that any change needs retraining (see the "Schema versioning policy" in the design document) | proposed |
 | 3 | Group experts | four models, each predicting overall difficulty from one group's inputs only | proposed |
 | 4 | Combiner | small stacking model over the four group outputs, tolerant of a missing group | proposed |
 | 5 | Calibration | calibrates the combiner probabilities; until evaluated, `probabilities` and `confidence` stay `None` | proposed |
@@ -213,12 +215,12 @@ Lecturers label one difficulty per concept, so a per-group target would need ext
 
 | Group | Features | Inputs | Model type |
 |---|---|---|---|
-| A language | 8 `lang.*` | text plus features | MiniLM plus numeric head |
-| B prerequisites | 5 `prereq.*` | features only (from the C1 graph) | small tabular model |
-| C explanation | 5 `expl.*` | text plus features | MiniLM plus numeric head, or tabular |
-| D density | 8 `dens.*` | features only | small tabular model |
+| A language | 8 `lang.*` (all implemented) | text plus features | MiniLM plus numeric head |
+| B prerequisites | 7 `prereq.*` (5 implemented, 2 planned) | features only (from the C1 graph) | small tabular model |
+| C explanation | 7 `expl.*` (4 implemented, 1 mock, 2 planned) | text plus features | MiniLM plus numeric head, or tabular |
+| D density | 13 `dens.*` (7 implemented, 6 planned) | features only | small tabular model |
 
-8 + 5 + 5 + 8 = 26, matching `registry.FEATURE_SPECS`.
+8 + 7 + 7 + 13 = 35, matching `registry.FEATURE_SPECS`.
 
 Requirements and cautions:
 - The combiner must be trained on out-of-fold expert predictions, split by lecture, otherwise it overfits.
@@ -230,9 +232,9 @@ Requirements and cautions:
 
 ### 7.3 Changes the artifact spec would need
 
-The Phase 1 validator (`OnnxFusionModel.from_artifacts`) requires all 26 names and one hash. For group experts:
+The Phase 1 validator (`OnnxFusionModel.from_artifacts`) requires the schema version, all 35 names and one hash. For group experts:
 - `feature_schema.json` `names` equal to `registry.features_of(group)` and a per-group hash (the current
-  `feature_schema_hash()` covers all 26 features and would need a per-group variant);
+  `feature_schema_hash()` covers all 35 features and would need a per-group variant);
 - one artifact folder per expert plus one for the combiner;
 - a factory that builds the experts and the combiner. The contract suite applies to each model unchanged.
 
