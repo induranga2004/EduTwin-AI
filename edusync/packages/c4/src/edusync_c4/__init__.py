@@ -1,8 +1,26 @@
 """C4: live visual evidence, temporal reconstruction, and speech reconciliation."""
 
 from edusync_c4.annotations import parse_annotation_text
+from edusync_c4.c2_mock import (
+    ComprehensionEvaluator,
+    DeterministicDifficultyPredictor,
+    DifficultyPredictor,
+    StaticComprehensionEvaluator,
+)
+from edusync_c4.context import (
+    ConceptMatcher,
+    ContextConfig,
+    ExactPhraseMatcher,
+    build_group_context,
+    members_of,
+)
 from edusync_c4.evidence import merge_evidence, reconcile
 from edusync_c4.grouping import Clusterer, SpatioTemporalClusterer, group_timeline
+from edusync_c4.interpreter import (
+    ContextualInterpreter,
+    TemplateContextualInterpreter,
+    analyze_groups,
+)
 from edusync_c4.normalizer import (
     apply_delta,
     compute_bounds,
@@ -10,19 +28,31 @@ from edusync_c4.normalizer import (
     normalize_event,
     normalize_events,
 )
+from edusync_c4.recognizer import ContentRecognizer, HeuristicRecognizer
 from edusync_c4.router import router
 from edusync_c4.schemas import (
+    AnnotationContext,
     AnnotationGroup,
+    AnnotationInterpretation,
     AnnotationTimeline,
     BoundingBox,
+    ComprehensionSignal,
+    ConceptCandidate,
+    ConceptHit,
+    DifficultyEstimate,
     EventImportRequest,
     EventImportResponse,
+    GroupAnalysis,
     GroupingConfig,
     NormalizedAnnotation,
+    RecognizedContent,
     ReconcileRequest,
     ReconcileResponse,
     ShapeType,
     SlideSnapshot,
+    SlideText,
+    SpeechEvidence,
+    SpeechSegment,
     StrokePoint,
 )
 from edusync_c4.timeline import (
@@ -42,26 +72,51 @@ COMPONENT = Component(
 
 __all__ = [
     "COMPONENT",
+    "AnnotationContext",
     "AnnotationGroup",
+    "AnnotationInterpretation",
     "AnnotationTimeline",
     "BoundingBox",
     "Clusterer",
+    "ComprehensionEvaluator",
+    "ComprehensionSignal",
+    "ConceptCandidate",
+    "ConceptHit",
+    "ConceptMatcher",
+    "ContentRecognizer",
+    "ContextConfig",
+    "ContextualInterpreter",
+    "DeterministicDifficultyPredictor",
+    "DifficultyEstimate",
+    "DifficultyPredictor",
     "EventImportRequest",
     "EventImportResponse",
+    "ExactPhraseMatcher",
+    "GroupAnalysis",
     "GroupingConfig",
+    "HeuristicRecognizer",
     "NormalizedAnnotation",
+    "RecognizedContent",
     "ReconcileRequest",
     "ReconcileResponse",
     "ShapeType",
     "SlideSnapshot",
+    "SlideText",
     "SpatioTemporalClusterer",
+    "SpeechEvidence",
+    "SpeechSegment",
+    "StaticComprehensionEvaluator",
     "StrokePoint",
+    "TemplateContextualInterpreter",
+    "analyze_groups",
     "apply_delta",
+    "build_group_context",
     "build_timeline",
     "build_timelines",
     "compute_bounds",
     "extract_stroke_points",
     "group_timeline",
+    "members_of",
     "merge_evidence",
     "normalize_event",
     "normalize_events",

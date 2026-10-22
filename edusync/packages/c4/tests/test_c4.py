@@ -763,3 +763,178 @@ def test_single_linkage_chaining_limitation_is_real():
 def test_invalid_config_rejected():
     with pytest.raises(ValueError, match="greater than or equal"):
         GroupingConfig(max_distance=-1)
+
+
+# --- Phase 4: context, mock C2, recognizer placeholder, interpretation (MOCK data only) ---
+
+import ast  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+from edusync_c4 import (  # noqa: E402
+    ContextConfig,
+    DeterministicDifficultyPredictor,
+    ExactPhraseMatcher,
+    HeuristicRecognizer,
+    SlideText,
+    SpeechSegment,
+    StaticComprehensionEvaluator,
+    TemplateContextualInterpreter,
+    analyze_groups,
+    build_group_context,
+    members_of,
+)
+from edusync_c4.mock_data import (  # noqa: E402
+    MOCK_ANNOTATION_EVENTS,
+    MOCK_COMPREHENSION,
+    MOCK_CONCEPTS,
+    MOCK_LECTURE_ID,
+    MOCK_SLIDE_ID,
+    MOCK_SLIDE_TEXT,
+    MOCK_TRANSCRIPT,
+)
+
+
+def _mock_groups():
+    tl = build_timeline(MOCK_ANNOTATION_EVENTS, lecture_id=MOCK_LECTURE_ID, slide_id=MOCK_SLIDE_ID)
+    return tl, group_timeline(tl)
+
+
+def _analyze(**kw):
+    tl, groups = _mock_groups()
+    return analyze_groups(tl, groups, MOCK_TRANSCRIPT, MOCK_SLIDE_TEXT, MOCK_CONCEPTS, **kw)
+
+
+def test_exact_phrase_matcher_whole_word_case_insensitive():
+    m = ExactPhraseMatcher()
+    hits = m.match("the KINETIC ENERGY of a body; workflow", MOCK_CONCEPTS)
+    assert [h.concept.id for h in hits] == ["kinetic-energy"]  # 'workflow' must not match 'Work'
+    assert hits[0].matched_text == "KINETIC ENERGY"
+    assert m.match("anything", []) == []
+
+
+def test_speech_window_inclusion_and_relations():
+    _, groups = _mock_groups()
+    g = groups[0]  # drawn 120s..125s
+    ctx = build_group_context(g, MOCK_TRANSCRIPT, MOCK_SLIDE_TEXT, MOCK_CONCEPTS)
+    assert [(s.segment_id, s.relation) for s in ctx.speech] == [(1, "before"), (2, "during")]
+    narrow = build_group_context(
+        g, MOCK_TRANSCRIPT, MOCK_SLIDE_TEXT, MOCK_CONCEPTS, ContextConfig(speech_pad_seconds=0)
+    )
+    assert [s.segment_id for s in narrow.speech] == [2]
+
+
+def test_speech_offset_moves_transcript_onto_annotation_clock():
+    _, groups = _mock_groups()
+    cfg = ContextConfig(speech_pad_seconds=0, speech_offset_seconds=300)
+    ctx = build_group_context(groups[0], MOCK_TRANSCRIPT, None, MOCK_CONCEPTS, cfg)
+    assert ctx.speech == []  # shifted +300s, nothing left near 120s..125s
+
+
+def test_slide_text_excerpt_truncation_and_wrong_slide():
+    _, groups = _mock_groups()
+    short = ContextConfig(max_slide_excerpt_chars=20)
+    ctx = build_group_context(groups[0], [], MOCK_SLIDE_TEXT, MOCK_CONCEPTS, short)
+    assert ctx.slide_text_truncated is True
+    assert len(ctx.slide_text_excerpt) <= 20
+    other = SlideText(slide_id="other", text="nope")
+    ctx2 = build_group_context(groups[0], [], other, MOCK_CONCEPTS)
+    assert ctx2.slide_text_excerpt is None
+    assert ctx2.slide_evidence_id is None
+
+
+def test_concept_candidates_come_from_annotation_and_speech_not_whole_slide():
+    _, groups = _mock_groups()
+    ctx = build_group_context(groups[1], MOCK_TRANSCRIPT, MOCK_SLIDE_TEXT, MOCK_CONCEPTS)
+    # group 2 ("Unrelated aside", speech 'different topic') must not inherit slide concepts
+    assert ctx.concept_candidates == []
+    ctx1 = build_group_context(groups[0], MOCK_TRANSCRIPT, MOCK_SLIDE_TEXT, MOCK_CONCEPTS)
+    assert {c.source for c in ctx1.concept_candidates} == {"annotation", "speech"}
+
+
+def test_mock_c2_is_deterministic_and_tagged():
+    p = DeterministicDifficultyPredictor()
+    assert p.predict("Kinetic energy") == p.predict("Kinetic energy")
+    assert p.predict("").score == 0.0
+    assert p.predict("antidisestablishmentarianism").score == 1.0
+    assert p.predict("a cat sat").source == "mock-c2"
+    ev = StaticComprehensionEvaluator(MOCK_COMPREHENSION)
+    assert ev.evaluate("kinetic-energy").struggling is True
+    assert ev.evaluate("momentum").struggling is False
+    assert ev.evaluate("unknown") is None
+    assert StaticComprehensionEvaluator({"x": (1, 2)}).evaluate("x") is None  # too few responses
+    assert ev.evaluate("momentum").source == "mock-c2"
+
+
+def test_recognizer_labels_freehand_as_placeholder():
+    tl, groups = _mock_groups()
+    rec = HeuristicRecognizer().recognize(groups[0], members_of(groups[0], tl))
+    assert rec.kind == "mixed"
+    assert rec.freehand_stroke_count == 1
+    assert rec.text == "Kinetic energy"
+    assert rec.is_placeholder is False  # it has real native text
+    assert any("not recognised" in n for n in rec.notes)
+
+    tl2 = build_timeline(
+        [{"id": "d", "type": "draw", "timestamp": 1, "props": {"segments": [{"points": [[0, 0]]}]}}]
+    )
+    (g,) = group_timeline(tl2)
+    only = HeuristicRecognizer().recognize(g, members_of(g, tl2))
+    assert only.kind == "unrecognized_freehand"
+    assert only.text is None
+    assert only.is_placeholder is True
+
+
+def test_pipeline_separates_evidence_from_interpretation_and_cites_it():
+    results = _analyze(
+        interpreter=TemplateContextualInterpreter(
+            DeterministicDifficultyPredictor(), StaticComprehensionEvaluator(MOCK_COMPREHENSION)
+        )
+    )
+    assert len(results) == 2
+    first = results[0]
+    assert type(first.context) is not type(first.interpretation)
+    assert first.interpretation.method == "template-v1"
+    assert first.interpretation.confidence <= 0.5
+    known = set(first.context.evidence_ids())
+    assert set(first.interpretation.cited_evidence_ids) <= known
+    assert first.interpretation.category == "text_with_freehand"
+    assert first.interpretation.needs_attention is True  # mock quiz: kinetic-energy struggling
+    assert "not recognised" in first.interpretation.summary
+    assert "mock-c2" in first.interpretation.summary
+    assert "Rule-based template" in first.interpretation.limitations[0]
+
+
+def test_pipeline_without_c2_or_speech_or_slide():
+    tl, groups = _mock_groups()
+    results = analyze_groups(tl, groups, [], None, [])
+    for r in results:
+        assert r.interpretation.difficulty is None
+        assert r.interpretation.comprehension == []
+        assert r.interpretation.needs_attention is False
+        assert "No speech was found" in r.interpretation.summary
+    assert analyze_groups(tl, [], [], None, []) == []
+
+
+def test_pipeline_is_deterministic():
+    a = [r.model_dump() for r in _analyze()]
+    b = [r.model_dump() for r in _analyze()]
+    assert a == b
+
+
+def test_speech_segment_validation():
+    with pytest.raises(ValueError, match="greater than or equal"):
+        SpeechSegment(id=1, start=-1, end=2, text="x")
+
+
+def test_c4_does_not_import_other_components():
+    pkg = Path(__import__("edusync_c4").__file__).parent
+    banned = {"edusync_c1", "edusync_c2", "edusync_c3"}
+    for path in pkg.glob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            mods = []
+            if isinstance(node, ast.Import):
+                mods = [a.name for a in node.names]
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                mods = [node.module]
+            assert not {m.split(".")[0] for m in mods} & banned, path.name

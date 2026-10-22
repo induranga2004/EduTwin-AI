@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from edusync_core import EvidenceItem, Flag
+from edusync_core import ConceptRef, EvidenceItem, Flag
 
 
 class ReconcileRequest(BaseModel):
@@ -162,3 +162,124 @@ class AnnotationGroup(BaseModel):
     start_seconds: float
     end_seconds: float
     native_text: str | None = None
+
+
+# --- Phase 4: context alignment, recognition placeholder, interpretation ---
+# Evidence models (SpeechEvidence, AnnotationContext) only record what was observed.
+# Derived/rule-based output lives in separate models (RecognizedContent, AnnotationInterpretation).
+
+
+class SpeechSegment(BaseModel):
+    """A timestamped transcript segment, in seconds from the start of the recording."""
+
+    id: int | str
+    start: float = Field(ge=0.0)
+    end: float = Field(ge=0.0)
+    text: str
+
+
+class SlideText(BaseModel):
+    """Whole-slide text. No coordinates are available, so it cannot be matched spatially."""
+
+    slide_id: str
+    text: str
+
+
+class ConceptHit(BaseModel):
+    """A concept name found inside some text by a ConceptMatcher."""
+
+    concept: ConceptRef
+    matched_text: str
+
+
+class ConceptCandidate(BaseModel):
+    """A candidate link between evidence and a concept. Mention only, not coverage or mastery."""
+
+    concept: ConceptRef
+    matched_text: str
+    source: str  # "annotation" | "slide" | "speech"
+    evidence_id: str
+    method: str
+
+
+class SpeechEvidence(BaseModel):
+    evidence_id: str
+    segment_id: int | str
+    start: float
+    end: float
+    text: str
+    relation: str  # "during" | "before" | "after" the group's drawing span
+
+
+class AnnotationContext(BaseModel):
+    """Observed evidence around one annotation group. Contains no interpretation."""
+
+    group_id: str
+    lecture_id: str
+    slide_id: str
+    span_start: float
+    span_end: float
+    window_start: float
+    window_end: float
+    native_text: str | None = None
+    slide_evidence_id: str | None = None
+    slide_text_excerpt: str | None = None
+    slide_text_truncated: bool = False
+    speech: list[SpeechEvidence] = Field(default_factory=list)
+    concept_candidates: list[ConceptCandidate] = Field(default_factory=list)
+
+    def evidence_ids(self) -> list[str]:
+        ids = [f"annotation:{self.group_id}"]
+        if self.slide_evidence_id:
+            ids.append(self.slide_evidence_id)
+        ids.extend(s.evidence_id for s in self.speech)
+        return ids
+
+
+class RecognizedContent(BaseModel):
+    """What can be read from a group without any ML. Placeholders are labelled as such."""
+
+    group_id: str
+    kind: str  # "native_text" | "unrecognized_freehand" | "mixed" | "shapes_only" | "empty"
+    text: str | None = None
+    freehand_stroke_count: int = 0
+    is_placeholder: bool = False
+    recognizer: str
+    notes: list[str] = Field(default_factory=list)
+
+
+class DifficultyEstimate(BaseModel):
+    score: float = Field(ge=0.0, le=1.0)
+    source: str  # always names the provider, e.g. "mock-c2"
+    method: str
+
+
+class ComprehensionSignal(BaseModel):
+    concept_id: str
+    correct: int = Field(ge=0)
+    total: int = Field(ge=0)
+    struggling: bool
+    source: str
+
+
+class AnnotationInterpretation(BaseModel):
+    """Rule-based, template-built explanation. Derived from evidence; not AI understanding."""
+
+    group_id: str
+    category: str
+    summary: str
+    cited_evidence_ids: list[str] = Field(default_factory=list)
+    method: str
+    confidence: float = Field(ge=0.0, le=1.0)
+    difficulty: DifficultyEstimate | None = None
+    comprehension: list[ComprehensionSignal] = Field(default_factory=list)
+    needs_attention: bool = False
+    limitations: list[str] = Field(default_factory=list)
+
+
+class GroupAnalysis(BaseModel):
+    """Evidence and derived output for one group, kept side by side but as separate objects."""
+
+    context: AnnotationContext
+    recognized: RecognizedContent
+    interpretation: AnnotationInterpretation
