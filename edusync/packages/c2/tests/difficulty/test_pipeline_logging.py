@@ -5,7 +5,7 @@ from pptx import Presentation
 
 from edusync_c2.difficulty import DifficultyPipeline
 from edusync_c2.difficulty.materials import MaterialsError
-from edusync_c2.difficulty.registry import FEATURE_SCHEMA_VERSION
+from edusync_c2.difficulty.registry import FEATURE_NAMES, FEATURE_SCHEMA_VERSION
 from edusync_c2.difficulty.schemas import C1GraphResponse
 from edusync_c2.difficulty.synthetic import build_c1_graph, build_pptx, make_deck_spec
 
@@ -50,7 +50,7 @@ def test_every_step_logs(caplog, pptx):
     )
     assert re.fullmatch(r"concepts total=6 aligned=\d+ not_found=\d+ filter=\w+ dropped=0", msgs[2])
     assert re.fullmatch(r"features concepts=6 computed=\d+ mocked=\d+ unavailable=\d+", msgs[3])
-    assert msgs[4] == "fusion inputs=6 features_per_input=26"
+    assert msgs[4] == f"fusion inputs=6 features_per_input={len(FEATURE_NAMES)}"
     assert msgs[5] == "model name=rule_baseline kind=baseline predicted=6 none=0"
     assert re.fullmatch(r"done concepts=6 duration_ms=\d+", msgs[6])
     assert all(r.levelname == "INFO" for r in recs)

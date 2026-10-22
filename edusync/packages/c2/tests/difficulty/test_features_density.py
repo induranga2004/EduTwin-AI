@@ -83,4 +83,22 @@ def test_no_slides_keeps_frequency():
     assert [f.name for f in fs] == NAMES
     st = {f.name: f.status for f in fs}
     assert st["dens.concept_frequency"] is FeatureStatus.COMPUTED
-    assert sum(s is FeatureStatus.UNAVAILABLE for s in st.values()) == 7
+    assert (
+        sum(s is FeatureStatus.UNAVAILABLE for s in st.values()) == 12
+    )  # 6 built + visual_complexity + 5 other planned
+
+
+@pytest.mark.parametrize("structure", [True, False])
+def test_planned_structure_features_are_todo(make_slide, structure):
+    me = rec("me", [1])
+    fs = d(density_features(me, [make_slide(1, "a b")], [me], structure, REAL))
+    for name in (
+        "dens.text_area_ratio",
+        "dens.picture_area_ratio",
+        "dens.min_font_pt",
+        "dens.diagram_element_count",
+        "dens.table_cell_count",
+    ):
+        assert fs[name].status is FeatureStatus.UNAVAILABLE
+        assert fs[name].value is None
+        assert fs[name].source == f"todo:{name}"

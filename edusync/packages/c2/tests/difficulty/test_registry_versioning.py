@@ -54,6 +54,21 @@ LEGACY_PHASE1 = {
     ),
     "expl.semantic_support_score": "mock",
     "dens.visual_complexity": "todo",
+    # pre-registered in schema 0.3, all planned
+    **dict.fromkeys(
+        (
+            "prereq.weighted_depth",
+            "prereq.dependents_count",
+            "expl.semantic_definition_count",
+            "expl.semantic_example_count",
+            "dens.text_area_ratio",
+            "dens.picture_area_ratio",
+            "dens.min_font_pt",
+            "dens.diagram_element_count",
+            "dens.table_cell_count",
+        ),
+        "todo",
+    ),
 }
 
 
@@ -68,7 +83,7 @@ def _spec(maturity, requires, description="d"):
 
 
 def test_version_constant():
-    assert FEATURE_SCHEMA_VERSION == "0.2"
+    assert FEATURE_SCHEMA_VERSION == "0.3"
 
 
 @pytest.mark.parametrize(

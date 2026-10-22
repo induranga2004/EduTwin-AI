@@ -2,7 +2,7 @@
 
 from edusync_c2.difficulty.features import compute_all_features
 from edusync_c2.difficulty.fusion import build_fusion_input, summarize_features, to_vector
-from edusync_c2.difficulty.registry import FEATURE_NAMES
+from edusync_c2.difficulty.registry import FEATURE_NAMES, FEATURE_SPECS
 from edusync_c2.difficulty.schemas import (
     AlignmentStatus,
     ConceptRecord,
@@ -12,6 +12,7 @@ from edusync_c2.difficulty.schemas import (
     PrerequisiteMetrics,
 )
 
+PLANNED = {s.name for s in FEATURE_SPECS if s.maturity == "planned"}
 MOCK = InputSource(name="c1_graph", kind="mock")
 M = PrerequisiteMetrics(
     direct_count=1,
@@ -49,7 +50,7 @@ def test_order_mask_and_values(deck):
     fi = build_fusion_input(c, list(reversed(fs)), sl)
     assert [f.name for f in fi.features] == list(FEATURE_NAMES)
     vals, mask = to_vector(fi)
-    assert len(vals) == len(mask) == 26
+    assert len(vals) == len(mask) == len(FEATURE_NAMES)
     for f, v, m in zip(fi.features, vals, mask, strict=True):
         assert m == int(f.missing)
         if f.missing:
@@ -65,13 +66,13 @@ def test_use_mocked(deck):
     c, sl, fs = setup(deck)
     fi = build_fusion_input(c, fs, sl, use_mocked=True)
     miss = {f.name for f in fi.features if f.missing}
-    assert miss == {"dens.visual_complexity"}
+    assert miss == PLANNED
 
 
 def test_missing_feature_filled(deck):
     c, sl, fs = setup(deck)
     fi = build_fusion_input(c, fs[:3], sl)
-    assert len(fi.features) == 26
+    assert len(fi.features) == len(FEATURE_NAMES)
     assert fi.features[10].status is FeatureStatus.UNAVAILABLE
     assert fi.features[10].missing
 
@@ -92,11 +93,12 @@ def test_summary(deck):
     _, _, fs = setup(deck)
     s = summarize_features(fs)
     assert set(s) == set(FeatureGroup)
-    assert sum(g.computed + g.mocked + g.unavailable for g in s.values()) == 26
+    assert sum(g.computed + g.mocked + g.unavailable for g in s.values()) == len(FEATURE_NAMES)
     assert s[FeatureGroup.PREREQUISITES].mocked == 5
+    assert s[FeatureGroup.PREREQUISITES].unavailable == 2  # planned
     assert s[FeatureGroup.LANGUAGE].mocked == 0
     assert s[FeatureGroup.LANGUAGE].computed == 8
-    assert s[FeatureGroup.DENSITY].unavailable == 1
+    assert s[FeatureGroup.DENSITY].unavailable == 6  # the six planned density features
     empty = summarize_features([])
     assert len(empty) == 4
     assert empty[FeatureGroup.LANGUAGE].computed == 0

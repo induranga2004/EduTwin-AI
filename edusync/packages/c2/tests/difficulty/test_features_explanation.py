@@ -1,7 +1,7 @@
 """Group C: explanation and example support."""
 
 from edusync_c2.difficulty.features.explanation import explanation_features
-from edusync_c2.difficulty.registry import features_of
+from edusync_c2.difficulty.registry import features_of, spec_of
 from edusync_c2.difficulty.schemas import (
     AlignmentStatus,
     ConceptRecord,
@@ -10,6 +10,7 @@ from edusync_c2.difficulty.schemas import (
 )
 
 NAMES = list(features_of(FeatureGroup.EXPLANATION))
+BUILT = [n for n in NAMES if spec_of(n).maturity != "planned"]
 C = ConceptRecord(id="x", label="X", alignment_status=AlignmentStatus.ALIGNED)
 
 
@@ -50,4 +51,26 @@ def test_none_counts_treated_as_zero(make_slide):
 def test_no_slides():
     fs = explanation_features(C, [], True)
     assert [f.name for f in fs] == NAMES
-    assert all(f.status is FeatureStatus.UNAVAILABLE for f in fs)
+    assert all(f.status is FeatureStatus.UNAVAILABLE for f in fs if f.name in BUILT)
+    for f in fs:
+        if f.name not in BUILT:
+            assert f.source == f"todo:{f.name}"
+            assert f.note == "not yet implemented"
+
+
+def test_planned_semantic_features_are_todo(make_slide):
+    d = vals(explanation_features(C, [make_slide(1, "X is defined as a thing.")], True))
+    for name in ("expl.semantic_definition_count", "expl.semantic_example_count"):
+        assert d[name].status is FeatureStatus.UNAVAILABLE
+        assert d[name].value is None
+        assert d[name].source == f"todo:{name}"
+
+
+def test_title_cues_are_counted_once(make_slide):
+    # SlideRecord.text already contains the title, so a cue in the title must count once.
+    title = "Step 1: for example Foo is defined as bar"
+    s = make_slide(1, f"{title}\nbody", title=title)
+    d = vals(explanation_features(C, [s], True))
+    assert d["expl.step_count"].value == 1
+    assert d["expl.example_count"].value == 1
+    assert d["expl.definition_count"].value == 1

@@ -68,7 +68,7 @@ def run(deck, c, **kw):
 def test_names_and_order(deck, which, kw):
     fs = run(deck, concepts()[which], **kw)
     assert [f.name for f in fs] == list(FEATURE_NAMES)
-    assert len(fs) == 26
+    assert len(fs) == len(FEATURE_NAMES)
 
 
 def test_statuses_real_deck(deck):

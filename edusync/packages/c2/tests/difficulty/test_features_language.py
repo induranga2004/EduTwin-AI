@@ -9,7 +9,7 @@ from edusync_c2.difficulty.features import compute_all_features
 from edusync_c2.difficulty.features import language as language_module
 from edusync_c2.difficulty.features.language import language_features
 from edusync_c2.difficulty.features.vocab import VocabularyAnalyzer
-from edusync_c2.difficulty.registry import features_of
+from edusync_c2.difficulty.registry import FEATURE_NAMES, features_of
 from edusync_c2.difficulty.schemas import (
     AlignmentStatus,
     ConceptRecord,
@@ -255,7 +255,7 @@ def test_compute_all_features_passes_the_analyzer_through(make_slide):
     rec = concept()
     slides = [make_slide(1, "Gradient descent converges.")]
     fs = compute(rec, slides, vocab=fake_analyzer())
-    assert len(fs) == 26
+    assert len(fs) == len(FEATURE_NAMES)
     d = by_name(fs[:8])
     assert d["lang.domain_term_ratio"].value == pytest.approx(2 / 3)
     assert d["lang.subword_fragmentation"].value == pytest.approx(5 / 3)

@@ -11,7 +11,7 @@ from pptx import Presentation
 
 from edusync_c2 import COMPONENT
 from edusync_c2.difficulty import DifficultyPipeline
-from edusync_c2.difficulty.registry import FEATURE_SCHEMA_VERSION
+from edusync_c2.difficulty.registry import FEATURE_NAMES, FEATURE_SCHEMA_VERSION
 from edusync_c2.difficulty.synthetic import build_c1_graph, build_pdf, build_pptx, make_deck_spec
 from edusync_c2.router import get_pipeline
 from edusync_core.settings import CoreSettings, get_settings
@@ -99,7 +99,7 @@ def test_old_text_body_rejected(client):
 def test_info(client):
     r = client.get("/difficulty/info")
     assert r.status_code == 200
-    assert len(r.json()["features"]) == 26
+    assert len(r.json()["features"]) == len(FEATURE_NAMES)
     assert r.json()["model"]["kind"] == "baseline"
 
 

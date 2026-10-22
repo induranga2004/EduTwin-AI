@@ -3,6 +3,7 @@ import pytest
 from edusync_c2.difficulty import DifficultyPipeline
 from edusync_c2.difficulty.materials import MaterialsError
 from edusync_c2.difficulty.models import RuleBaselineModel
+from edusync_c2.difficulty.registry import FEATURE_NAMES
 from edusync_c2.difficulty.schemas import (
     AlignmentStatus,
     C1GraphResponse,
@@ -186,5 +187,5 @@ def test_info():
     assert info.model.name == "rule_baseline"
     assert info.graph_provider == "mock_from_slide_titles"
     assert info.concept_filter == "mock_keep_all"
-    assert len(info.features) == 26
+    assert len(info.features) == len(FEATURE_NAMES)
     assert info.todo

@@ -1,7 +1,6 @@
 """Group B: prerequisite features from the C1 graph (prerequisite edges only)."""
 
-from edusync_c2.difficulty.features._common import assemble
-from edusync_c2.difficulty.registry import features_of
+from edusync_c2.difficulty.features._common import assemble, built_features_of
 from edusync_c2.difficulty.schemas import (
     ConceptRecord,
     FeatureGroup,
@@ -31,7 +30,7 @@ def prerequisite_features(
     graph_source: InputSource,
 ) -> list[FeatureValue]:
     """Group B features in registry order; mock graph -> MOCKED, caller graph -> COMPUTED."""
-    names = features_of(FeatureGroup.PREREQUISITES)
+    names = built_features_of(FeatureGroup.PREREQUISITES)
     if not graph_has_prerequisite_edges:
         note = "C1 graph has no prerequisite edges (waiting for C1)"
         return assemble(FeatureGroup.PREREQUISITES, {n: _unavailable(n, note) for n in names})

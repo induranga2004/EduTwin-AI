@@ -2,8 +2,7 @@
 
 import re
 
-from edusync_c2.difficulty.features._common import assemble
-from edusync_c2.difficulty.registry import features_of
+from edusync_c2.difficulty.features._common import assemble, built_features_of
 from edusync_c2.difficulty.schemas import (
     ConceptRecord,
     FeatureGroup,
@@ -64,10 +63,11 @@ def explanation_features(
                     "materials:regex",
                     "concept not found in materials",
                 )
-                for n in features_of(FeatureGroup.EXPLANATION)
+                for n in built_features_of(FeatureGroup.EXPLANATION)
             },
         )
-    text = "\n".join(f"{s.title or ''}\n{s.text}\n{s.notes}" for s in slides)
+    # SlideRecord.text already contains the title, so the title is not added again.
+    text = "\n".join(f"{s.text}\n{s.notes}" for s in slides)
     out = {
         n: _fv(n, float(len(rx.findall(text))), FeatureStatus.COMPUTED, "materials:regex")
         for n, rx in _COUNT_RES.items()

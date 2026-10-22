@@ -22,7 +22,7 @@ def test_assemble_returns_registry_order() -> None:
 def test_planned_name_is_filled_as_unavailable() -> None:
     names = features_of(G)
     produced = {n: _val(n) for n in names if n != "dens.visual_complexity"}
-    filled = assemble(G, produced)[-1]
+    filled = {v.name: v for v in assemble(G, produced)}["dens.visual_complexity"]
     assert filled.name == "dens.visual_complexity"
     assert filled.status is FeatureStatus.UNAVAILABLE
     assert filled.value is None

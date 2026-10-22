@@ -16,8 +16,9 @@ from edusync_c2.difficulty.schemas import FeatureSpec, Maturity, Requires
 # Feature schema version. Bump it whenever a feature name, its group or the order changes.
 #   0.1  Phase 1: 24 features (the first registry)
 #   0.2  Phase 2 M1: vocabulary features (26 features) and the versioned schema hash
+#   0.3  pre-registers the nine Phase 2 features (35 features), all planned
 # To be frozen as 1.0 at the end of Phase 2. A trained model records version and hash.
-FEATURE_SCHEMA_VERSION = "0.2"
+FEATURE_SCHEMA_VERSION = "0.3"
 
 
 def _f(
@@ -122,6 +123,20 @@ FEATURE_SPECS: tuple[FeatureSpec, ...] = (
         "c1_graph",
         "Share of direct prerequisites from the curriculum.",
     ),
+    _f(
+        "prereq.weighted_depth",
+        G.PREREQUISITES,
+        "planned",
+        "c1_graph",
+        "Sum of confidences along the heaviest prerequisite chain.",
+    ),
+    _f(
+        "prereq.dependents_count",
+        G.PREREQUISITES,
+        "planned",
+        "c1_graph",
+        "Number of concepts that directly depend on this one.",
+    ),
     # C: explanation and example support
     _f(
         "expl.definition_count",
@@ -157,6 +172,20 @@ FEATURE_SPECS: tuple[FeatureSpec, ...] = (
         "mock",
         "text",
         "TODO: semantic definition/example detection.",
+    ),
+    _f(
+        "expl.semantic_definition_count",
+        G.EXPLANATION,
+        "planned",
+        "text",
+        "Semantic (embedding-based) definition detections on the concept's slides.",
+    ),
+    _f(
+        "expl.semantic_example_count",
+        G.EXPLANATION,
+        "planned",
+        "text",
+        "Semantic worked-example detections on the concept's slides.",
     ),
     # D: information density and structure
     _f("dens.words_per_slide", G.DENSITY, "implemented", "text", "Mean words per concept slide."),
@@ -209,6 +238,41 @@ FEATURE_SPECS: tuple[FeatureSpec, ...] = (
         "pptx_structure",
         "TODO: diagram/visual complexity analysis.",
     ),
+    _f(
+        "dens.text_area_ratio",
+        G.DENSITY,
+        "planned",
+        "pptx_structure",
+        "Share of slide area covered by text boxes.",
+    ),
+    _f(
+        "dens.picture_area_ratio",
+        G.DENSITY,
+        "planned",
+        "pptx_structure",
+        "Share of slide area covered by pictures.",
+    ),
+    _f(
+        "dens.min_font_pt",
+        G.DENSITY,
+        "planned",
+        "pptx_structure",
+        "Smallest explicit font size on the concept's slides, in points.",
+    ),
+    _f(
+        "dens.diagram_element_count",
+        G.DENSITY,
+        "planned",
+        "pptx_structure",
+        "Diagram elements (shapes, connectors, SmartArt) on its slides.",
+    ),
+    _f(
+        "dens.table_cell_count",
+        G.DENSITY,
+        "planned",
+        "pptx_structure",
+        "Table cells on its slides.",
+    ),
 )
 
 FEATURE_NAMES: tuple[str, ...] = tuple(s.name for s in FEATURE_SPECS)
@@ -216,8 +280,11 @@ FEATURE_NAMES: tuple[str, ...] = tuple(s.name for s in FEATURE_SPECS)
 PHASE1_TODO: tuple[str, ...] = (
     "Real C1 connection (C1ApiGraphProvider); the graph is a mock unless supplied by the caller.",
     "Concept filter: alias merging (TDE = Transparent Data Encryption) and generic phrases.",
-    "Feature C: semantic definition/example detection.",
-    "Feature D: visual/diagram complexity analysis.",
+    "Feature B: prereq.weighted_depth and prereq.dependents_count (planned, from the C1 graph).",
+    "Feature C: semantic definition/example detection (expl.semantic_support_score is a mock; "
+    "expl.semantic_definition_count and expl.semantic_example_count are planned).",
+    "Feature D: visual/diagram complexity analysis (dens.visual_complexity, text and picture "
+    "area ratios, minimum font size, diagram elements and table cells are planned).",
     "MiniLMFusionModel and learned feature fusion (Phase 3, trained on lecturer labels).",
     "Calibrated confidence and probabilities (never invented before a trained, evaluated model).",
     "Prediction persistence for Phase 5 comparison with live comprehension.",

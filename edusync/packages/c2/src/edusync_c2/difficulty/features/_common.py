@@ -50,3 +50,8 @@ def _is_planned(name: str) -> bool:
         return spec_of(name).maturity == "planned"
     except KeyError:
         return False
+
+
+def built_features_of(group: FeatureGroup) -> tuple[str, ...]:
+    """The group's registry names that are not planned (assemble adds the planned ones)."""
+    return tuple(n for n in features_of(group) if not _is_planned(n))
