@@ -5,8 +5,10 @@ mean of a few normalised features, minus a small credit for explanation support.
 below are untuned starting points chosen for readability.
 """
 
+from pathlib import Path
 from typing import Protocol
 
+from edusync_c2.difficulty.errors import ModelNotAvailableError
 from edusync_c2.difficulty.schemas import (
     DifficultyLabel,
     FeatureStatus,
@@ -144,3 +146,10 @@ class MiniLMFusionModel:
             "Phase 3: copy the blueprint into packages/c2_difficulty_model, add the "
             "structured-feature fusion head, train on lecturer labels"
         )
+
+
+def create_model(name: str = "baseline", model_dir: Path | None = None) -> DifficultyModel:
+    """Model factory. Minimal version; the model-interface work adds the artifact-backed model."""
+    if name == "baseline":
+        return RuleBaselineModel()
+    raise ModelNotAvailableError(f"model {name!r} is not available yet")

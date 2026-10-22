@@ -6,6 +6,7 @@ phase1: real = computed from the lecture file; real_needs_structure = PPTX only 
 graph = needs the C1 graph (mocked graph -> status mocked); mock = placeholder; todo = not built.
 """
 
+import hashlib
 from typing import Literal
 
 from edusync_c2.difficulty.schemas import FeatureGroup as G
@@ -142,3 +143,13 @@ PHASE1_TODO: tuple[str, ...] = (
 
 def features_of(group: G) -> tuple[str, ...]:
     return tuple(s.name for s in FEATURE_SPECS if s.group is group)
+
+
+def feature_schema_hash() -> str:
+    """sha256 of the ordered feature names and groups.
+
+    A trained model records this hash in its artifacts so a registry change that would silently
+    shift feature positions is detected (see ``OnnxFusionModel.from_artifacts``).
+    """
+    payload = "\n".join(f"{s.name}|{s.group.value}" for s in FEATURE_SPECS)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()

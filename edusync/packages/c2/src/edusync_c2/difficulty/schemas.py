@@ -290,6 +290,8 @@ class FeatureSpec(BaseModel):
 
 class DifficultyInfo(BaseModel):
     model: ModelInfo
+    selected_model: str = "baseline"  # EDUSYNC_C2_MODEL
+    feature_schema_hash: str = ""  # sha256 of the ordered feature registry
     graph_provider: str
     concept_filter: str
     features: list[FeatureSpec]
