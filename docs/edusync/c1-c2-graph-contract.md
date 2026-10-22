@@ -43,6 +43,12 @@ published, set `EDUSYNC_C2_GRAPH_FILE=<path>`. The file must be a `C1GraphRespon
 uploaded deck; concepts that are not in the deck come back as `not_found_in_materials`. Use a posted `c1_graph` (precedence:
 posted graph, then configured provider, then slide-title mock) when the graph really belongs to the file.
 
+A file that people wrote or corrected can be marked `"curated": true` (top level; `"note": "curated"` also works). It is then
+labelled `curated` in `inputs[]`: features treat it as real, and the response warns that the graph is hand-made.
+`packages/c2/scripts/make_curated_graph.py --deck <pptx|pdf> --out <file>` drafts one from the slide titles
+(`"curated": false`, validated against this contract, refuses to overwrite without `--force`); its edges are
+mention-based guesses (earlier concept mentioned where a later one is discussed) that a human must correct.
+
 Still pending: C1's real v1 sample. Until it exists, the v1 side of the `c1_api` path has been tested only with C2's own
 synthetic graphs behind a fake server.
 

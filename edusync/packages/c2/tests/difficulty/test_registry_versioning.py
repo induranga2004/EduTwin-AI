@@ -121,7 +121,7 @@ def test_response_metadata_for_phase2():
 def test_open_items_list_names_only_what_is_still_open():
     text = " ".join(PHASE1_TODO)
     assert len(PHASE1_TODO) == 6
-    for open_item in ("C1ApiGraphProvider", "heuristic", "MiniLMFusionModel", "Calibrated"):
+    for open_item in ("C1ApiGraphProvider", "heuristic", "Trained difficulty models", "Calibrated"):
         assert open_item in text
     assert "Prediction persistence" in text
     assert "Validation of the thresholds" in text

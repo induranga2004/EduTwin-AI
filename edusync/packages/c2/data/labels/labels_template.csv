@@ -1,3 +1,0 @@
-lecture_id,concept_id,concept_slug,concept_label,slide_indexes,difficulty_label,rater_id,student_level,confidence,notes,labelled_at,rubric_version,synthetic
-L000,gradient descent,gradient-descent,Gradient Descent,3;4,Medium,R00,second_year,4,example row only,2026-01-01,r1,true
-L000,loss function,loss-function,Loss Function,2,Low,R00,second_year,5,example row only,2026-01-01,r1,true

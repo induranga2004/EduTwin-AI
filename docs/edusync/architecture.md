@@ -70,7 +70,7 @@ flowchart LR
   uses a labelled mock, or, if configured (`EDUSYNC_C2_GRAPH_PROVIDER`, off by default), a bundled sample graph file or a call to C1's `POST /api/c1/lectures/graph`. The optional semantic scorer (`EDUSYNC_C2_SEMANTIC=minilm`, off by default) runs a numpy MiniLM encoder over weights mounted from the host (no torch, no new service); without it the semantic features are unavailable. See [c2-difficulty.md](c2-difficulty.md) and the [C1 -> C2 graph contract](c1-c2-graph-contract.md).
   (2) Live comprehension (later, **FUTURE**): when poll/quiz results for a concept arrive, compare predicted vs.
   observed and flag mismatches. Only a rule-based placeholder exists (`/api/c2/comprehension/evaluate`). The C1 -> C2
-  runtime hand-off of the current concept is not implemented. The label-collection protocol for Phase 3 is in [c2-label-collection.md](c2-label-collection.md). The model interface and logging convention are in [c2-model-and-blueprint.md](c2-model-and-blueprint.md) and [c2-difficulty.md](c2-difficulty.md#logging-and-development-conventions).
+  runtime hand-off of the current concept is not implemented. The model interface and logging convention are in [c2-model-and-blueprint.md](c2-model-and-blueprint.md) and [c2-difficulty.md](c2-difficulty.md#logging-and-development-conventions).
 - **C3**: score each transcript/chat segment against the current concept; flag sustained off-topic stretches.
 - **C4**: collect slide changes and timestamped whiteboard annotations as `EvidenceItem`s; reconcile with
   evidence from C1-C3 (e.g. slide says concept X while speech says Y) and flag conflicts.

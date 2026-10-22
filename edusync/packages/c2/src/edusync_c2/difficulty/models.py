@@ -1,13 +1,12 @@
-"""Difficulty models: a transparent rule baseline (Phase 1) and the Phase 3 model contract.
+"""Difficulty models: a transparent rule baseline (Phase 1) and the trained-model artifact contract.
 
 The baseline is NOT trained. It has no probabilities and no confidence; its score is a weighted
 mean of a few normalised features, minus a small credit for explanation support. All constants
 below are untuned starting points chosen for readability.
 
-``OnnxFusionModel`` defines and enforces the artifact folder a Phase 3 trained model must ship
-(``ARTIFACT_SPEC``). In Phase 1 it only validates that folder, without importing onnxruntime or
-torch; ``predict`` raises ``NotImplementedError`` until Phase 3 implements inference.
-``MiniLMFusionModel`` stays as the documented TODO marker.
+``OnnxFusionModel`` defines and enforces the artifact folder a trained model must ship
+(``ARTIFACT_SPEC``). For now it only validates that folder, without importing onnxruntime or
+torch; ``predict`` raises ``NotImplementedError`` until inference is implemented.
 """
 
 import json
@@ -94,7 +93,7 @@ MIN_COMPONENTS = 3  # fewer computed difficulty-raising components -> no predict
 # Placeholder thresholds, NOT validated. They sit where the baseline scores of the three synthetic
 # decks separate (Low up to about 0.11, Medium 0.06-0.24, High above 0.24), so the labels spread
 # instead of everything being Low. Matching the synthetic labels is circular (same properties).
-# Phase 3 replaces this rule with a model trained on lecturer labels.
+# Phase 3 replaces this rule with label-free percentile scoring against a reference set.
 LOW_MAX = 0.12  # score < LOW_MAX -> Low
 MEDIUM_MAX = 0.25  # score < MEDIUM_MAX -> Medium, otherwise High
 
@@ -165,24 +164,6 @@ class RuleBaselineModel:
         )
 
 
-class MiniLMFusionModel:
-    """TODO (Phase 3): MiniLM text encoder plus structured-feature fusion head."""
-
-    info = ModelInfo(
-        name="minilm_fusion",
-        version="todo",
-        kind=ModelKind.TODO,
-        description="Not implemented: text encoder fused with the structured features.",
-        trained_on=None,
-    )
-
-    def predict(self, inputs: list[FusionInput]) -> list[ModelOutput | None]:
-        raise NotImplementedError(
-            "Phase 3: copy the blueprint into packages/c2_difficulty_model, add the "
-            "structured-feature fusion head, train on lecturer labels"
-        )
-
-
 ARTIFACT_INT8 = "model_int8.onnx"
 ARTIFACT_FP32 = "model_fp32.onnx"
 ARTIFACT_LABELS = "labels.json"
@@ -193,7 +174,7 @@ LABEL_ORDER: tuple[str, ...] = tuple(label.value for label in DifficultyLabel)  
 MAX_LENGTH_LIMIT = 512
 
 ARTIFACT_SPEC = f"""\
-A Phase 3 model folder (EDUSYNC_C2_MODEL_DIR) must contain:
+A trained-model folder (EDUSYNC_C2_MODEL_DIR) must contain:
   {ARTIFACT_INT8} or {ARTIFACT_FP32}: the ONNX graph (exactly one required; int8 is preferred
       when both exist)
   {ARTIFACT_LABELS}: JSON list {list(LABEL_ORDER)} in exactly this ordinal order (not alphabetical)
@@ -225,9 +206,9 @@ def _is_nonempty_str(value: Any) -> bool:
 
 
 class OnnxFusionModel:
-    """Phase 3 fusion model (MiniLM text plus structured features) loaded from ONNX artifacts.
+    """Fusion model (MiniLM text plus structured features) described by ONNX artifacts.
 
-    Phase 1 only validates the artifact folder against ``ARTIFACT_SPEC``; inference comes later.
+    It only validates the artifact folder against ``ARTIFACT_SPEC``; inference comes later.
     """
 
     def __init__(self, model_dir: Path, onnx_file: Path, version: str, trained_on: str | None):

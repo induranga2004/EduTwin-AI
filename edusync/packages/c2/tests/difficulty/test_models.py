@@ -4,7 +4,6 @@ from edusync_c2.difficulty.models import (
     LOW_MAX,
     MEDIUM_MAX,
     DifficultyModel,
-    MiniLMFusionModel,
     RuleBaselineModel,
 )
 from edusync_c2.difficulty.registry import FEATURE_SPECS
@@ -152,13 +151,6 @@ def test_explanation_content():
     assert "baseline, not trained" in out.explanation[-1]
     assert f"Low < {LOW_MAX}" in out.explanation[-1]
     assert predict(THREE) == out
-
-
-def test_todo_model_raises():
-    m = MiniLMFusionModel()
-    assert m.info.kind is ModelKind.TODO
-    with pytest.raises(NotImplementedError, match="Phase 3"):
-        m.predict([])
 
 
 def test_protocol_conformance_with_fake_model():

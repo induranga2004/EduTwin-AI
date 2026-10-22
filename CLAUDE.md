@@ -113,13 +113,13 @@ Package `edusync/packages/c2/src/edusync_c2/` (+ `difficulty/`). Pipeline: PPTX/
 
 ### Where things are (C2 `difficulty/`)
 `registry.py` (specs, version, hash, PHASE1_TODO), `schemas.py`, `materials.py` + `geometry.py` (PPTX parsing, integer-EMU areas), `graph.py` (prerequisite view, aliases/dropped), `concepts.py` + `concept_filter.py` (mock and heuristic filters), `providers.py` + `c1_client.py` (mock/file/C1 API graphs, stdlib urllib), `features/{language,prerequisites,explanation,density}.py` + `_common.assemble` (group assembly by name), `features/{wordpiece,lexicon,vocab}.py` (Feature A), `features/{minilm,semantic_loader,semantic}.py` (numpy MiniLM scorer), `pipeline.py`, `fusion.py`, `models.py`, `synthetic.py`, `contract_check.py`, `ids.py`; resources in `difficulty/resources/` (vocab with NOTICE/licence, domain lexicon, semantic prototypes, sample C1 v1 graph).
-Scripts in `packages/c2/scripts/`: `feature_report.py`, `make_synthetic_data.py` (`--vary-layout`), `make_sample_graph.py`, `validate_c1_graph.py`, `write_feature_schema.py`, `export_label_sheet.py`, `validate_labels.py`, `make_wordpiece_golden.py`. Label protocol: `docs/edusync/c2-label-collection.md`.
+Scripts in `packages/c2/scripts/`: `feature_report.py`, `make_synthetic_data.py` (`--vary-layout`, test fixtures), `make_sample_graph.py`, `validate_c1_graph.py`, `write_feature_schema.py`, `make_wordpiece_golden.py`. The earlier label-collection tools were removed.
 
-### Branch stack (all local/user-pushed; each sits on the previous)
-`feature/c2-vocabulary-feature` (M1) -> `c2-registry-schema` (M0) -> `c2-concept-filter` (M2) -> `c2-graph-metrics` -> `c2-density-structure` (M3) -> `c2-c1-graph-provider` (M5b) -> `c2-semantic-explanation` (M4) -> `c2-schema-freeze` (M6). Use `git rebase --onto origin/main <old-parent> <branch>` when a parent merges.
+### Branches
+Phase 2 branches (M0-M6) are in history. Phase 3 work: `feature/c2-difficulty-score` (on `feature/c2-p3-models`). Use `git rebase --onto origin/main <old-parent> <branch>` when a parent merges.
 
 ### Open items
-Real C1 v1 graph sample/fields (C1 still emits v0); heuristic filter stays opt-in until reviewed on real C1 output; thresholds and lexicon unvalidated; no lecturer labels yet (Phase 3 blocker); Phase 3 = copy the blueprint package, train on lecturer labels, split by lecture.
+Real C1 v1 graph sample/fields (C1 still emits v0); heuristic filter stays opt-in until reviewed on real C1 output; thresholds and lexicon unvalidated. Phase 3 = label-free difficulty scoring (public graded-text data + reference scoring over unlabelled decks, percentile cut-offs, evidence confidence, slide scores and hotspots); no lecturer labels. Trainer package `packages/c2_difficulty_model` keeps extract/split/metrics/report and numpy helpers only.
 
 ## Keeping token use low
 - Start from these notes; do not re-run broad exploration. Read only the files you will change.

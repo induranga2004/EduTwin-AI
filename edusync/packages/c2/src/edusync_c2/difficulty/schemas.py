@@ -115,7 +115,8 @@ class InputSource(BaseModel):
     """Where an input came from, so mocks are always visible in the response."""
 
     name: str  # "materials" | "c1_graph"
-    kind: Literal["real", "mock", "none"]
+    # "curated": hand-made graph JSON; features treat it as real, the response says so
+    kind: Literal["real", "mock", "curated", "none"]
     detail: str = ""
 
 
@@ -293,8 +294,8 @@ class DifficultyResponse(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     disclaimer: str = (
         "Rule-based baseline: the labels come from fixed rules over lecture features, not from a "
-        "trained model. The labels and thresholds have not been validated against lecturer "
-        "judgements. Mocked or unavailable inputs and features are labelled as such. "
+        "trained model. The labels and thresholds have not been validated against human "
+        "difficulty judgements. Mocked or unavailable inputs and features are labelled as such. "
         "No probabilities or accuracy are claimed."
     )
 
