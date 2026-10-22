@@ -36,6 +36,44 @@ def curated_graph_path(directory: Path, deck_filename: str) -> Path:
     return directory / f"{Path(deck_filename.replace(chr(92), '/')).stem}.graph.json"
 
 
+MOCKED_GRAPH_PACKAGE_DIR = "mocked_knowledge_graph"
+_LECTURE_NO = re.compile(r"lecture\s*0*(\d+)", re.IGNORECASE)
+_COPY_SUFFIX = re.compile(r"\s*\(\d+\)\s*$")
+
+
+def _graph_key(name: str) -> str:
+    stem = Path(name.replace(chr(92), "/")).name
+    stem = stem[: -len(".graph.json")] if stem.lower().endswith(".graph.json") else Path(stem).stem
+    return re.sub(r"[^a-z0-9]+", "-", _COPY_SUFFIX.sub("", stem).casefold()).strip("-")
+
+
+def find_mocked_graph(deck_filename: str, directory: Path | None = None) -> Path | None:
+    """The hand-made mocked graph of a lecture file, matched by lecture name, then number.
+
+    Looks in ``directory`` (if given) and then in the package folder ``mocked_knowledge_graph``.
+    Matching ignores case, punctuation, a trailing ``(2)`` copy marker and the file extension; if
+    the names differ it falls back to the ``Lecture NN`` number. Returns None when nothing fits.
+    """
+    folders = [directory] if directory is not None else []
+    folders.append(Path(str(resources.files("edusync_c2").joinpath(MOCKED_GRAPH_PACKAGE_DIR))))
+    key = _graph_key(deck_filename)
+    number = _LECTURE_NO.search(deck_filename)
+    for folder in folders:
+        if not folder.is_dir():
+            continue
+        files = sorted(folder.glob("*.graph.json"))
+        for f in files:
+            if _graph_key(f.name) == key:
+                return f
+        for f in files:
+            if number and (m := _LECTURE_NO.search(f.name)) and m.group(1) == number.group(1):
+                return f
+        default = folder / "default.graph.json"
+        if default.is_file() and directory is not None and folder == directory:
+            return default
+    return None
+
+
 def slugify(label: str) -> str:
     """Alias of ``casefold_id``: the v0/mock/fallback id of a label (casefolded, spaces kept).
 

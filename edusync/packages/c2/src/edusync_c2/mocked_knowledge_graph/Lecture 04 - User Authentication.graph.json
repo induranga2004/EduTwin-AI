@@ -1,0 +1,338 @@
+{
+ "concept_count": 15,
+ "concepts": [
+  {
+   "frequency": 1,
+   "name": "Authentication - Definition (RFC 2828)"
+  },
+  {
+   "frequency": 4,
+   "name": "Identification"
+  },
+  {
+   "frequency": 1,
+   "name": "Vulnerabilities of I&A"
+  },
+  {
+   "frequency": 2,
+   "name": "Means of Authentication"
+  },
+  {
+   "frequency": 1,
+   "name": "Password-Based Authentication"
+  },
+  {
+   "frequency": 4,
+   "name": "Vulnerabilities of Passwords"
+  },
+  {
+   "frequency": 1,
+   "name": "Multi-factor Authentication"
+  },
+  {
+   "frequency": 1,
+   "name": "Single Sign-On (SSO)"
+  },
+  {
+   "frequency": 1,
+   "name": "SSO Advantages"
+  },
+  {
+   "frequency": 1,
+   "name": "SSO Disadvantages"
+  },
+  {
+   "frequency": 2,
+   "name": "Hashed passwords with salt"
+  },
+  {
+   "frequency": 1,
+   "name": "Purposes of Using Salt"
+  },
+  {
+   "frequency": 1,
+   "name": "Remote user authentication"
+  },
+  {
+   "frequency": 3,
+   "name": "Challenge-response protocol"
+  },
+  {
+   "frequency": 1,
+   "name": "Password Selection Strategies"
+  }
+ ],
+ "curated": true,
+ "filename": "L03.pptx",
+ "graph": {
+  "edge_count": 17,
+  "edges": [
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "authentication-definition-rfc-2828",
+    "source_type": "curriculum_defined",
+    "target": "identification"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "authentication-definition-rfc-2828",
+    "source_type": "curriculum_defined",
+    "target": "means-of-authentication"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "identification",
+    "source_type": "inferred",
+    "target": "vulnerabilities-of-i-a"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "means-of-authentication",
+    "source_type": "inferred",
+    "target": "vulnerabilities-of-i-a"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "means-of-authentication",
+    "source_type": "curriculum_defined",
+    "target": "password-based-authentication"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "password-based-authentication",
+    "source_type": "curriculum_defined",
+    "target": "vulnerabilities-of-passwords"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "vulnerabilities-of-passwords",
+    "source_type": "curriculum_defined",
+    "target": "password-selection-strategies"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "vulnerabilities-of-passwords",
+    "source_type": "curriculum_defined",
+    "target": "hashed-passwords-with-salt"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "hashed-passwords-with-salt",
+    "source_type": "curriculum_defined",
+    "target": "purposes-of-using-salt"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "means-of-authentication",
+    "source_type": "curriculum_defined",
+    "target": "multi-factor-authentication"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "vulnerabilities-of-passwords",
+    "source_type": "inferred",
+    "target": "multi-factor-authentication"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "password-based-authentication",
+    "source_type": "inferred",
+    "target": "single-sign-on-sso"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "single-sign-on-sso",
+    "source_type": "curriculum_defined",
+    "target": "sso-advantages"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "single-sign-on-sso",
+    "source_type": "curriculum_defined",
+    "target": "sso-disadvantages"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "password-based-authentication",
+    "source_type": "inferred",
+    "target": "remote-user-authentication"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "remote-user-authentication",
+    "source_type": "curriculum_defined",
+    "target": "challenge-response-protocol"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "hashed-passwords-with-salt",
+    "source_type": "inferred",
+    "target": "challenge-response-protocol"
+   }
+  ],
+  "node_count": 15,
+  "nodes": [
+   {
+    "description": "Draft from the title of slide 3: replace this text.",
+    "frequency": 1,
+    "id": "authentication-definition-rfc-2828",
+    "label": "Authentication - Definition (RFC 2828)"
+   },
+   {
+    "description": "Draft from the title of slide 4: replace this text.",
+    "frequency": 4,
+    "id": "identification",
+    "label": "Identification"
+   },
+   {
+    "description": "Draft from the title of slide 5: replace this text.",
+    "frequency": 1,
+    "id": "vulnerabilities-of-i-a",
+    "label": "Vulnerabilities of I&A"
+   },
+   {
+    "description": "Draft from the title of slide 6: replace this text.",
+    "frequency": 2,
+    "id": "means-of-authentication",
+    "label": "Means of Authentication"
+   },
+   {
+    "description": "Draft from the title of slide 7: replace this text.",
+    "frequency": 1,
+    "id": "password-based-authentication",
+    "label": "Password-Based Authentication"
+   },
+   {
+    "description": "Draft from the title of slide 8: replace this text.",
+    "frequency": 4,
+    "id": "vulnerabilities-of-passwords",
+    "label": "Vulnerabilities of Passwords"
+   },
+   {
+    "description": "Draft from the title of slide 12: replace this text.",
+    "frequency": 1,
+    "id": "multi-factor-authentication",
+    "label": "Multi-factor Authentication"
+   },
+   {
+    "description": "Draft from the title of slide 13: replace this text.",
+    "frequency": 1,
+    "id": "single-sign-on-sso",
+    "label": "Single Sign-On (SSO)"
+   },
+   {
+    "description": "Draft from the title of slide 14: replace this text.",
+    "frequency": 1,
+    "id": "sso-advantages",
+    "label": "SSO Advantages"
+   },
+   {
+    "description": "Draft from the title of slide 15: replace this text.",
+    "frequency": 1,
+    "id": "sso-disadvantages",
+    "label": "SSO Disadvantages"
+   },
+   {
+    "description": "Draft from the title of slide 16: replace this text.",
+    "frequency": 2,
+    "id": "hashed-passwords-with-salt",
+    "label": "Hashed passwords with salt"
+   },
+   {
+    "description": "Draft from the title of slide 20: replace this text.",
+    "frequency": 1,
+    "id": "purposes-of-using-salt",
+    "label": "Purposes of Using Salt"
+   },
+   {
+    "description": "Draft from the title of slide 21: replace this text.",
+    "frequency": 1,
+    "id": "remote-user-authentication",
+    "label": "Remote user authentication"
+   },
+   {
+    "description": "Draft from the title of slide 22: replace this text.",
+    "frequency": 3,
+    "id": "challenge-response-protocol",
+    "label": "Challenge-response protocol"
+   },
+   {
+    "description": "Draft from the title of slide 25: replace this text.",
+    "frequency": 1,
+    "id": "password-selection-strategies",
+    "label": "Password Selection Strategies"
+   }
+  ]
+ },
+ "lecture_id": "l03",
+ "page_count": 27,
+ "review_status": "hand-curated demo graph (lecture 04); team review recommended"
+}

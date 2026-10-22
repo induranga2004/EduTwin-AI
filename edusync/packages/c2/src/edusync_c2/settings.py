@@ -29,7 +29,19 @@ class C2Settings(BaseSettings):
     semantic_ex_threshold: float = Field(default=0.23, ge=0, le=1)
     semantic_max_sentences: int = Field(default=400, ge=1)
 
-    @field_validator("model_dir", "graph_file", "semantic_model_dir", mode="before")
+    score_dir: Path | None = None  # layered-analysis artifact folder (see difficulty/scoring)
+    demo_graph_dir: Path | None = (
+        None  # hand-made graphs: <deck stem>.graph.json, default.graph.json
+    )
+
+    @field_validator(
+        "model_dir",
+        "graph_file",
+        "semantic_model_dir",
+        "score_dir",
+        "demo_graph_dir",
+        mode="before",
+    )
     @classmethod
     def _empty_dir_is_none(cls, value: object) -> object:
         return None if value == "" else value

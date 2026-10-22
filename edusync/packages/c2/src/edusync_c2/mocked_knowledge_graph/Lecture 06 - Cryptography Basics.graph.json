@@ -1,0 +1,778 @@
+{
+ "concept_count": 37,
+ "concepts": [
+  {
+   "frequency": 1,
+   "name": "Cryptography I"
+  },
+  {
+   "frequency": 3,
+   "name": "Cryptographic Services"
+  },
+  {
+   "frequency": 1,
+   "name": "Authentication, Integrity, and Confidentiality Cont."
+  },
+  {
+   "frequency": 5,
+   "name": "Authentication"
+  },
+  {
+   "frequency": 1,
+   "name": "Authentication Cont."
+  },
+  {
+   "frequency": 1,
+   "name": "Data Integrity"
+  },
+  {
+   "frequency": 1,
+   "name": "Data Confidentiality Cont."
+  },
+  {
+   "frequency": 7,
+   "name": "Creating Ciphertext"
+  },
+  {
+   "frequency": 6,
+   "name": "Creating Ciphertext Cont."
+  },
+  {
+   "frequency": 6,
+   "name": "Vigen\u00e8re Cipher"
+  },
+  {
+   "frequency": 1,
+   "name": "Vigen\u00e8re Cipher Cont."
+  },
+  {
+   "frequency": 3,
+   "name": "Transposition Ciphers"
+  },
+  {
+   "frequency": 1,
+   "name": "Transposition Ciphers - Rail Fence Cipher"
+  },
+  {
+   "frequency": 4,
+   "name": "Substitution Ciphers"
+  },
+  {
+   "frequency": 1,
+   "name": "Substitution Ciphers - Encoding using the Caesar Cipher"
+  },
+  {
+   "frequency": 1,
+   "name": "Decoding"
+  },
+  {
+   "frequency": 1,
+   "name": "Substitution Ciphers - Caesar Cipher Disk"
+  },
+  {
+   "frequency": 1,
+   "name": "Substitution Ciphers - Vigen\u00e8re Cipher"
+  },
+  {
+   "frequency": 1,
+   "name": "Symmetric Encryption Algorithms"
+  },
+  {
+   "frequency": 1,
+   "name": "Asymmetric Encryption Algorithms Cont."
+  },
+  {
+   "frequency": 3,
+   "name": "One-Time Pad Ciphers"
+  },
+  {
+   "frequency": 1,
+   "name": "One-Time Pad Ciphers Cont."
+  },
+  {
+   "frequency": 11,
+   "name": "Cracking Code"
+  },
+  {
+   "frequency": 8,
+   "name": "Methods for Cracking Code"
+  },
+  {
+   "frequency": 2,
+   "name": "Methods for Cracking Code - Brute-Force Attack"
+  },
+  {
+   "frequency": 1,
+   "name": "Methods for Cracking Code - Ciphertext-Only Attack"
+  },
+  {
+   "frequency": 1,
+   "name": "Methods for Cracking Code - Known-Plaintext Attack"
+  },
+  {
+   "frequency": 1,
+   "name": "Methods for Cracking Code - Chosen-Plaintext Attack"
+  },
+  {
+   "frequency": 1,
+   "name": "Methods for Cracking Code - Chosen-Ciphertext Attack"
+  },
+  {
+   "frequency": 1,
+   "name": "Methods for Cracking Code - Meet-in-the-Middle"
+  },
+  {
+   "frequency": 2,
+   "name": "Cracking Code Example"
+  },
+  {
+   "frequency": 1,
+   "name": "Cracking Code Example- Frequency Analysis Method"
+  },
+  {
+   "frequency": 2,
+   "name": "Making and Breaking Secret Codes"
+  },
+  {
+   "frequency": 1,
+   "name": "Making and Breaking Secret Codes Cont."
+  },
+  {
+   "frequency": 3,
+   "name": "Cryptanalysis"
+  },
+  {
+   "frequency": 2,
+   "name": "The Secret Is in the Keys"
+  },
+  {
+   "frequency": 1,
+   "name": "The Secret Is in the Keys Cont."
+  }
+ ],
+ "curated": true,
+ "filename": "L05.pptx",
+ "graph": {
+  "edge_count": 39,
+  "edges": [
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "cryptography-i",
+    "source_type": "curriculum_defined",
+    "target": "cryptographic-services"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "cryptographic-services",
+    "source_type": "curriculum_defined",
+    "target": "authentication-integrity-and-confidentiality-cont"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "authentication-integrity-and-confidentiality-cont",
+    "source_type": "curriculum_defined",
+    "target": "authentication"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "authentication",
+    "source_type": "curriculum_defined",
+    "target": "authentication-cont"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "authentication-integrity-and-confidentiality-cont",
+    "source_type": "curriculum_defined",
+    "target": "data-integrity"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "authentication-integrity-and-confidentiality-cont",
+    "source_type": "curriculum_defined",
+    "target": "data-confidentiality-cont"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "data-confidentiality-cont",
+    "source_type": "curriculum_defined",
+    "target": "creating-ciphertext"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "creating-ciphertext",
+    "source_type": "curriculum_defined",
+    "target": "creating-ciphertext-cont"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "creating-ciphertext-cont",
+    "source_type": "curriculum_defined",
+    "target": "transposition-ciphers"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "creating-ciphertext-cont",
+    "source_type": "curriculum_defined",
+    "target": "substitution-ciphers"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "transposition-ciphers",
+    "source_type": "curriculum_defined",
+    "target": "transposition-ciphers-rail-fence-cipher"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "substitution-ciphers",
+    "source_type": "curriculum_defined",
+    "target": "substitution-ciphers-encoding-using-the-caesar-cipher"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "substitution-ciphers-encoding-using-the-caesar-cipher",
+    "source_type": "curriculum_defined",
+    "target": "decoding"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "substitution-ciphers-encoding-using-the-caesar-cipher",
+    "source_type": "curriculum_defined",
+    "target": "substitution-ciphers-caesar-cipher-disk"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "substitution-ciphers-encoding-using-the-caesar-cipher",
+    "source_type": "inferred",
+    "target": "vigen-re-cipher"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "vigen-re-cipher",
+    "source_type": "curriculum_defined",
+    "target": "vigen-re-cipher-cont"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "vigen-re-cipher-cont",
+    "source_type": "curriculum_defined",
+    "target": "substitution-ciphers-vigen-re-cipher"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "substitution-ciphers-vigen-re-cipher",
+    "source_type": "inferred",
+    "target": "one-time-pad-ciphers"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "one-time-pad-ciphers",
+    "source_type": "curriculum_defined",
+    "target": "one-time-pad-ciphers-cont"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "creating-ciphertext-cont",
+    "source_type": "inferred",
+    "target": "symmetric-encryption-algorithms"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "symmetric-encryption-algorithms",
+    "source_type": "inferred",
+    "target": "asymmetric-encryption-algorithms-cont"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "cryptanalysis",
+    "source_type": "curriculum_defined",
+    "target": "cracking-code"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "cracking-code",
+    "source_type": "curriculum_defined",
+    "target": "methods-for-cracking-code"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "methods-for-cracking-code",
+    "source_type": "curriculum_defined",
+    "target": "methods-for-cracking-code-brute-force-attack"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "methods-for-cracking-code",
+    "source_type": "curriculum_defined",
+    "target": "methods-for-cracking-code-ciphertext-only-attack"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "methods-for-cracking-code-ciphertext-only-attack",
+    "source_type": "curriculum_defined",
+    "target": "methods-for-cracking-code-known-plaintext-attack"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "methods-for-cracking-code-known-plaintext-attack",
+    "source_type": "curriculum_defined",
+    "target": "methods-for-cracking-code-chosen-plaintext-attack"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "methods-for-cracking-code-chosen-plaintext-attack",
+    "source_type": "curriculum_defined",
+    "target": "methods-for-cracking-code-chosen-ciphertext-attack"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "methods-for-cracking-code",
+    "source_type": "inferred",
+    "target": "methods-for-cracking-code-meet-in-the-middle"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "cracking-code",
+    "source_type": "curriculum_defined",
+    "target": "cracking-code-example"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "cracking-code-example",
+    "source_type": "curriculum_defined",
+    "target": "cracking-code-example-frequency-analysis-method"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "transposition-ciphers",
+    "source_type": "inferred",
+    "target": "cracking-code"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "substitution-ciphers",
+    "source_type": "inferred",
+    "target": "cracking-code"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "cracking-code-example-frequency-analysis-method",
+    "source_type": "inferred",
+    "target": "making-and-breaking-secret-codes"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "making-and-breaking-secret-codes",
+    "source_type": "curriculum_defined",
+    "target": "making-and-breaking-secret-codes-cont"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "cryptographic-services",
+    "source_type": "inferred",
+    "target": "the-secret-is-in-the-keys"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "symmetric-encryption-algorithms",
+    "source_type": "inferred",
+    "target": "the-secret-is-in-the-keys"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "the-secret-is-in-the-keys",
+    "source_type": "curriculum_defined",
+    "target": "the-secret-is-in-the-keys-cont"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "one-time-pad-ciphers-cont",
+    "source_type": "inferred",
+    "target": "making-and-breaking-secret-codes"
+   }
+  ],
+  "node_count": 37,
+  "nodes": [
+   {
+    "description": "Draft from the title of slide 2: replace this text.",
+    "frequency": 1,
+    "id": "cryptography-i",
+    "label": "Cryptography I"
+   },
+   {
+    "description": "Draft from the title of slide 4: replace this text.",
+    "frequency": 3,
+    "id": "cryptographic-services",
+    "label": "Cryptographic Services"
+   },
+   {
+    "description": "Draft from the title of slide 5: replace this text.",
+    "frequency": 1,
+    "id": "authentication-integrity-and-confidentiality-cont",
+    "label": "Authentication, Integrity, and Confidentiality Cont."
+   },
+   {
+    "description": "Draft from the title of slide 6: replace this text.",
+    "frequency": 5,
+    "id": "authentication",
+    "label": "Authentication"
+   },
+   {
+    "description": "Draft from the title of slide 7: replace this text.",
+    "frequency": 1,
+    "id": "authentication-cont",
+    "label": "Authentication Cont."
+   },
+   {
+    "description": "Draft from the title of slide 8: replace this text.",
+    "frequency": 1,
+    "id": "data-integrity",
+    "label": "Data Integrity"
+   },
+   {
+    "description": "Draft from the title of slide 9: replace this text.",
+    "frequency": 1,
+    "id": "data-confidentiality-cont",
+    "label": "Data Confidentiality Cont."
+   },
+   {
+    "description": "Draft from the title of slide 10: replace this text.",
+    "frequency": 7,
+    "id": "creating-ciphertext",
+    "label": "Creating Ciphertext"
+   },
+   {
+    "description": "Draft from the title of slide 11: replace this text.",
+    "frequency": 6,
+    "id": "creating-ciphertext-cont",
+    "label": "Creating Ciphertext Cont."
+   },
+   {
+    "description": "Draft from the title of slide 15: replace this text.",
+    "frequency": 6,
+    "id": "vigen-re-cipher",
+    "label": "Vigen\u00e8re Cipher"
+   },
+   {
+    "description": "Draft from the title of slide 16: replace this text.",
+    "frequency": 1,
+    "id": "vigen-re-cipher-cont",
+    "label": "Vigen\u00e8re Cipher Cont."
+   },
+   {
+    "description": "Draft from the title of slide 21: replace this text.",
+    "frequency": 3,
+    "id": "transposition-ciphers",
+    "label": "Transposition Ciphers"
+   },
+   {
+    "description": "Draft from the title of slide 22: replace this text.",
+    "frequency": 1,
+    "id": "transposition-ciphers-rail-fence-cipher",
+    "label": "Transposition Ciphers - Rail Fence Cipher"
+   },
+   {
+    "description": "Draft from the title of slide 23: replace this text.",
+    "frequency": 4,
+    "id": "substitution-ciphers",
+    "label": "Substitution Ciphers"
+   },
+   {
+    "description": "Draft from the title of slide 24: replace this text.",
+    "frequency": 1,
+    "id": "substitution-ciphers-encoding-using-the-caesar-cipher",
+    "label": "Substitution Ciphers - Encoding using the Caesar Cipher"
+   },
+   {
+    "description": "Draft from the title of slide 25: replace this text.",
+    "frequency": 1,
+    "id": "decoding",
+    "label": "Decoding"
+   },
+   {
+    "description": "Draft from the title of slide 26: replace this text.",
+    "frequency": 1,
+    "id": "substitution-ciphers-caesar-cipher-disk",
+    "label": "Substitution Ciphers - Caesar Cipher Disk"
+   },
+   {
+    "description": "Draft from the title of slide 27: replace this text.",
+    "frequency": 1,
+    "id": "substitution-ciphers-vigen-re-cipher",
+    "label": "Substitution Ciphers - Vigen\u00e8re Cipher"
+   },
+   {
+    "description": "Draft from the title of slide 31: replace this text.",
+    "frequency": 1,
+    "id": "symmetric-encryption-algorithms",
+    "label": "Symmetric Encryption Algorithms"
+   },
+   {
+    "description": "Draft from the title of slide 32: replace this text.",
+    "frequency": 1,
+    "id": "asymmetric-encryption-algorithms-cont",
+    "label": "Asymmetric Encryption Algorithms Cont."
+   },
+   {
+    "description": "Draft from the title of slide 33: replace this text.",
+    "frequency": 3,
+    "id": "one-time-pad-ciphers",
+    "label": "One-Time Pad Ciphers"
+   },
+   {
+    "description": "Draft from the title of slide 35: replace this text.",
+    "frequency": 1,
+    "id": "one-time-pad-ciphers-cont",
+    "label": "One-Time Pad Ciphers Cont."
+   },
+   {
+    "description": "Draft from the title of slide 36: replace this text.",
+    "frequency": 11,
+    "id": "cracking-code",
+    "label": "Cracking Code"
+   },
+   {
+    "description": "Draft from the title of slide 37: replace this text.",
+    "frequency": 8,
+    "id": "methods-for-cracking-code",
+    "label": "Methods for Cracking Code"
+   },
+   {
+    "description": "Draft from the title of slide 38: replace this text.",
+    "frequency": 2,
+    "id": "methods-for-cracking-code-brute-force-attack",
+    "label": "Methods for Cracking Code - Brute-Force Attack"
+   },
+   {
+    "description": "Draft from the title of slide 40: replace this text.",
+    "frequency": 1,
+    "id": "methods-for-cracking-code-ciphertext-only-attack",
+    "label": "Methods for Cracking Code - Ciphertext-Only Attack"
+   },
+   {
+    "description": "Draft from the title of slide 41: replace this text.",
+    "frequency": 1,
+    "id": "methods-for-cracking-code-known-plaintext-attack",
+    "label": "Methods for Cracking Code - Known-Plaintext Attack"
+   },
+   {
+    "description": "Draft from the title of slide 42: replace this text.",
+    "frequency": 1,
+    "id": "methods-for-cracking-code-chosen-plaintext-attack",
+    "label": "Methods for Cracking Code - Chosen-Plaintext Attack"
+   },
+   {
+    "description": "Draft from the title of slide 43: replace this text.",
+    "frequency": 1,
+    "id": "methods-for-cracking-code-chosen-ciphertext-attack",
+    "label": "Methods for Cracking Code - Chosen-Ciphertext Attack"
+   },
+   {
+    "description": "Draft from the title of slide 44: replace this text.",
+    "frequency": 1,
+    "id": "methods-for-cracking-code-meet-in-the-middle",
+    "label": "Methods for Cracking Code - Meet-in-the-Middle"
+   },
+   {
+    "description": "Draft from the title of slide 45: replace this text.",
+    "frequency": 2,
+    "id": "cracking-code-example",
+    "label": "Cracking Code Example"
+   },
+   {
+    "description": "Draft from the title of slide 46: replace this text.",
+    "frequency": 1,
+    "id": "cracking-code-example-frequency-analysis-method",
+    "label": "Cracking Code Example- Frequency Analysis Method"
+   },
+   {
+    "description": "Draft from the title of slide 47: replace this text.",
+    "frequency": 2,
+    "id": "making-and-breaking-secret-codes",
+    "label": "Making and Breaking Secret Codes"
+   },
+   {
+    "description": "Draft from the title of slide 48: replace this text.",
+    "frequency": 1,
+    "id": "making-and-breaking-secret-codes-cont",
+    "label": "Making and Breaking Secret Codes Cont."
+   },
+   {
+    "description": "Draft from the title of slide 49: replace this text.",
+    "frequency": 3,
+    "id": "cryptanalysis",
+    "label": "Cryptanalysis"
+   },
+   {
+    "description": "Draft from the title of slide 50: replace this text.",
+    "frequency": 2,
+    "id": "the-secret-is-in-the-keys",
+    "label": "The Secret Is in the Keys"
+   },
+   {
+    "description": "Draft from the title of slide 51: replace this text.",
+    "frequency": 1,
+    "id": "the-secret-is-in-the-keys-cont",
+    "label": "The Secret Is in the Keys Cont."
+   }
+  ]
+ },
+ "lecture_id": "l05",
+ "page_count": 53,
+ "review_status": "hand-curated demo graph (lecture 06); team review recommended"
+}

@@ -1,0 +1,408 @@
+{
+ "concept_count": 18,
+ "concepts": [
+  {
+   "frequency": 26,
+   "name": "Introduction to Information Security"
+  },
+  {
+   "frequency": 8,
+   "name": "Computer Security"
+  },
+  {
+   "frequency": 1,
+   "name": "Information Security (InfoSec)"
+  },
+  {
+   "frequency": 1,
+   "name": "CIA Triad"
+  },
+  {
+   "frequency": 1,
+   "name": "Computer Security Objectives"
+  },
+  {
+   "frequency": 2,
+   "name": "Objectives (cont.)"
+  },
+  {
+   "frequency": 1,
+   "name": "Additional Objectives"
+  },
+  {
+   "frequency": 1,
+   "name": "Computer Security Model  (RFC 2828)"
+  },
+  {
+   "frequency": 4,
+   "name": "Computer Security Model"
+  },
+  {
+   "frequency": 1,
+   "name": "Computer Security Model (cont.)"
+  },
+  {
+   "frequency": 1,
+   "name": "Exploits"
+  },
+  {
+   "frequency": 1,
+   "name": "Vulnerability Assessment"
+  },
+  {
+   "frequency": 2,
+   "name": "Penetration Testing"
+  },
+  {
+   "frequency": 1,
+   "name": "Goal of Penetration Testing"
+  },
+  {
+   "frequency": 1,
+   "name": "Passive Attacks"
+  },
+  {
+   "frequency": 1,
+   "name": "Active Attacks"
+  },
+  {
+   "frequency": 1,
+   "name": "Inside attacks"
+  },
+  {
+   "frequency": 1,
+   "name": "Outside attacks"
+  }
+ ],
+ "curated": true,
+ "filename": "L01.pptx",
+ "graph": {
+  "edge_count": 21,
+  "edges": [
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "introduction-to-information-security",
+    "source_type": "curriculum_defined",
+    "target": "computer-security"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "introduction-to-information-security",
+    "source_type": "curriculum_defined",
+    "target": "information-security-infosec"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "computer-security",
+    "source_type": "curriculum_defined",
+    "target": "cia-triad"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "information-security-infosec",
+    "source_type": "inferred",
+    "target": "cia-triad"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "cia-triad",
+    "source_type": "curriculum_defined",
+    "target": "computer-security-objectives"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "computer-security-objectives",
+    "source_type": "curriculum_defined",
+    "target": "objectives-cont"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "objectives-cont",
+    "source_type": "curriculum_defined",
+    "target": "additional-objectives"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "computer-security",
+    "source_type": "inferred",
+    "target": "computer-security-model-rfc-2828"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "computer-security-model-rfc-2828",
+    "source_type": "curriculum_defined",
+    "target": "computer-security-model"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "computer-security-model",
+    "source_type": "curriculum_defined",
+    "target": "computer-security-model-cont"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "computer-security-objectives",
+    "source_type": "inferred",
+    "target": "exploits"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "computer-security-model",
+    "source_type": "inferred",
+    "target": "exploits"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "exploits",
+    "source_type": "curriculum_defined",
+    "target": "vulnerability-assessment"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "vulnerability-assessment",
+    "source_type": "curriculum_defined",
+    "target": "penetration-testing"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "penetration-testing",
+    "source_type": "curriculum_defined",
+    "target": "goal-of-penetration-testing"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "exploits",
+    "source_type": "inferred",
+    "target": "passive-attacks"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "exploits",
+    "source_type": "inferred",
+    "target": "active-attacks"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "active-attacks",
+    "source_type": "inferred",
+    "target": "inside-attacks"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "active-attacks",
+    "source_type": "inferred",
+    "target": "outside-attacks"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "passive-attacks",
+    "source_type": "inferred",
+    "target": "inside-attacks"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "computer-security-model-cont",
+    "source_type": "inferred",
+    "target": "passive-attacks"
+   }
+  ],
+  "node_count": 18,
+  "nodes": [
+   {
+    "description": "Draft from the title of slide 7: replace this text.",
+    "frequency": 26,
+    "id": "introduction-to-information-security",
+    "label": "Introduction to Information Security"
+   },
+   {
+    "description": "Draft from the title of slide 8: replace this text.",
+    "frequency": 8,
+    "id": "computer-security",
+    "label": "Computer Security"
+   },
+   {
+    "description": "Draft from the title of slide 9: replace this text.",
+    "frequency": 1,
+    "id": "information-security-infosec",
+    "label": "Information Security (InfoSec)"
+   },
+   {
+    "description": "Draft from the title of slide 10: replace this text.",
+    "frequency": 1,
+    "id": "cia-triad",
+    "label": "CIA Triad"
+   },
+   {
+    "description": "Draft from the title of slide 11: replace this text.",
+    "frequency": 1,
+    "id": "computer-security-objectives",
+    "label": "Computer Security Objectives"
+   },
+   {
+    "description": "Draft from the title of slide 12: replace this text.",
+    "frequency": 2,
+    "id": "objectives-cont",
+    "label": "Objectives (cont.)"
+   },
+   {
+    "description": "Draft from the title of slide 14: replace this text.",
+    "frequency": 1,
+    "id": "additional-objectives",
+    "label": "Additional Objectives"
+   },
+   {
+    "description": "Draft from the title of slide 15: replace this text.",
+    "frequency": 1,
+    "id": "computer-security-model-rfc-2828",
+    "label": "Computer Security Model  (RFC 2828)"
+   },
+   {
+    "description": "Draft from the title of slide 16: replace this text.",
+    "frequency": 4,
+    "id": "computer-security-model",
+    "label": "Computer Security Model"
+   },
+   {
+    "description": "Draft from the title of slide 17: replace this text.",
+    "frequency": 1,
+    "id": "computer-security-model-cont",
+    "label": "Computer Security Model (cont.)"
+   },
+   {
+    "description": "Draft from the title of slide 18: replace this text.",
+    "frequency": 1,
+    "id": "exploits",
+    "label": "Exploits"
+   },
+   {
+    "description": "Draft from the title of slide 19: replace this text.",
+    "frequency": 1,
+    "id": "vulnerability-assessment",
+    "label": "Vulnerability Assessment"
+   },
+   {
+    "description": "Draft from the title of slide 20: replace this text.",
+    "frequency": 2,
+    "id": "penetration-testing",
+    "label": "Penetration Testing"
+   },
+   {
+    "description": "Draft from the title of slide 21: replace this text.",
+    "frequency": 1,
+    "id": "goal-of-penetration-testing",
+    "label": "Goal of Penetration Testing"
+   },
+   {
+    "description": "Draft from the title of slide 22: replace this text.",
+    "frequency": 1,
+    "id": "passive-attacks",
+    "label": "Passive Attacks"
+   },
+   {
+    "description": "Draft from the title of slide 23: replace this text.",
+    "frequency": 1,
+    "id": "active-attacks",
+    "label": "Active Attacks"
+   },
+   {
+    "description": "Draft from the title of slide 24: replace this text.",
+    "frequency": 1,
+    "id": "inside-attacks",
+    "label": "Inside attacks"
+   },
+   {
+    "description": "Draft from the title of slide 25: replace this text.",
+    "frequency": 1,
+    "id": "outside-attacks",
+    "label": "Outside attacks"
+   }
+  ]
+ },
+ "lecture_id": "l01",
+ "page_count": 26,
+ "review_status": "hand-curated demo graph (lecture 01); team review recommended"
+}

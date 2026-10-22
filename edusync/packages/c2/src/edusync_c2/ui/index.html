@@ -1,0 +1,6311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EduSync AI - Lecture Difficulty Detector</title>
+<style>
+:root{--navy:#06172A;--blue:#0F70D7;--bg:#F3F6F9;--card:#fff;--ink:#1c2b3a;--mut:#5d6b7a;--line:#dde4ec;
+--green:#1e9e5a;--amber:#d98a00;--red:#d6334a;--gbg:#e3f6ec;--abg:#fff2d6;--rbg:#fde4e8;--sh:0 2px 10px rgba(6,23,42,.08)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+header{background:var(--navy);color:#fff;padding:18px 16px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+header .wrap{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+h1{margin:0;font-size:22px}h2{margin:0 0 10px;font-size:18px}h3{margin:14px 0 6px;font-size:15px}
+.sub{color:#b9c7d8;font-size:13px;margin-top:2px}
+.pill{background:#12365e;color:#cfe3fb;border-radius:999px;padding:5px 12px;font-size:12px}
+main{padding:16px 0 90px}
+.card{background:var(--card);border-radius:12px;box-shadow:var(--sh);padding:16px;margin:14px 0}
+.btn{background:var(--blue);color:#fff;border:0;border-radius:8px;padding:9px 16px;font:inherit;font-weight:600;cursor:pointer}
+.btn.sec{background:#e6eef8;color:var(--blue)}.btn:disabled{opacity:.5;cursor:default}
+:focus-visible{outline:3px solid #6aa9ee;outline-offset:2px}
+.drop{border:2px dashed #9db8d6;border-radius:12px;padding:22px;text-align:center;color:var(--mut);cursor:pointer;background:#f8fbff}
+.drop.over,.drop:hover{border-color:var(--blue);background:#eef6ff}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.err{background:var(--rbg);color:#8d1328;border:1px solid #f0b5bf;border-radius:8px;padding:10px 12px;margin-top:10px}
+.info{background:#e8f1fc;color:#0b3e7a;border-radius:8px;padding:8px 12px;margin-top:10px;font-size:13px}
+.warn{background:var(--abg);color:#6b4500;border-radius:8px;padding:8px 12px;margin-top:8px;font-size:13px}
+.spin{width:18px;height:18px;border:3px solid #cfe0f4;border-top-color:var(--blue);border-radius:50%;animation:sp 0.9s linear infinite;display:inline-block;vertical-align:middle}
+@keyframes sp{to{transform:rotate(360deg)}}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px}
+.step{background:#fff;border:2px solid var(--line);border-radius:10px;padding:9px;text-align:left;cursor:pointer;font:inherit;color:inherit;position:relative}
+.step:hover{border-color:#9cc3ef}.step[aria-selected=true]{border-color:var(--blue);box-shadow:0 0 0 3px #d5e7fb}
+.step b{display:block;font-size:13px}.step small{display:block;color:var(--mut);font-size:11.5px;min-height:30px}
+.mini{height:6px;background:#e8eef5;border-radius:3px;overflow:hidden;margin-top:4px}.mini i{display:block;height:100%;background:var(--blue)}
+.chip{display:inline-block;border-radius:999px;padding:1px 9px;font-size:12px;background:#e8eef5;color:#2b3f55;margin:1px 3px 1px 0;white-space:nowrap}
+.chip.off{background:#f0f0f0;color:#999;text-decoration:line-through}
+.b-Low{background:var(--gbg);color:#116b3b}.b-Medium{background:var(--abg);color:#7a5200}.b-High{background:var(--rbg);color:#9c1c30}
+.badge{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;background:#eee}
+.bar{height:10px;background:#e8eef5;border-radius:5px;overflow:hidden;min-width:70px;position:relative}
+.bar i{display:block;height:100%;border-radius:5px;background:var(--blue)}
+.bar.Low i{background:var(--green)}.bar.Medium i{background:var(--amber)}.bar.High i{background:var(--red)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.03em;cursor:default}
+th[data-sort]{cursor:pointer}
+.tw{overflow-x:auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.hot{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff}
+.hot h3{margin:0 0 4px}.rk{display:inline-block;width:26px;height:26px;line-height:26px;text-align:center;border-radius:50%;background:var(--navy);color:#fff;font-weight:700;margin-right:6px;font-size:13px}
+.hot ul{margin:6px 0 0;padding-left:18px;font-size:13px}
+.heat{display:flex;gap:3px;flex-wrap:wrap}
+.cell{width:34px;height:40px;border:0;border-radius:6px;font:inherit;font-size:12px;font-weight:700;color:#fff;cursor:pointer}
+.cell.Low{background:var(--green)}.cell.Medium{background:var(--amber)}.cell.High{background:var(--red)}
+.cell[aria-pressed=true]{outline:3px solid var(--navy)}
+.tabs{display:flex;gap:6px;margin:10px 0}.tabs button{border:0;background:#e6eef8;color:var(--blue);padding:7px 14px;border-radius:8px;font:inherit;font-weight:600;cursor:pointer}
+.tabs button[aria-selected=true]{background:var(--blue);color:#fff}
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:8px 0}
+input[type=text],input[type=search],select,textarea{font:inherit;padding:6px 8px;border:1px solid #b9c7d8;border-radius:7px;background:#fff;color:inherit}
+textarea{width:100%;min-height:110px;font-family:ui-monospace,Consolas,monospace;font-size:12px}
+.muted{color:var(--mut);font-size:13px}
+.legend span{margin-right:12px;font-size:12px}.dot{display:inline-block;width:11px;height:11px;border-radius:50%;vertical-align:-1px;margin-right:4px}
+.stack{display:flex;height:14px;border-radius:5px;overflow:hidden;background:#e8eef5;min-width:140px}
+.stack i{display:block;height:100%}
+.g-A{background:#0F70D7}.g-B{background:#7b4fd1}.g-C{background:#17a2a2}.g-D{background:#e07b2a}.g-text{background:#6b7a8c}
+#graphbox{border:1px solid var(--line);border-radius:10px;background:#fbfdff;overflow:auto;max-height:560px}
+svg text{font-family:inherit}
+.node{cursor:pointer}.node:focus-visible circle{stroke:#06172A;stroke-width:3}
+#tip{position:fixed;z-index:9;background:var(--navy);color:#fff;border-radius:8px;padding:6px 10px;font-size:12px;pointer-events:none;display:none;max-width:260px}
+.pair{display:grid;grid-template-columns:150px 1fr 70px;gap:8px;align-items:center;margin:5px 0}
+.pair .bars div{margin:2px 0;display:flex;align-items:center;gap:6px;font-size:11px}.pair .bars .bar{flex:1}
+footer{position:fixed;left:0;right:0;bottom:0;background:var(--navy);color:#cfe0f3;font-size:12px;padding:8px 16px;z-index:5}
+.meter{display:inline-block;width:70px;height:8px;background:#e8eef5;border-radius:4px;overflow:hidden;vertical-align:middle}
+.meter i{display:block;height:100%;background:var(--navy)}
+@media (max-width:640px){.pair{grid-template-columns:1fr}h1{font-size:18px}}
+@media print{header{background:#fff;color:#000}.sub,.pill{color:#333}footer{position:static;background:#fff;color:#333;border-top:1px solid #999}
+#upload,.strip,.tabs,.filters,.btn{display:none!important}.card{box-shadow:none;border:1px solid #bbb;break-inside:avoid}body{background:#fff}
+.bar,.cell,.stack,.mini{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+<div><h1>EduSync AI - Lecture Difficulty Detector</h1>
+<div class="sub">Find the concepts and slides of a lecture that students are most likely to find hard, and see why.</div></div>
+<span class="pill" id="status">No lecture analysed yet</span>
+</div></header>
+<main class="wrap">
+<section class="card" id="upload" aria-label="Upload">
+<h2>Analyse a lecture</h2>
+<div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose or drop a PDF or PPTX file">
+<div id="dropmsg">Drop a PDF or PPTX here, or press Enter to choose a file</div>
+<input type="file" id="file" accept=".pdf,.pptx" hidden>
+</div>
+<div class="row">
+<label><input type="checkbox" id="demograph" checked> Use the mocked knowledge graph for this lecture (matched by lecture name; other files get an automatic slide-title graph)</label>
+<button class="btn" id="go" disabled>Analyze</button>
+<button class="btn sec" id="trysample" type="button">Load sample</button>
+<span id="busy" hidden><span class="spin"></span> <span id="busymsg">Working...</span></span>
+</div>
+<div class="err" id="error" role="alert" hidden></div>
+<div class="info" id="note" hidden></div>
+</section>
+<div id="results" hidden>
+<section class="card" aria-label="Pipeline">
+<h2>Pipeline</h2>
+<div class="strip" id="strip" role="tablist" aria-label="Pipeline steps"></div>
+</section>
+<section class="card" id="panel" aria-live="polite"></section>
+</div>
+</main>
+<div id="tip" role="tooltip"></div>
+<footer id="foot">Honesty note: scores are relative to a provisional reference of <span id="fN">a few</span> decks. Confidence describes evidence quality, not a probability. The prerequisite graph is hand-made.</footer>
+<script type="application/json" id="sample">{
+ "meta": {
+  "filename": "sample_hash_functions.pptx",
+  "file_type": "pptx",
+  "slide_count": 26,
+  "concept_count": 24,
+  "pipeline_version": "0.3.0-demo",
+  "score_version": "sample-1",
+  "reference": {
+   "n_decks": 10,
+   "provisional": true
+  },
+  "graph": {
+   "kind": "demo_sample",
+   "nodes": [
+    {
+     "id": "bits",
+     "label": "Bit strings",
+     "frequency": 2
+    },
+    {
+     "id": "modular",
+     "label": "Modular arithmetic",
+     "frequency": 2
+    },
+    {
+     "id": "xor",
+     "label": "XOR operation",
+     "frequency": 1
+    },
+    {
+     "id": "hash",
+     "label": "Hash function",
+     "frequency": 2
+    },
+    {
+     "id": "preimage",
+     "label": "Preimage resistance",
+     "frequency": 1
+    },
+    {
+     "id": "collision",
+     "label": "Collision resistance",
+     "frequency": 2
+    },
+    {
+     "id": "birthday",
+     "label": "Birthday bound",
+     "frequency": 2
+    },
+    {
+     "id": "md",
+     "label": "Merkle-Damgard construction",
+     "frequency": 2
+    },
+    {
+     "id": "sponge",
+     "label": "Sponge construction",
+     "frequency": 1
+    },
+    {
+     "id": "mac",
+     "label": "Message authentication code",
+     "frequency": 1
+    },
+    {
+     "id": "hmac",
+     "label": "HMAC",
+     "frequency": 1
+    },
+    {
+     "id": "block",
+     "label": "Block cipher",
+     "frequency": 2
+    },
+    {
+     "id": "perm",
+     "label": "Pseudorandom permutation",
+     "frequency": 1
+    },
+    {
+     "id": "feistel",
+     "label": "Feistel network",
+     "frequency": 2
+    },
+    {
+     "id": "sbox",
+     "label": "Substitution box",
+     "frequency": 2
+    },
+    {
+     "id": "spn",
+     "label": "Substitution-permutation network",
+     "frequency": 2
+    },
+    {
+     "id": "keysched",
+     "label": "Key schedule",
+     "frequency": 1
+    },
+    {
+     "id": "ecb",
+     "label": "ECB mode",
+     "frequency": 1
+    },
+    {
+     "id": "cbc",
+     "label": "CBC mode",
+     "frequency": 2
+    },
+    {
+     "id": "ctr",
+     "label": "Counter mode",
+     "frequency": 1
+    },
+    {
+     "id": "iv",
+     "label": "Initialisation vector",
+     "frequency": 1
+    },
+    {
+     "id": "padding",
+     "label": "Padding",
+     "frequency": 1
+    },
+    {
+     "id": "aead",
+     "label": "Authenticated encryption",
+     "frequency": 1
+    },
+    {
+     "id": "summary",
+     "label": "Design trade-offs",
+     "frequency": 1
+    }
+   ],
+   "edges": [
+    {
+     "source": "bits",
+     "target": "xor",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "bits",
+     "target": "modular",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "modular",
+     "target": "hash",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "bits",
+     "target": "hash",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "hash",
+     "target": "preimage",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "hash",
+     "target": "collision",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "collision",
+     "target": "birthday",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "collision",
+     "target": "md",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "md",
+     "target": "sponge",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "hash",
+     "target": "mac",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "mac",
+     "target": "hmac",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "md",
+     "target": "hmac",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "xor",
+     "target": "block",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "block",
+     "target": "perm",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "block",
+     "target": "feistel",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "xor",
+     "target": "feistel",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "feistel",
+     "target": "sbox",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "sbox",
+     "target": "spn",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "perm",
+     "target": "spn",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "spn",
+     "target": "keysched",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "block",
+     "target": "ecb",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "ecb",
+     "target": "cbc",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "iv",
+     "target": "cbc",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "cbc",
+     "target": "ctr",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "cbc",
+     "target": "padding",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "mac",
+     "target": "aead",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "ctr",
+     "target": "aead",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "aead",
+     "target": "summary",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "sponge",
+     "target": "summary",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    },
+    {
+     "source": "iv",
+     "target": "ctr",
+     "confidence": 0.9,
+     "source_type": "hand_made"
+    }
+   ]
+  }
+ },
+ "layers": {
+  "parse": {
+   "slides": [
+    {
+     "index": 1,
+     "title": "Hash functions and block ciphers",
+     "words": 67
+    },
+    {
+     "index": 2,
+     "title": "Outline",
+     "words": 104
+    },
+    {
+     "index": 3,
+     "title": "Preliminaries",
+     "words": 141
+    },
+    {
+     "index": 4,
+     "title": "Bits and XOR",
+     "words": 58
+    },
+    {
+     "index": 5,
+     "title": "What is a hash function",
+     "words": 95
+    },
+    {
+     "index": 6,
+     "title": "Hash properties",
+     "words": 132
+    },
+    {
+     "index": 7,
+     "title": "Preimage resistance",
+     "words": 49
+    },
+    {
+     "index": 8,
+     "title": "Collision resistance",
+     "words": 86
+    },
+    {
+     "index": 9,
+     "title": "Collisions and the birthday bound",
+     "words": 123
+    },
+    {
+     "index": 10,
+     "title": "Birthday bound: worked numbers",
+     "words": 120
+    },
+    {
+     "index": 11,
+     "title": "Iterated hashing",
+     "words": 77
+    },
+    {
+     "index": 12,
+     "title": "Compression functions",
+     "words": 114
+    },
+    {
+     "index": 13,
+     "title": "Sponge construction",
+     "words": 111
+    },
+    {
+     "index": 14,
+     "title": "Message authentication",
+     "words": 68
+    },
+    {
+     "index": 15,
+     "title": "HMAC",
+     "words": 105
+    },
+    {
+     "index": 16,
+     "title": "Block ciphers",
+     "words": 142
+    },
+    {
+     "index": 17,
+     "title": "Permutations and keys",
+     "words": 59
+    },
+    {
+     "index": 18,
+     "title": "Feistel rounds",
+     "words": 96
+    },
+    {
+     "index": 19,
+     "title": "Round function and S-boxes",
+     "words": 213
+    },
+    {
+     "index": 20,
+     "title": "Substitution-permutation networks",
+     "words": 50
+    },
+    {
+     "index": 21,
+     "title": "Key schedule",
+     "words": 167
+    },
+    {
+     "index": 22,
+     "title": "Modes: ECB and CBC",
+     "words": 124
+    },
+    {
+     "index": 23,
+     "title": "Modes: CBC and counter",
+     "words": 41
+    },
+    {
+     "index": 24,
+     "title": "Padding",
+     "words": 78
+    },
+    {
+     "index": 25,
+     "title": "Authenticated encryption",
+     "words": 115
+    },
+    {
+     "index": 26,
+     "title": "Summary and trade-offs",
+     "words": 32
+    }
+   ],
+   "concepts": [
+    {
+     "id": "bits",
+     "label": "Bit strings",
+     "slide_indexes": [
+      2,
+      3
+     ]
+    },
+    {
+     "id": "modular",
+     "label": "Modular arithmetic",
+     "slide_indexes": [
+      3,
+      4
+     ]
+    },
+    {
+     "id": "xor",
+     "label": "XOR operation",
+     "slide_indexes": [
+      4
+     ]
+    },
+    {
+     "id": "hash",
+     "label": "Hash function",
+     "slide_indexes": [
+      5,
+      6
+     ]
+    },
+    {
+     "id": "preimage",
+     "label": "Preimage resistance",
+     "slide_indexes": [
+      7
+     ]
+    },
+    {
+     "id": "collision",
+     "label": "Collision resistance",
+     "slide_indexes": [
+      8,
+      9
+     ]
+    },
+    {
+     "id": "birthday",
+     "label": "Birthday bound",
+     "slide_indexes": [
+      9,
+      10
+     ]
+    },
+    {
+     "id": "md",
+     "label": "Merkle-Damgard construction",
+     "slide_indexes": [
+      11,
+      12
+     ]
+    },
+    {
+     "id": "sponge",
+     "label": "Sponge construction",
+     "slide_indexes": [
+      13
+     ]
+    },
+    {
+     "id": "mac",
+     "label": "Message authentication code",
+     "slide_indexes": [
+      14
+     ]
+    },
+    {
+     "id": "hmac",
+     "label": "HMAC",
+     "slide_indexes": [
+      15
+     ]
+    },
+    {
+     "id": "block",
+     "label": "Block cipher",
+     "slide_indexes": [
+      16,
+      17
+     ]
+    },
+    {
+     "id": "perm",
+     "label": "Pseudorandom permutation",
+     "slide_indexes": [
+      17
+     ]
+    },
+    {
+     "id": "feistel",
+     "label": "Feistel network",
+     "slide_indexes": [
+      18,
+      19
+     ]
+    },
+    {
+     "id": "sbox",
+     "label": "Substitution box",
+     "slide_indexes": [
+      19,
+      20
+     ]
+    },
+    {
+     "id": "spn",
+     "label": "Substitution-permutation network",
+     "slide_indexes": [
+      20,
+      21
+     ]
+    },
+    {
+     "id": "keysched",
+     "label": "Key schedule",
+     "slide_indexes": [
+      21
+     ]
+    },
+    {
+     "id": "ecb",
+     "label": "ECB mode",
+     "slide_indexes": [
+      22
+     ]
+    },
+    {
+     "id": "cbc",
+     "label": "CBC mode",
+     "slide_indexes": [
+      22,
+      23
+     ]
+    },
+    {
+     "id": "ctr",
+     "label": "Counter mode",
+     "slide_indexes": [
+      23
+     ]
+    },
+    {
+     "id": "iv",
+     "label": "Initialisation vector",
+     "slide_indexes": [
+      23
+     ]
+    },
+    {
+     "id": "padding",
+     "label": "Padding",
+     "slide_indexes": [
+      24
+     ]
+    },
+    {
+     "id": "aead",
+     "label": "Authenticated encryption",
+     "slide_indexes": [
+      25
+     ]
+    },
+    {
+     "id": "summary",
+     "label": "Design trade-offs",
+     "slide_indexes": [
+      26
+     ]
+    }
+   ]
+  },
+  "A": {
+   "group": "A",
+   "name": "Language",
+   "direction": "higher = harder wording",
+   "per_concept": [
+    {
+     "concept_id": "bits",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 0.32,
+       "status": "ok",
+       "percentile": 0.03,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 1.95,
+       "status": "ok",
+       "percentile": 0.2,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 1.38,
+       "status": "ok",
+       "percentile": 0.14,
+       "note": ""
+      }
+     ],
+     "group_score": 0.073,
+     "available": true
+    },
+    {
+     "concept_id": "modular",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 2.33,
+       "status": "ok",
+       "percentile": 0.23,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 0.79,
+       "status": "ok",
+       "percentile": 0.08,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 3.04,
+       "status": "ok",
+       "percentile": 0.3,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 0.69,
+       "status": "ok",
+       "percentile": 0.07,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 2.67,
+       "status": "ok",
+       "percentile": 0.27,
+       "note": ""
+      }
+     ],
+     "group_score": 0.19,
+     "available": true
+    },
+    {
+     "concept_id": "xor",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 1.12,
+       "status": "ok",
+       "percentile": 0.11,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 3.13,
+       "status": "ok",
+       "percentile": 0.31,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      }
+     ],
+     "group_score": 0.085,
+     "available": true
+    },
+    {
+     "concept_id": "hash",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 2.12,
+       "status": "ok",
+       "percentile": 0.21,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 4.14,
+       "status": "ok",
+       "percentile": 0.41,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 5.74,
+       "status": "ok",
+       "percentile": 0.57,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 3.89,
+       "status": "ok",
+       "percentile": 0.39,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 2.98,
+       "status": "ok",
+       "percentile": 0.3,
+       "note": ""
+      }
+     ],
+     "group_score": 0.377,
+     "available": true
+    },
+    {
+     "concept_id": "preimage",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 8.58,
+       "status": "ok",
+       "percentile": 0.86,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 3.93,
+       "status": "ok",
+       "percentile": 0.39,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 7.99,
+       "status": "ok",
+       "percentile": 0.8,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 5.15,
+       "status": "ok",
+       "percentile": 0.51,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 4.42,
+       "status": "ok",
+       "percentile": 0.44,
+       "note": ""
+      }
+     ],
+     "group_score": 0.602,
+     "available": true
+    },
+    {
+     "concept_id": "collision",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 5.09,
+       "status": "ok",
+       "percentile": 0.51,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 6.04,
+       "status": "ok",
+       "percentile": 0.6,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 8.58,
+       "status": "ok",
+       "percentile": 0.86,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 5.4,
+       "status": "ok",
+       "percentile": 0.54,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 7.41,
+       "status": "ok",
+       "percentile": 0.74,
+       "note": ""
+      }
+     ],
+     "group_score": 0.65,
+     "available": true
+    },
+    {
+     "concept_id": "birthday",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 8.89,
+       "status": "ok",
+       "percentile": 0.89,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 7.56,
+       "status": "ok",
+       "percentile": 0.76,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 8.44,
+       "status": "ok",
+       "percentile": 0.84,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 6.01,
+       "status": "ok",
+       "percentile": 0.6,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 6.0,
+       "status": "ok",
+       "percentile": 0.6,
+       "note": ""
+      }
+     ],
+     "group_score": 0.738,
+     "available": true
+    },
+    {
+     "concept_id": "md",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 6.33,
+       "status": "ok",
+       "percentile": 0.63,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 8.7,
+       "status": "ok",
+       "percentile": 0.87,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 7.44,
+       "status": "ok",
+       "percentile": 0.74,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 6.87,
+       "status": "ok",
+       "percentile": 0.69,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 8.23,
+       "status": "ok",
+       "percentile": 0.82,
+       "note": ""
+      }
+     ],
+     "group_score": 0.751,
+     "available": true
+    },
+    {
+     "concept_id": "sponge",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 7.17,
+       "status": "ok",
+       "percentile": 0.72,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 6.4,
+       "status": "ok",
+       "percentile": 0.64,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 8.87,
+       "status": "ok",
+       "percentile": 0.89,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 8.39,
+       "status": "ok",
+       "percentile": 0.84,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 6.12,
+       "status": "ok",
+       "percentile": 0.61,
+       "note": ""
+      }
+     ],
+     "group_score": 0.739,
+     "available": true
+    },
+    {
+     "concept_id": "mac",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 5.17,
+       "status": "ok",
+       "percentile": 0.52,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 4.93,
+       "status": "ok",
+       "percentile": 0.49,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 6.68,
+       "status": "ok",
+       "percentile": 0.67,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 5.95,
+       "status": "ok",
+       "percentile": 0.59,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 3.74,
+       "status": "ok",
+       "percentile": 0.37,
+       "note": ""
+      }
+     ],
+     "group_score": 0.529,
+     "available": true
+    },
+    {
+     "concept_id": "hmac",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 8.2,
+       "status": "ok",
+       "percentile": 0.82,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 3.89,
+       "status": "ok",
+       "percentile": 0.39,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 5.39,
+       "status": "ok",
+       "percentile": 0.54,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 7.09,
+       "status": "ok",
+       "percentile": 0.71,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 4.06,
+       "status": "ok",
+       "percentile": 0.41,
+       "note": ""
+      }
+     ],
+     "group_score": 0.573,
+     "available": true
+    },
+    {
+     "concept_id": "block",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 4.34,
+       "status": "ok",
+       "percentile": 0.43,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 2.1,
+       "status": "ok",
+       "percentile": 0.21,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 5.24,
+       "status": "ok",
+       "percentile": 0.52,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 5.72,
+       "status": "ok",
+       "percentile": 0.57,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 4.77,
+       "status": "ok",
+       "percentile": 0.48,
+       "note": ""
+      }
+     ],
+     "group_score": 0.443,
+     "available": true
+    },
+    {
+     "concept_id": "perm",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 9.48,
+       "status": "ok",
+       "percentile": 0.95,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 6.67,
+       "status": "ok",
+       "percentile": 0.67,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 8.58,
+       "status": "ok",
+       "percentile": 0.86,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 8.07,
+       "status": "ok",
+       "percentile": 0.81,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 8.0,
+       "status": "ok",
+       "percentile": 0.8,
+       "note": ""
+      }
+     ],
+     "group_score": 0.816,
+     "available": true
+    },
+    {
+     "concept_id": "feistel",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 6.38,
+       "status": "ok",
+       "percentile": 0.64,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 8.3,
+       "status": "ok",
+       "percentile": 0.83,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 8.82,
+       "status": "ok",
+       "percentile": 0.88,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 6.47,
+       "status": "ok",
+       "percentile": 0.65,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 7.42,
+       "status": "ok",
+       "percentile": 0.74,
+       "note": ""
+      }
+     ],
+     "group_score": 0.748,
+     "available": true
+    },
+    {
+     "concept_id": "sbox",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 3.3,
+       "status": "ok",
+       "percentile": 0.33,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 6.51,
+       "status": "ok",
+       "percentile": 0.65,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 6.24,
+       "status": "ok",
+       "percentile": 0.62,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 7.97,
+       "status": "ok",
+       "percentile": 0.8,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 7.11,
+       "status": "ok",
+       "percentile": 0.71,
+       "note": ""
+      }
+     ],
+     "group_score": 0.622,
+     "available": true
+    },
+    {
+     "concept_id": "spn",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 6.12,
+       "status": "ok",
+       "percentile": 0.61,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 6.63,
+       "status": "ok",
+       "percentile": 0.66,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 8.04,
+       "status": "ok",
+       "percentile": 0.8,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 4.81,
+       "status": "ok",
+       "percentile": 0.48,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 7.01,
+       "status": "ok",
+       "percentile": 0.7,
+       "note": ""
+      }
+     ],
+     "group_score": 0.652,
+     "available": true
+    },
+    {
+     "concept_id": "keysched",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 3.54,
+       "status": "ok",
+       "percentile": 0.35,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 3.29,
+       "status": "ok",
+       "percentile": 0.33,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 2.99,
+       "status": "ok",
+       "percentile": 0.3,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 6.54,
+       "status": "ok",
+       "percentile": 0.65,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 3.35,
+       "status": "ok",
+       "percentile": 0.33,
+       "note": ""
+      }
+     ],
+     "group_score": 0.394,
+     "available": true
+    },
+    {
+     "concept_id": "ecb",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 0.74,
+       "status": "ok",
+       "percentile": 0.07,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 1.45,
+       "status": "ok",
+       "percentile": 0.15,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 3.86,
+       "status": "ok",
+       "percentile": 0.39,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 1.75,
+       "status": "ok",
+       "percentile": 0.17,
+       "note": ""
+      }
+     ],
+     "group_score": 0.156,
+     "available": true
+    },
+    {
+     "concept_id": "cbc",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 4.25,
+       "status": "ok",
+       "percentile": 0.42,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 5.92,
+       "status": "ok",
+       "percentile": 0.59,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 5.6,
+       "status": "ok",
+       "percentile": 0.56,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 5.82,
+       "status": "ok",
+       "percentile": 0.58,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 2.89,
+       "status": "ok",
+       "percentile": 0.29,
+       "note": ""
+      }
+     ],
+     "group_score": 0.489,
+     "available": true
+    },
+    {
+     "concept_id": "ctr",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 4.18,
+       "status": "ok",
+       "percentile": 0.42,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 3.89,
+       "status": "ok",
+       "percentile": 0.39,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 6.52,
+       "status": "ok",
+       "percentile": 0.65,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 6.89,
+       "status": "ok",
+       "percentile": 0.69,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 2.85,
+       "status": "ok",
+       "percentile": 0.29,
+       "note": ""
+      }
+     ],
+     "group_score": 0.487,
+     "available": true
+    },
+    {
+     "concept_id": "iv",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 1.18,
+       "status": "ok",
+       "percentile": 0.12,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 1.46,
+       "status": "ok",
+       "percentile": 0.15,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 1.47,
+       "status": "ok",
+       "percentile": 0.15,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 2.72,
+       "status": "ok",
+       "percentile": 0.27,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 3.25,
+       "status": "ok",
+       "percentile": 0.32,
+       "note": ""
+      }
+     ],
+     "group_score": 0.202,
+     "available": true
+    },
+    {
+     "concept_id": "padding",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 1.01,
+       "status": "ok",
+       "percentile": 0.1,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 1.79,
+       "status": "ok",
+       "percentile": 0.18,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 1.55,
+       "status": "ok",
+       "percentile": 0.15,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 2.53,
+       "status": "ok",
+       "percentile": 0.25,
+       "note": ""
+      }
+     ],
+     "group_score": 0.138,
+     "available": true
+    },
+    {
+     "concept_id": "aead",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 9.07,
+       "status": "ok",
+       "percentile": 0.91,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 7.75,
+       "status": "ok",
+       "percentile": 0.78,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 6.88,
+       "status": "ok",
+       "percentile": 0.69,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 7.39,
+       "status": "ok",
+       "percentile": 0.74,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": 7.68,
+       "status": "ok",
+       "percentile": 0.77,
+       "note": ""
+      }
+     ],
+     "group_score": 0.775,
+     "available": true
+    },
+    {
+     "concept_id": "summary",
+     "features": [
+      {
+       "name": "rare_word_share",
+       "value": 1.27,
+       "status": "ok",
+       "percentile": 0.13,
+       "note": ""
+      },
+      {
+       "name": "avg_word_len",
+       "value": 5.5,
+       "status": "ok",
+       "percentile": 0.55,
+       "note": ""
+      },
+      {
+       "name": "technical_term_share",
+       "value": 4.9,
+       "status": "ok",
+       "percentile": 0.49,
+       "note": ""
+      },
+      {
+       "name": "sentence_len",
+       "value": 5.37,
+       "status": "ok",
+       "percentile": 0.54,
+       "note": ""
+      },
+      {
+       "name": "symbol_share",
+       "value": null,
+       "status": "unavailable",
+       "percentile": null,
+       "note": "Not enough text on these slides to measure this feature."
+      }
+     ],
+     "group_score": 0.426,
+     "available": true
+    }
+   ],
+   "summary": {
+    "available_share": 1.0
+   }
+  },
+  "B": {
+   "group": "B",
+   "name": "Prerequisites",
+   "direction": "higher = deeper prerequisite chain",
+   "per_concept": [
+    {
+     "concept_id": "bits",
+     "features": [
+      {
+       "name": "depth",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 0.5,
+       "status": "ok",
+       "percentile": 0.05,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 7.5,
+       "status": "ok",
+       "percentile": 0.75,
+       "note": ""
+      }
+     ],
+     "group_score": 0.2,
+     "available": true
+    },
+    {
+     "concept_id": "modular",
+     "features": [
+      {
+       "name": "depth",
+       "value": 1.67,
+       "status": "ok",
+       "percentile": 0.17,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 3.33,
+       "status": "ok",
+       "percentile": 0.33,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 2.5,
+       "status": "ok",
+       "percentile": 0.25,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 2.5,
+       "status": "ok",
+       "percentile": 0.25,
+       "note": ""
+      }
+     ],
+     "group_score": 0.25,
+     "available": true
+    },
+    {
+     "concept_id": "xor",
+     "features": [
+      {
+       "name": "depth",
+       "value": 1.67,
+       "status": "ok",
+       "percentile": 0.17,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 3.33,
+       "status": "ok",
+       "percentile": 0.33,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 2.5,
+       "status": "ok",
+       "percentile": 0.25,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 5.0,
+       "status": "ok",
+       "percentile": 0.5,
+       "note": ""
+      }
+     ],
+     "group_score": 0.312,
+     "available": true
+    },
+    {
+     "concept_id": "hash",
+     "features": [
+      {
+       "name": "depth",
+       "value": 3.33,
+       "status": "ok",
+       "percentile": 0.33,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 6.67,
+       "status": "ok",
+       "percentile": 0.67,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 4.5,
+       "status": "ok",
+       "percentile": 0.45,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 7.5,
+       "status": "ok",
+       "percentile": 0.75,
+       "note": ""
+      }
+     ],
+     "group_score": 0.55,
+     "available": true
+    },
+    {
+     "concept_id": "preimage",
+     "features": [
+      {
+       "name": "depth",
+       "value": 5.0,
+       "status": "ok",
+       "percentile": 0.5,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 3.33,
+       "status": "ok",
+       "percentile": 0.33,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 6.5,
+       "status": "ok",
+       "percentile": 0.65,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      }
+     ],
+     "group_score": 0.371,
+     "available": true
+    },
+    {
+     "concept_id": "collision",
+     "features": [
+      {
+       "name": "depth",
+       "value": 5.0,
+       "status": "ok",
+       "percentile": 0.5,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 3.33,
+       "status": "ok",
+       "percentile": 0.33,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 6.5,
+       "status": "ok",
+       "percentile": 0.65,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 5.0,
+       "status": "ok",
+       "percentile": 0.5,
+       "note": ""
+      }
+     ],
+     "group_score": 0.496,
+     "available": true
+    },
+    {
+     "concept_id": "birthday",
+     "features": [
+      {
+       "name": "depth",
+       "value": 6.67,
+       "status": "ok",
+       "percentile": 0.67,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 3.33,
+       "status": "ok",
+       "percentile": 0.33,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 8.5,
+       "status": "ok",
+       "percentile": 0.85,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      }
+     ],
+     "group_score": 0.463,
+     "available": true
+    },
+    {
+     "concept_id": "md",
+     "features": [
+      {
+       "name": "depth",
+       "value": 6.67,
+       "status": "ok",
+       "percentile": 0.67,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 3.33,
+       "status": "ok",
+       "percentile": 0.33,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 8.5,
+       "status": "ok",
+       "percentile": 0.85,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 5.0,
+       "status": "ok",
+       "percentile": 0.5,
+       "note": ""
+      }
+     ],
+     "group_score": 0.588,
+     "available": true
+    },
+    {
+     "concept_id": "sponge",
+     "features": [
+      {
+       "name": "depth",
+       "value": 8.33,
+       "status": "ok",
+       "percentile": 0.83,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 3.33,
+       "status": "ok",
+       "percentile": 0.33,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 10.0,
+       "status": "ok",
+       "percentile": 1.0,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 2.5,
+       "status": "ok",
+       "percentile": 0.25,
+       "note": ""
+      }
+     ],
+     "group_score": 0.604,
+     "available": true
+    },
+    {
+     "concept_id": "mac",
+     "features": [
+      {
+       "name": "depth",
+       "value": 5.0,
+       "status": "ok",
+       "percentile": 0.5,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 3.33,
+       "status": "ok",
+       "percentile": 0.33,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 6.5,
+       "status": "ok",
+       "percentile": 0.65,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 5.0,
+       "status": "ok",
+       "percentile": 0.5,
+       "note": ""
+      }
+     ],
+     "group_score": 0.496,
+     "available": true
+    },
+    {
+     "concept_id": "hmac",
+     "features": [
+      {
+       "name": "depth",
+       "value": 8.33,
+       "status": "ok",
+       "percentile": 0.83,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 6.67,
+       "status": "ok",
+       "percentile": 0.67,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 10.0,
+       "status": "ok",
+       "percentile": 1.0,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      }
+     ],
+     "group_score": 0.625,
+     "available": true
+    },
+    {
+     "concept_id": "block",
+     "features": [
+      {
+       "name": "depth",
+       "value": 3.33,
+       "status": "ok",
+       "percentile": 0.33,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 3.33,
+       "status": "ok",
+       "percentile": 0.33,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 4.5,
+       "status": "ok",
+       "percentile": 0.45,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 7.5,
+       "status": "ok",
+       "percentile": 0.75,
+       "note": ""
+      }
+     ],
+     "group_score": 0.467,
+     "available": true
+    },
+    {
+     "concept_id": "perm",
+     "features": [
+      {
+       "name": "depth",
+       "value": 5.0,
+       "status": "ok",
+       "percentile": 0.5,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 3.33,
+       "status": "ok",
+       "percentile": 0.33,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 6.5,
+       "status": "ok",
+       "percentile": 0.65,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 2.5,
+       "status": "ok",
+       "percentile": 0.25,
+       "note": ""
+      }
+     ],
+     "group_score": 0.433,
+     "available": true
+    },
+    {
+     "concept_id": "feistel",
+     "features": [
+      {
+       "name": "depth",
+       "value": 5.0,
+       "status": "ok",
+       "percentile": 0.5,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 6.67,
+       "status": "ok",
+       "percentile": 0.67,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 6.5,
+       "status": "ok",
+       "percentile": 0.65,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 2.5,
+       "status": "ok",
+       "percentile": 0.25,
+       "note": ""
+      }
+     ],
+     "group_score": 0.517,
+     "available": true
+    },
+    {
+     "concept_id": "sbox",
+     "features": [
+      {
+       "name": "depth",
+       "value": 6.67,
+       "status": "ok",
+       "percentile": 0.67,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 3.33,
+       "status": "ok",
+       "percentile": 0.33,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 8.5,
+       "status": "ok",
+       "percentile": 0.85,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 2.5,
+       "status": "ok",
+       "percentile": 0.25,
+       "note": ""
+      }
+     ],
+     "group_score": 0.525,
+     "available": true
+    },
+    {
+     "concept_id": "spn",
+     "features": [
+      {
+       "name": "depth",
+       "value": 8.33,
+       "status": "ok",
+       "percentile": 0.83,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 6.67,
+       "status": "ok",
+       "percentile": 0.67,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 10.0,
+       "status": "ok",
+       "percentile": 1.0,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 2.5,
+       "status": "ok",
+       "percentile": 0.25,
+       "note": ""
+      }
+     ],
+     "group_score": 0.688,
+     "available": true
+    },
+    {
+     "concept_id": "keysched",
+     "features": [
+      {
+       "name": "depth",
+       "value": 10.0,
+       "status": "ok",
+       "percentile": 1.0,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 3.33,
+       "status": "ok",
+       "percentile": 0.33,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 10.0,
+       "status": "ok",
+       "percentile": 1.0,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      }
+     ],
+     "group_score": 0.583,
+     "available": true
+    },
+    {
+     "concept_id": "ecb",
+     "features": [
+      {
+       "name": "depth",
+       "value": 5.0,
+       "status": "ok",
+       "percentile": 0.5,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 3.33,
+       "status": "ok",
+       "percentile": 0.33,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 6.5,
+       "status": "ok",
+       "percentile": 0.65,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 2.5,
+       "status": "ok",
+       "percentile": 0.25,
+       "note": ""
+      }
+     ],
+     "group_score": 0.433,
+     "available": true
+    },
+    {
+     "concept_id": "cbc",
+     "features": [
+      {
+       "name": "depth",
+       "value": 6.67,
+       "status": "ok",
+       "percentile": 0.67,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 6.67,
+       "status": "ok",
+       "percentile": 0.67,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 8.5,
+       "status": "ok",
+       "percentile": 0.85,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 5.0,
+       "status": "ok",
+       "percentile": 0.5,
+       "note": ""
+      }
+     ],
+     "group_score": 0.671,
+     "available": true
+    },
+    {
+     "concept_id": "ctr",
+     "features": [
+      {
+       "name": "depth",
+       "value": 8.33,
+       "status": "ok",
+       "percentile": 0.83,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 6.67,
+       "status": "ok",
+       "percentile": 0.67,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 10.0,
+       "status": "ok",
+       "percentile": 1.0,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 2.5,
+       "status": "ok",
+       "percentile": 0.25,
+       "note": ""
+      }
+     ],
+     "group_score": 0.688,
+     "available": true
+    },
+    {
+     "concept_id": "iv",
+     "features": [
+      {
+       "name": "depth",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 0.5,
+       "status": "ok",
+       "percentile": 0.05,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 5.0,
+       "status": "ok",
+       "percentile": 0.5,
+       "note": ""
+      }
+     ],
+     "group_score": 0.138,
+     "available": true
+    },
+    {
+     "concept_id": "padding",
+     "features": [
+      {
+       "name": "depth",
+       "value": 8.33,
+       "status": "ok",
+       "percentile": 0.83,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 3.33,
+       "status": "ok",
+       "percentile": 0.33,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 10.0,
+       "status": "ok",
+       "percentile": 1.0,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      }
+     ],
+     "group_score": 0.542,
+     "available": true
+    },
+    {
+     "concept_id": "aead",
+     "features": [
+      {
+       "name": "depth",
+       "value": 10.0,
+       "status": "ok",
+       "percentile": 1.0,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 6.67,
+       "status": "ok",
+       "percentile": 0.67,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 10.0,
+       "status": "ok",
+       "percentile": 1.0,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 2.5,
+       "status": "ok",
+       "percentile": 0.25,
+       "note": ""
+      }
+     ],
+     "group_score": 0.729,
+     "available": true
+    },
+    {
+     "concept_id": "summary",
+     "features": [
+      {
+       "name": "depth",
+       "value": 10.0,
+       "status": "ok",
+       "percentile": 1.0,
+       "note": ""
+      },
+      {
+       "name": "n_prereqs",
+       "value": 6.67,
+       "status": "ok",
+       "percentile": 0.67,
+       "note": ""
+      },
+      {
+       "name": "n_ancestors",
+       "value": 10.0,
+       "status": "ok",
+       "percentile": 1.0,
+       "note": ""
+      },
+      {
+       "name": "dependents",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      }
+     ],
+     "group_score": 0.667,
+     "available": true
+    }
+   ],
+   "summary": {
+    "available_share": 1.0
+   }
+  },
+  "C": {
+   "group": "C",
+   "name": "Explanation",
+   "direction": "higher = less supporting explanation",
+   "per_concept": [
+    {
+     "concept_id": "bits",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 0.66,
+       "status": "ok",
+       "percentile": 0.07,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 0.69,
+       "status": "ok",
+       "percentile": 0.07,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": null,
+       "status": "unavailable",
+       "percentile": null,
+       "note": "Not enough text on these slides to measure this feature."
+      },
+      {
+       "name": "visual_missing",
+       "value": 1.87,
+       "status": "ok",
+       "percentile": 0.19,
+       "note": ""
+      }
+     ],
+     "group_score": 0.108,
+     "available": true
+    },
+    {
+     "concept_id": "modular",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 0.81,
+       "status": "ok",
+       "percentile": 0.08,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 0.84,
+       "status": "ok",
+       "percentile": 0.08,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": 1.54,
+       "status": "ok",
+       "percentile": 0.15,
+       "note": ""
+      },
+      {
+       "name": "visual_missing",
+       "value": 1.31,
+       "status": "ok",
+       "percentile": 0.13,
+       "note": ""
+      }
+     ],
+     "group_score": 0.113,
+     "available": true
+    },
+    {
+     "concept_id": "xor",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 0.7,
+       "status": "ok",
+       "percentile": 0.07,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": null,
+       "status": "unavailable",
+       "percentile": null,
+       "note": "Not enough text on these slides to measure this feature."
+      },
+      {
+       "name": "visual_missing",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      }
+     ],
+     "group_score": 0.023,
+     "available": true
+    },
+    {
+     "concept_id": "hash",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 1.51,
+       "status": "ok",
+       "percentile": 0.15,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 2.82,
+       "status": "ok",
+       "percentile": 0.28,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": 1.13,
+       "status": "ok",
+       "percentile": 0.11,
+       "note": ""
+      },
+      {
+       "name": "visual_missing",
+       "value": 5.37,
+       "status": "ok",
+       "percentile": 0.54,
+       "note": ""
+      }
+     ],
+     "group_score": 0.271,
+     "available": true
+    },
+    {
+     "concept_id": "preimage",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 6.77,
+       "status": "ok",
+       "percentile": 0.68,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 4.44,
+       "status": "ok",
+       "percentile": 0.44,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": 4.96,
+       "status": "ok",
+       "percentile": 0.5,
+       "note": ""
+      },
+      {
+       "name": "visual_missing",
+       "value": 5.44,
+       "status": "ok",
+       "percentile": 0.54,
+       "note": ""
+      }
+     ],
+     "group_score": 0.54,
+     "available": true
+    },
+    {
+     "concept_id": "collision",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 6.32,
+       "status": "ok",
+       "percentile": 0.63,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 5.11,
+       "status": "ok",
+       "percentile": 0.51,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": 8.74,
+       "status": "ok",
+       "percentile": 0.87,
+       "note": ""
+      },
+      {
+       "name": "visual_missing",
+       "value": 9.47,
+       "status": "ok",
+       "percentile": 0.95,
+       "note": ""
+      }
+     ],
+     "group_score": 0.741,
+     "available": true
+    },
+    {
+     "concept_id": "birthday",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 8.03,
+       "status": "ok",
+       "percentile": 0.8,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 8.12,
+       "status": "ok",
+       "percentile": 0.81,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": 6.13,
+       "status": "ok",
+       "percentile": 0.61,
+       "note": ""
+      },
+      {
+       "name": "visual_missing",
+       "value": 6.21,
+       "status": "ok",
+       "percentile": 0.62,
+       "note": ""
+      }
+     ],
+     "group_score": 0.712,
+     "available": true
+    },
+    {
+     "concept_id": "md",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 7.01,
+       "status": "ok",
+       "percentile": 0.7,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 6.62,
+       "status": "ok",
+       "percentile": 0.66,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": 9.44,
+       "status": "ok",
+       "percentile": 0.94,
+       "note": ""
+      },
+      {
+       "name": "visual_missing",
+       "value": 6.11,
+       "status": "ok",
+       "percentile": 0.61,
+       "note": ""
+      }
+     ],
+     "group_score": 0.73,
+     "available": true
+    },
+    {
+     "concept_id": "sponge",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 5.02,
+       "status": "ok",
+       "percentile": 0.5,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 9.65,
+       "status": "ok",
+       "percentile": 0.97,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": 7.54,
+       "status": "ok",
+       "percentile": 0.75,
+       "note": ""
+      },
+      {
+       "name": "visual_missing",
+       "value": 5.63,
+       "status": "ok",
+       "percentile": 0.56,
+       "note": ""
+      }
+     ],
+     "group_score": 0.696,
+     "available": true
+    },
+    {
+     "concept_id": "mac",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 5.02,
+       "status": "ok",
+       "percentile": 0.5,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 2.44,
+       "status": "ok",
+       "percentile": 0.24,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": 4.94,
+       "status": "ok",
+       "percentile": 0.49,
+       "note": ""
+      },
+      {
+       "name": "visual_missing",
+       "value": 7.19,
+       "status": "ok",
+       "percentile": 0.72,
+       "note": ""
+      }
+     ],
+     "group_score": 0.49,
+     "available": true
+    },
+    {
+     "concept_id": "hmac",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 7.62,
+       "status": "ok",
+       "percentile": 0.76,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 6.78,
+       "status": "ok",
+       "percentile": 0.68,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": 4.61,
+       "status": "ok",
+       "percentile": 0.46,
+       "note": ""
+      },
+      {
+       "name": "visual_missing",
+       "value": 5.13,
+       "status": "ok",
+       "percentile": 0.51,
+       "note": ""
+      }
+     ],
+     "group_score": 0.603,
+     "available": true
+    },
+    {
+     "concept_id": "block",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 2.74,
+       "status": "ok",
+       "percentile": 0.27,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 5.76,
+       "status": "ok",
+       "percentile": 0.58,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": 4.56,
+       "status": "ok",
+       "percentile": 0.46,
+       "note": ""
+      },
+      {
+       "name": "visual_missing",
+       "value": 5.8,
+       "status": "ok",
+       "percentile": 0.58,
+       "note": ""
+      }
+     ],
+     "group_score": 0.471,
+     "available": true
+    },
+    {
+     "concept_id": "perm",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 6.75,
+       "status": "ok",
+       "percentile": 0.67,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 6.22,
+       "status": "ok",
+       "percentile": 0.62,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": 9.16,
+       "status": "ok",
+       "percentile": 0.92,
+       "note": ""
+      },
+      {
+       "name": "visual_missing",
+       "value": 10.0,
+       "status": "ok",
+       "percentile": 1.0,
+       "note": ""
+      }
+     ],
+     "group_score": 0.803,
+     "available": true
+    },
+    {
+     "concept_id": "feistel",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 8.36,
+       "status": "ok",
+       "percentile": 0.84,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 8.13,
+       "status": "ok",
+       "percentile": 0.81,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": 8.19,
+       "status": "ok",
+       "percentile": 0.82,
+       "note": ""
+      },
+      {
+       "name": "visual_missing",
+       "value": 7.8,
+       "status": "ok",
+       "percentile": 0.78,
+       "note": ""
+      }
+     ],
+     "group_score": 0.812,
+     "available": true
+    },
+    {
+     "concept_id": "sbox",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 4.13,
+       "status": "ok",
+       "percentile": 0.41,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 5.59,
+       "status": "ok",
+       "percentile": 0.56,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": 4.78,
+       "status": "ok",
+       "percentile": 0.48,
+       "note": ""
+      },
+      {
+       "name": "visual_missing",
+       "value": 3.14,
+       "status": "ok",
+       "percentile": 0.31,
+       "note": ""
+      }
+     ],
+     "group_score": 0.441,
+     "available": true
+    },
+    {
+     "concept_id": "spn",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 4.84,
+       "status": "ok",
+       "percentile": 0.48,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 6.1,
+       "status": "ok",
+       "percentile": 0.61,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": 6.0,
+       "status": "ok",
+       "percentile": 0.6,
+       "note": ""
+      },
+      {
+       "name": "visual_missing",
+       "value": 8.16,
+       "status": "ok",
+       "percentile": 0.82,
+       "note": ""
+      }
+     ],
+     "group_score": 0.627,
+     "available": true
+    },
+    {
+     "concept_id": "keysched",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 7.48,
+       "status": "ok",
+       "percentile": 0.75,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 4.94,
+       "status": "ok",
+       "percentile": 0.49,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": 7.39,
+       "status": "ok",
+       "percentile": 0.74,
+       "note": ""
+      },
+      {
+       "name": "visual_missing",
+       "value": 7.64,
+       "status": "ok",
+       "percentile": 0.76,
+       "note": ""
+      }
+     ],
+     "group_score": 0.686,
+     "available": true
+    },
+    {
+     "concept_id": "ecb",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 4.28,
+       "status": "ok",
+       "percentile": 0.43,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 1.32,
+       "status": "ok",
+       "percentile": 0.13,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": 0.6,
+       "status": "ok",
+       "percentile": 0.06,
+       "note": ""
+      },
+      {
+       "name": "visual_missing",
+       "value": 0.63,
+       "status": "ok",
+       "percentile": 0.06,
+       "note": ""
+      }
+     ],
+     "group_score": 0.171,
+     "available": true
+    },
+    {
+     "concept_id": "cbc",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 2.48,
+       "status": "ok",
+       "percentile": 0.25,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 2.52,
+       "status": "ok",
+       "percentile": 0.25,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": 4.62,
+       "status": "ok",
+       "percentile": 0.46,
+       "note": ""
+      },
+      {
+       "name": "visual_missing",
+       "value": 6.0,
+       "status": "ok",
+       "percentile": 0.6,
+       "note": ""
+      }
+     ],
+     "group_score": 0.391,
+     "available": true
+    },
+    {
+     "concept_id": "ctr",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 6.3,
+       "status": "ok",
+       "percentile": 0.63,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 4.5,
+       "status": "ok",
+       "percentile": 0.45,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": 5.36,
+       "status": "ok",
+       "percentile": 0.54,
+       "note": ""
+      },
+      {
+       "name": "visual_missing",
+       "value": 6.1,
+       "status": "ok",
+       "percentile": 0.61,
+       "note": ""
+      }
+     ],
+     "group_score": 0.557,
+     "available": true
+    },
+    {
+     "concept_id": "iv",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 0.72,
+       "status": "ok",
+       "percentile": 0.07,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 3.6,
+       "status": "ok",
+       "percentile": 0.36,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": null,
+       "status": "unavailable",
+       "percentile": null,
+       "note": "Not enough text on these slides to measure this feature."
+      },
+      {
+       "name": "visual_missing",
+       "value": 4.21,
+       "status": "ok",
+       "percentile": 0.42,
+       "note": ""
+      }
+     ],
+     "group_score": 0.285,
+     "available": true
+    },
+    {
+     "concept_id": "padding",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 3.45,
+       "status": "ok",
+       "percentile": 0.35,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 2.09,
+       "status": "ok",
+       "percentile": 0.21,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": 0.59,
+       "status": "ok",
+       "percentile": 0.06,
+       "note": ""
+      },
+      {
+       "name": "visual_missing",
+       "value": 3.65,
+       "status": "ok",
+       "percentile": 0.36,
+       "note": ""
+      }
+     ],
+     "group_score": 0.244,
+     "available": true
+    },
+    {
+     "concept_id": "aead",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 5.96,
+       "status": "ok",
+       "percentile": 0.6,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 8.3,
+       "status": "ok",
+       "percentile": 0.83,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": 9.16,
+       "status": "ok",
+       "percentile": 0.92,
+       "note": ""
+      },
+      {
+       "name": "visual_missing",
+       "value": 6.28,
+       "status": "ok",
+       "percentile": 0.63,
+       "note": ""
+      }
+     ],
+     "group_score": 0.743,
+     "available": true
+    },
+    {
+     "concept_id": "summary",
+     "features": [
+      {
+       "name": "def_missing",
+       "value": 3.01,
+       "status": "ok",
+       "percentile": 0.3,
+       "note": ""
+      },
+      {
+       "name": "example_missing",
+       "value": 5.73,
+       "status": "ok",
+       "percentile": 0.57,
+       "note": ""
+      },
+      {
+       "name": "analogy_missing",
+       "value": 4.62,
+       "status": "ok",
+       "percentile": 0.46,
+       "note": ""
+      },
+      {
+       "name": "visual_missing",
+       "value": 1.85,
+       "status": "ok",
+       "percentile": 0.19,
+       "note": ""
+      }
+     ],
+     "group_score": 0.38,
+     "available": true
+    }
+   ],
+   "summary": {
+    "available_share": 1.0
+   }
+  },
+  "D": {
+   "group": "D",
+   "name": "Density",
+   "direction": "higher = more crowded slides",
+   "per_concept": [
+    {
+     "concept_id": "bits",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 3.22,
+       "status": "ok",
+       "percentile": 0.32,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 2.73,
+       "status": "ok",
+       "percentile": 0.27,
+       "note": ""
+      }
+     ],
+     "group_score": 0.149,
+     "available": true
+    },
+    {
+     "concept_id": "modular",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 1.23,
+       "status": "ok",
+       "percentile": 0.12,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 4.63,
+       "status": "ok",
+       "percentile": 0.46,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 5.4,
+       "status": "ok",
+       "percentile": 0.54,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 3.79,
+       "status": "ok",
+       "percentile": 0.38,
+       "note": ""
+      }
+     ],
+     "group_score": 0.376,
+     "available": true
+    },
+    {
+     "concept_id": "xor",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 0.75,
+       "status": "ok",
+       "percentile": 0.08,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 1.74,
+       "status": "ok",
+       "percentile": 0.17,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 0.0,
+       "status": "ok",
+       "percentile": 0.0,
+       "note": ""
+      }
+     ],
+     "group_score": 0.062,
+     "available": true
+    },
+    {
+     "concept_id": "hash",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 5.85,
+       "status": "ok",
+       "percentile": 0.59,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 4.25,
+       "status": "ok",
+       "percentile": 0.42,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 3.63,
+       "status": "ok",
+       "percentile": 0.36,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 5.67,
+       "status": "ok",
+       "percentile": 0.57,
+       "note": ""
+      }
+     ],
+     "group_score": 0.485,
+     "available": true
+    },
+    {
+     "concept_id": "preimage",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 5.87,
+       "status": "ok",
+       "percentile": 0.59,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 8.06,
+       "status": "ok",
+       "percentile": 0.81,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 7.83,
+       "status": "ok",
+       "percentile": 0.78,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 4.76,
+       "status": "ok",
+       "percentile": 0.48,
+       "note": ""
+      }
+     ],
+     "group_score": 0.663,
+     "available": true
+    },
+    {
+     "concept_id": "collision",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 5.76,
+       "status": "ok",
+       "percentile": 0.58,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 5.96,
+       "status": "ok",
+       "percentile": 0.6,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 5.7,
+       "status": "ok",
+       "percentile": 0.57,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 7.43,
+       "status": "ok",
+       "percentile": 0.74,
+       "note": ""
+      }
+     ],
+     "group_score": 0.621,
+     "available": true
+    },
+    {
+     "concept_id": "birthday",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 7.0,
+       "status": "ok",
+       "percentile": 0.7,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 7.8,
+       "status": "ok",
+       "percentile": 0.78,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 6.36,
+       "status": "ok",
+       "percentile": 0.64,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 10.0,
+       "status": "ok",
+       "percentile": 1.0,
+       "note": ""
+      }
+     ],
+     "group_score": 0.779,
+     "available": true
+    },
+    {
+     "concept_id": "md",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 7.07,
+       "status": "ok",
+       "percentile": 0.71,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 7.59,
+       "status": "ok",
+       "percentile": 0.76,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 8.22,
+       "status": "ok",
+       "percentile": 0.82,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 9.82,
+       "status": "ok",
+       "percentile": 0.98,
+       "note": ""
+      }
+     ],
+     "group_score": 0.817,
+     "available": true
+    },
+    {
+     "concept_id": "sponge",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 7.0,
+       "status": "ok",
+       "percentile": 0.7,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 9.49,
+       "status": "ok",
+       "percentile": 0.95,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 7.41,
+       "status": "ok",
+       "percentile": 0.74,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 7.56,
+       "status": "ok",
+       "percentile": 0.76,
+       "note": ""
+      }
+     ],
+     "group_score": 0.786,
+     "available": true
+    },
+    {
+     "concept_id": "mac",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 4.92,
+       "status": "ok",
+       "percentile": 0.49,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 2.39,
+       "status": "ok",
+       "percentile": 0.24,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 4.5,
+       "status": "ok",
+       "percentile": 0.45,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 3.22,
+       "status": "ok",
+       "percentile": 0.32,
+       "note": ""
+      }
+     ],
+     "group_score": 0.376,
+     "available": true
+    },
+    {
+     "concept_id": "hmac",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 3.32,
+       "status": "ok",
+       "percentile": 0.33,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 7.3,
+       "status": "ok",
+       "percentile": 0.73,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 4.16,
+       "status": "ok",
+       "percentile": 0.42,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 5.67,
+       "status": "ok",
+       "percentile": 0.57,
+       "note": ""
+      }
+     ],
+     "group_score": 0.511,
+     "available": true
+    },
+    {
+     "concept_id": "block",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 5.53,
+       "status": "ok",
+       "percentile": 0.55,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 4.68,
+       "status": "ok",
+       "percentile": 0.47,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 3.53,
+       "status": "ok",
+       "percentile": 0.35,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 4.49,
+       "status": "ok",
+       "percentile": 0.45,
+       "note": ""
+      }
+     ],
+     "group_score": 0.456,
+     "available": true
+    },
+    {
+     "concept_id": "perm",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 7.88,
+       "status": "ok",
+       "percentile": 0.79,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 9.02,
+       "status": "ok",
+       "percentile": 0.9,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 5.63,
+       "status": "ok",
+       "percentile": 0.56,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 7.9,
+       "status": "ok",
+       "percentile": 0.79,
+       "note": ""
+      }
+     ],
+     "group_score": 0.761,
+     "available": true
+    },
+    {
+     "concept_id": "feistel",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 5.34,
+       "status": "ok",
+       "percentile": 0.53,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 5.48,
+       "status": "ok",
+       "percentile": 0.55,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 7.96,
+       "status": "ok",
+       "percentile": 0.8,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 6.64,
+       "status": "ok",
+       "percentile": 0.66,
+       "note": ""
+      }
+     ],
+     "group_score": 0.636,
+     "available": true
+    },
+    {
+     "concept_id": "sbox",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 5.81,
+       "status": "ok",
+       "percentile": 0.58,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 6.8,
+       "status": "ok",
+       "percentile": 0.68,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 7.56,
+       "status": "ok",
+       "percentile": 0.76,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 5.22,
+       "status": "ok",
+       "percentile": 0.52,
+       "note": ""
+      }
+     ],
+     "group_score": 0.635,
+     "available": true
+    },
+    {
+     "concept_id": "spn",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 7.76,
+       "status": "ok",
+       "percentile": 0.78,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 7.23,
+       "status": "ok",
+       "percentile": 0.72,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 7.26,
+       "status": "ok",
+       "percentile": 0.73,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 8.16,
+       "status": "ok",
+       "percentile": 0.82,
+       "note": ""
+      }
+     ],
+     "group_score": 0.76,
+     "available": true
+    },
+    {
+     "concept_id": "keysched",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 4.96,
+       "status": "ok",
+       "percentile": 0.5,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 5.37,
+       "status": "ok",
+       "percentile": 0.54,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 5.09,
+       "status": "ok",
+       "percentile": 0.51,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 7.41,
+       "status": "ok",
+       "percentile": 0.74,
+       "note": ""
+      }
+     ],
+     "group_score": 0.571,
+     "available": true
+    },
+    {
+     "concept_id": "ecb",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 3.0,
+       "status": "ok",
+       "percentile": 0.3,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 3.88,
+       "status": "ok",
+       "percentile": 0.39,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 4.21,
+       "status": "ok",
+       "percentile": 0.42,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 0.8,
+       "status": "ok",
+       "percentile": 0.08,
+       "note": ""
+      }
+     ],
+     "group_score": 0.297,
+     "available": true
+    },
+    {
+     "concept_id": "cbc",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 4.3,
+       "status": "ok",
+       "percentile": 0.43,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 6.22,
+       "status": "ok",
+       "percentile": 0.62,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 5.7,
+       "status": "ok",
+       "percentile": 0.57,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 2.19,
+       "status": "ok",
+       "percentile": 0.22,
+       "note": ""
+      }
+     ],
+     "group_score": 0.46,
+     "available": true
+    },
+    {
+     "concept_id": "ctr",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 2.71,
+       "status": "ok",
+       "percentile": 0.27,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 4.31,
+       "status": "ok",
+       "percentile": 0.43,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 2.46,
+       "status": "ok",
+       "percentile": 0.25,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 3.3,
+       "status": "ok",
+       "percentile": 0.33,
+       "note": ""
+      }
+     ],
+     "group_score": 0.32,
+     "available": true
+    },
+    {
+     "concept_id": "iv",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 0.67,
+       "status": "ok",
+       "percentile": 0.07,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 3.65,
+       "status": "ok",
+       "percentile": 0.36,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 4.22,
+       "status": "ok",
+       "percentile": 0.42,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 4.79,
+       "status": "ok",
+       "percentile": 0.48,
+       "note": ""
+      }
+     ],
+     "group_score": 0.333,
+     "available": true
+    },
+    {
+     "concept_id": "padding",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 0.47,
+       "status": "ok",
+       "percentile": 0.05,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 3.28,
+       "status": "ok",
+       "percentile": 0.33,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 3.0,
+       "status": "ok",
+       "percentile": 0.3,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 0.41,
+       "status": "ok",
+       "percentile": 0.04,
+       "note": ""
+      }
+     ],
+     "group_score": 0.179,
+     "available": true
+    },
+    {
+     "concept_id": "aead",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 8.71,
+       "status": "ok",
+       "percentile": 0.87,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 9.14,
+       "status": "ok",
+       "percentile": 0.91,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 5.4,
+       "status": "ok",
+       "percentile": 0.54,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 9.06,
+       "status": "ok",
+       "percentile": 0.91,
+       "note": ""
+      }
+     ],
+     "group_score": 0.808,
+     "available": true
+    },
+    {
+     "concept_id": "summary",
+     "features": [
+      {
+       "name": "words_per_slide",
+       "value": 2.99,
+       "status": "ok",
+       "percentile": 0.3,
+       "note": ""
+      },
+      {
+       "name": "concepts_per_slide",
+       "value": 3.44,
+       "status": "ok",
+       "percentile": 0.34,
+       "note": ""
+      },
+      {
+       "name": "formula_share",
+       "value": 5.95,
+       "status": "ok",
+       "percentile": 0.59,
+       "note": ""
+      },
+      {
+       "name": "area_fill",
+       "value": 5.16,
+       "status": "ok",
+       "percentile": 0.52,
+       "note": ""
+      }
+     ],
+     "group_score": 0.438,
+     "available": true
+    }
+   ],
+   "summary": {
+    "available_share": 1.0
+   }
+  },
+  "text": {
+   "models": {
+    "t1": "T1 fine-tuned transformer (INT8)",
+    "t2": "T2 small embedding regressor"
+   },
+   "per_concept": [
+    {
+     "concept_id": "bits",
+     "t1": 0.039,
+     "t2": 0.009,
+     "agreement": "agree"
+    },
+    {
+     "concept_id": "modular",
+     "t1": 0.304,
+     "t2": 0.233,
+     "agreement": "agree"
+    },
+    {
+     "concept_id": "xor",
+     "t1": 0.077,
+     "t2": 0.0,
+     "agreement": "agree"
+    },
+    {
+     "concept_id": "hash",
+     "t1": 0.403,
+     "t2": 0.192,
+     "agreement": "disagree"
+    },
+    {
+     "concept_id": "preimage",
+     "t1": 0.633,
+     "t2": 0.607,
+     "agreement": "agree"
+    },
+    {
+     "concept_id": "collision",
+     "t1": 0.584,
+     "t2": 0.51,
+     "agreement": "agree"
+    },
+    {
+     "concept_id": "birthday",
+     "t1": 0.85,
+     "t2": 0.855,
+     "agreement": "agree"
+    },
+    {
+     "concept_id": "md",
+     "t1": 0.675,
+     "t2": 0.889,
+     "agreement": "disagree"
+    },
+    {
+     "concept_id": "sponge",
+     "t1": 0.809,
+     "t2": 1.0,
+     "agreement": "disagree"
+    },
+    {
+     "concept_id": "mac",
+     "t1": 0.385,
+     "t2": 0.282,
+     "agreement": "partial"
+    },
+    {
+     "concept_id": "hmac",
+     "t1": 0.47,
+     "t2": 0.592,
+     "agreement": "partial"
+    },
+    {
+     "concept_id": "block",
+     "t1": 0.385,
+     "t2": 0.222,
+     "agreement": "partial"
+    },
+    {
+     "concept_id": "perm",
+     "t1": 0.741,
+     "t2": 0.922,
+     "agreement": "disagree"
+    },
+    {
+     "concept_id": "feistel",
+     "t1": 0.737,
+     "t2": 0.63,
+     "agreement": "partial"
+    },
+    {
+     "concept_id": "sbox",
+     "t1": 0.466,
+     "t2": 0.65,
+     "agreement": "disagree"
+    },
+    {
+     "concept_id": "spn",
+     "t1": 0.737,
+     "t2": 0.825,
+     "agreement": "agree"
+    },
+    {
+     "concept_id": "keysched",
+     "t1": 0.421,
+     "t2": 0.227,
+     "agreement": "disagree"
+    },
+    {
+     "concept_id": "ecb",
+     "t1": 0.245,
+     "t2": 0.212,
+     "agreement": "agree"
+    },
+    {
+     "concept_id": "cbc",
+     "t1": 0.297,
+     "t2": 0.49,
+     "agreement": "disagree"
+    },
+    {
+     "concept_id": "ctr",
+     "t1": 0.492,
+     "t2": 0.625,
+     "agreement": "partial"
+    },
+    {
+     "concept_id": "iv",
+     "t1": 0.18,
+     "t2": 0.337,
+     "agreement": "partial"
+    },
+    {
+     "concept_id": "padding",
+     "t1": 0.116,
+     "t2": 0.276,
+     "agreement": "partial"
+    },
+    {
+     "concept_id": "aead",
+     "t1": 0.669,
+     "t2": 0.598,
+     "agreement": "agree"
+    },
+    {
+     "concept_id": "summary",
+     "t1": 0.363,
+     "t2": 0.55,
+     "agreement": "disagree"
+    }
+   ],
+   "per_slide": [
+    {
+     "index": 1,
+     "t1": 0.23,
+     "t2": 0.275
+    },
+    {
+     "index": 2,
+     "t1": 0.26,
+     "t2": 0.3
+    },
+    {
+     "index": 3,
+     "t1": 0.29,
+     "t2": 0.325
+    },
+    {
+     "index": 4,
+     "t1": 0.32,
+     "t2": 0.35
+    },
+    {
+     "index": 5,
+     "t1": 0.35,
+     "t2": 0.375
+    },
+    {
+     "index": 6,
+     "t1": 0.38,
+     "t2": 0.4
+    },
+    {
+     "index": 7,
+     "t1": 0.41,
+     "t2": 0.425
+    },
+    {
+     "index": 8,
+     "t1": 0.44,
+     "t2": 0.25
+    },
+    {
+     "index": 9,
+     "t1": 0.45,
+     "t2": 0.475
+    },
+    {
+     "index": 10,
+     "t1": 0.48,
+     "t2": 0.5
+    },
+    {
+     "index": 11,
+     "t1": 0.26,
+     "t2": 0.325
+    },
+    {
+     "index": 12,
+     "t1": 0.54,
+     "t2": 0.35
+    },
+    {
+     "index": 13,
+     "t1": 0.57,
+     "t2": 0.575
+    },
+    {
+     "index": 14,
+     "t1": 0.35,
+     "t2": 0.4
+    },
+    {
+     "index": 15,
+     "t1": 0.38,
+     "t2": 0.425
+    },
+    {
+     "index": 16,
+     "t1": 0.41,
+     "t2": 0.25
+    },
+    {
+     "index": 17,
+     "t1": 0.44,
+     "t2": 0.275
+    },
+    {
+     "index": 18,
+     "t1": 0.2,
+     "t2": 0.3
+    },
+    {
+     "index": 19,
+     "t1": 0.48,
+     "t2": 0.525
+    },
+    {
+     "index": 20,
+     "t1": 0.51,
+     "t2": 0.35
+    },
+    {
+     "index": 21,
+     "t1": 0.54,
+     "t2": 0.575
+    },
+    {
+     "index": 22,
+     "t1": 0.32,
+     "t2": 0.4
+    },
+    {
+     "index": 23,
+     "t1": 0.35,
+     "t2": 0.425
+    },
+    {
+     "index": 24,
+     "t1": 0.38,
+     "t2": 0.25
+    },
+    {
+     "index": 25,
+     "t1": 0.41,
+     "t2": 0.275
+    },
+    {
+     "index": 26,
+     "t1": 0.44,
+     "t2": 0.3
+    }
+   ]
+  },
+  "combine": {
+   "weights": {
+    "A": 0.15,
+    "B": 0.2,
+    "C": 0.2,
+    "D": 0.15,
+    "text": 0.3
+   },
+   "cutoffs": {
+    "low": 0.4,
+    "high": 0.7
+   },
+   "per_concept": [
+    {
+     "concept_id": "bits",
+     "contributions": {
+      "A": 0.0109,
+      "B": 0.04,
+      "C": 0.0216,
+      "D": 0.0223,
+      "text": 0.008
+     },
+     "score": 0.103,
+     "label": "Low",
+     "confidence": 0.99,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.97,
+      "evidence_slides": 1
+     }
+    },
+    {
+     "concept_id": "modular",
+     "contributions": {
+      "A": 0.0285,
+      "B": 0.05,
+      "C": 0.0226,
+      "D": 0.0564,
+      "text": 0.0826
+     },
+     "score": 0.24,
+     "label": "Low",
+     "confidence": 0.98,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.93,
+      "evidence_slides": 1
+     }
+    },
+    {
+     "concept_id": "xor",
+     "contributions": {
+      "A": 0.0128,
+      "B": 0.0624,
+      "C": 0.0046,
+      "D": 0.0093,
+      "text": 0.0139
+     },
+     "score": 0.103,
+     "label": "Low",
+     "confidence": 0.88,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.92,
+      "evidence_slides": 0.5
+     }
+    },
+    {
+     "concept_id": "hash",
+     "contributions": {
+      "A": 0.0565,
+      "B": 0.11,
+      "C": 0.0542,
+      "D": 0.0727,
+      "text": 0.0956
+     },
+     "score": 0.389,
+     "label": "Low",
+     "confidence": 0.94,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.79,
+      "evidence_slides": 1
+     }
+    },
+    {
+     "concept_id": "preimage",
+     "contributions": {
+      "A": 0.0903,
+      "B": 0.0742,
+      "C": 0.108,
+      "D": 0.0994,
+      "text": 0.1867
+     },
+     "score": 0.559,
+     "label": "Medium",
+     "confidence": 0.89,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.97,
+      "evidence_slides": 0.5
+     }
+    },
+    {
+     "concept_id": "collision",
+     "contributions": {
+      "A": 0.0975,
+      "B": 0.0992,
+      "C": 0.1482,
+      "D": 0.0931,
+      "text": 0.1664
+     },
+     "score": 0.604,
+     "label": "Medium",
+     "confidence": 0.98,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.93,
+      "evidence_slides": 1
+     }
+    },
+    {
+     "concept_id": "birthday",
+     "contributions": {
+      "A": 0.1107,
+      "B": 0.0926,
+      "C": 0.1424,
+      "D": 0.1168,
+      "text": 0.2556
+     },
+     "score": 0.718,
+     "label": "High",
+     "confidence": 1.0,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.99,
+      "evidence_slides": 1
+     }
+    },
+    {
+     "concept_id": "md",
+     "contributions": {
+      "A": 0.1127,
+      "B": 0.1176,
+      "C": 0.146,
+      "D": 0.1225,
+      "text": 0.2282
+     },
+     "score": 0.727,
+     "label": "High",
+     "confidence": 0.94,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.79,
+      "evidence_slides": 1
+     }
+    },
+    {
+     "concept_id": "sponge",
+     "contributions": {
+      "A": 0.1108,
+      "B": 0.1208,
+      "C": 0.1392,
+      "D": 0.1179,
+      "text": 0.2657
+     },
+     "score": 0.754,
+     "label": "High",
+     "confidence": 0.84,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.81,
+      "evidence_slides": 0.5
+     }
+    },
+    {
+     "concept_id": "mac",
+     "contributions": {
+      "A": 0.0794,
+      "B": 0.0992,
+      "C": 0.098,
+      "D": 0.0564,
+      "text": 0.1032
+     },
+     "score": 0.436,
+     "label": "Medium",
+     "confidence": 0.87,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.9,
+      "evidence_slides": 0.5
+     }
+    },
+    {
+     "concept_id": "hmac",
+     "contributions": {
+      "A": 0.0859,
+      "B": 0.125,
+      "C": 0.1206,
+      "D": 0.0766,
+      "text": 0.1556
+     },
+     "score": 0.564,
+     "label": "Medium",
+     "confidence": 0.86,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.88,
+      "evidence_slides": 0.5
+     }
+    },
+    {
+     "concept_id": "block",
+     "contributions": {
+      "A": 0.0664,
+      "B": 0.0934,
+      "C": 0.0942,
+      "D": 0.0684,
+      "text": 0.0959
+     },
+     "score": 0.418,
+     "label": "Medium",
+     "confidence": 0.95,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.84,
+      "evidence_slides": 1
+     }
+    },
+    {
+     "concept_id": "perm",
+     "contributions": {
+      "A": 0.1224,
+      "B": 0.0866,
+      "C": 0.1606,
+      "D": 0.1142,
+      "text": 0.2441
+     },
+     "score": 0.728,
+     "label": "High",
+     "confidence": 0.85,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.82,
+      "evidence_slides": 0.5
+     }
+    },
+    {
+     "concept_id": "feistel",
+     "contributions": {
+      "A": 0.1122,
+      "B": 0.1034,
+      "C": 0.1624,
+      "D": 0.0954,
+      "text": 0.2082
+     },
+     "score": 0.682,
+     "label": "Medium",
+     "confidence": 0.97,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.89,
+      "evidence_slides": 1
+     }
+    },
+    {
+     "concept_id": "sbox",
+     "contributions": {
+      "A": 0.0933,
+      "B": 0.105,
+      "C": 0.0882,
+      "D": 0.0953,
+      "text": 0.1619
+     },
+     "score": 0.544,
+     "label": "Medium",
+     "confidence": 0.94,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.82,
+      "evidence_slides": 1
+     }
+    },
+    {
+     "concept_id": "spn",
+     "contributions": {
+      "A": 0.0978,
+      "B": 0.1376,
+      "C": 0.1254,
+      "D": 0.114,
+      "text": 0.2317
+     },
+     "score": 0.707,
+     "label": "High",
+     "confidence": 0.97,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.91,
+      "evidence_slides": 1
+     }
+    },
+    {
+     "concept_id": "keysched",
+     "contributions": {
+      "A": 0.0591,
+      "B": 0.1166,
+      "C": 0.1372,
+      "D": 0.0856,
+      "text": 0.1031
+     },
+     "score": 0.502,
+     "label": "Medium",
+     "confidence": 0.84,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.81,
+      "evidence_slides": 0.5
+     }
+    },
+    {
+     "concept_id": "ecb",
+     "contributions": {
+      "A": 0.0234,
+      "B": 0.0866,
+      "C": 0.0342,
+      "D": 0.0445,
+      "text": 0.0696
+     },
+     "score": 0.258,
+     "label": "Low",
+     "confidence": 0.89,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.97,
+      "evidence_slides": 0.5
+     }
+    },
+    {
+     "concept_id": "cbc",
+     "contributions": {
+      "A": 0.0733,
+      "B": 0.1342,
+      "C": 0.0782,
+      "D": 0.069,
+      "text": 0.1124
+     },
+     "score": 0.467,
+     "label": "Medium",
+     "confidence": 0.94,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.81,
+      "evidence_slides": 1
+     }
+    },
+    {
+     "concept_id": "ctr",
+     "contributions": {
+      "A": 0.073,
+      "B": 0.1376,
+      "C": 0.1114,
+      "D": 0.048,
+      "text": 0.1636
+     },
+     "score": 0.534,
+     "label": "Medium",
+     "confidence": 0.86,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.87,
+      "evidence_slides": 0.5
+     }
+    },
+    {
+     "concept_id": "iv",
+     "contributions": {
+      "A": 0.0303,
+      "B": 0.0276,
+      "C": 0.057,
+      "D": 0.05,
+      "text": 0.0728
+     },
+     "score": 0.238,
+     "label": "Low",
+     "confidence": 0.85,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.84,
+      "evidence_slides": 0.5
+     }
+    },
+    {
+     "concept_id": "padding",
+     "contributions": {
+      "A": 0.0207,
+      "B": 0.1084,
+      "C": 0.0488,
+      "D": 0.0268,
+      "text": 0.054
+     },
+     "score": 0.259,
+     "label": "Low",
+     "confidence": 0.85,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.84,
+      "evidence_slides": 0.5
+     }
+    },
+    {
+     "concept_id": "aead",
+     "contributions": {
+      "A": 0.1162,
+      "B": 0.1458,
+      "C": 0.1486,
+      "D": 0.1212,
+      "text": 0.1922
+     },
+     "score": 0.724,
+     "label": "High",
+     "confidence": 0.88,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.93,
+      "evidence_slides": 0.5
+     }
+    },
+    {
+     "concept_id": "summary",
+     "contributions": {
+      "A": 0.0639,
+      "B": 0.1334,
+      "C": 0.076,
+      "D": 0.0657,
+      "text": 0.1313
+     },
+     "score": 0.47,
+     "label": "Medium",
+     "confidence": 0.84,
+     "confidence_parts": {
+      "feature_coverage": 1.0,
+      "text_model_agreement": 0.81,
+      "evidence_slides": 0.5
+     }
+    }
+   ]
+  }
+ },
+ "final": {
+  "hotspots": [
+   {
+    "rank": 1,
+    "kind": "concept",
+    "concept_id": "sponge",
+    "concept_label": "Sponge construction",
+    "slides": [
+     13
+    ],
+    "score": 0.754,
+    "label": "High",
+    "confidence": 0.84,
+    "reasons": [
+     "Technical wording is dense compared with the reference decks.",
+     "Sits deep in the prerequisite chain (5 levels).",
+     "Few definitions or worked examples on its slides.",
+     "Its slides are crowded.",
+     "The two text models disagree, so treat the score with care."
+    ]
+   },
+   {
+    "rank": 2,
+    "kind": "concept",
+    "concept_id": "perm",
+    "concept_label": "Pseudorandom permutation",
+    "slides": [
+     17
+    ],
+    "score": 0.728,
+    "label": "High",
+    "confidence": 0.85,
+    "reasons": [
+     "Technical wording is dense compared with the reference decks.",
+     "Few definitions or worked examples on its slides.",
+     "Its slides are crowded.",
+     "The two text models disagree, so treat the score with care."
+    ]
+   },
+   {
+    "rank": 3,
+    "kind": "concept",
+    "concept_id": "md",
+    "concept_label": "Merkle-Damgard construction",
+    "slides": [
+     11,
+     12
+    ],
+    "score": 0.727,
+    "label": "High",
+    "confidence": 0.94,
+    "reasons": [
+     "Technical wording is dense compared with the reference decks.",
+     "Sits deep in the prerequisite chain (4 levels).",
+     "Few definitions or worked examples on its slides.",
+     "Its slides are crowded.",
+     "The two text models disagree, so treat the score with care."
+    ]
+   },
+   {
+    "rank": 4,
+    "kind": "concept",
+    "concept_id": "aead",
+    "concept_label": "Authenticated encryption",
+    "slides": [
+     25
+    ],
+    "score": 0.724,
+    "label": "High",
+    "confidence": 0.88,
+    "reasons": [
+     "Technical wording is dense compared with the reference decks.",
+     "Sits deep in the prerequisite chain (6 levels).",
+     "Few definitions or worked examples on its slides.",
+     "Its slides are crowded."
+    ]
+   },
+   {
+    "rank": 5,
+    "kind": "concept",
+    "concept_id": "birthday",
+    "concept_label": "Birthday bound",
+    "slides": [
+     9,
+     10
+    ],
+    "score": 0.718,
+    "label": "High",
+    "confidence": 1.0,
+    "reasons": [
+     "Technical wording is dense compared with the reference decks.",
+     "Few definitions or worked examples on its slides.",
+     "Its slides are crowded."
+    ]
+   },
+   {
+    "rank": 6,
+    "kind": "concept",
+    "concept_id": "spn",
+    "concept_label": "Substitution-permutation network",
+    "slides": [
+     20,
+     21
+    ],
+    "score": 0.707,
+    "label": "High",
+    "confidence": 0.97,
+    "reasons": [
+     "Technical wording is dense compared with the reference decks.",
+     "Sits deep in the prerequisite chain (5 levels).",
+     "Few definitions or worked examples on its slides.",
+     "Its slides are crowded."
+    ]
+   }
+  ],
+  "slide_scores": [
+   {
+    "index": 1,
+    "score": 0.254,
+    "label": "Low",
+    "confidence": 0.3,
+    "concept_ids": [],
+    "reasons": [
+     "No concepts detected on this slide."
+    ]
+   },
+   {
+    "index": 2,
+    "score": 0.154,
+    "label": "Low",
+    "confidence": 0.99,
+    "concept_ids": [
+     "bits"
+    ],
+    "reasons": [
+     "Hardest concept here: Bit strings."
+    ]
+   },
+   {
+    "index": 3,
+    "score": 0.228,
+    "label": "Low",
+    "confidence": 0.98,
+    "concept_ids": [
+     "bits",
+     "modular"
+    ],
+    "reasons": [
+     "Hardest concept here: Modular arithmetic."
+    ]
+   },
+   {
+    "index": 4,
+    "score": 0.186,
+    "label": "Low",
+    "confidence": 0.93,
+    "concept_ids": [
+     "modular",
+     "xor"
+    ],
+    "reasons": [
+     "Hardest concept here: Modular arithmetic."
+    ]
+   },
+   {
+    "index": 5,
+    "score": 0.379,
+    "label": "Low",
+    "confidence": 0.94,
+    "concept_ids": [
+     "hash"
+    ],
+    "reasons": [
+     "Hardest concept here: Hash function."
+    ]
+   },
+   {
+    "index": 6,
+    "score": 0.397,
+    "label": "Low",
+    "confidence": 0.94,
+    "concept_ids": [
+     "hash"
+    ],
+    "reasons": [
+     "Hardest concept here: Hash function."
+    ]
+   },
+   {
+    "index": 7,
+    "score": 0.492,
+    "label": "Medium",
+    "confidence": 0.89,
+    "concept_ids": [
+     "preimage"
+    ],
+    "reasons": [
+     "Hardest concept here: Preimage resistance."
+    ]
+   },
+   {
+    "index": 8,
+    "score": 0.546,
+    "label": "Medium",
+    "confidence": 0.98,
+    "concept_ids": [
+     "collision"
+    ],
+    "reasons": [
+     "Hardest concept here: Collision resistance."
+    ]
+   },
+   {
+    "index": 9,
+    "score": 0.61,
+    "label": "Medium",
+    "confidence": 0.99,
+    "concept_ids": [
+     "collision",
+     "birthday"
+    ],
+    "reasons": [
+     "Hardest concept here: Birthday bound."
+    ]
+   },
+   {
+    "index": 10,
+    "score": 0.654,
+    "label": "Medium",
+    "confidence": 1.0,
+    "concept_ids": [
+     "birthday"
+    ],
+    "reasons": [
+     "Hardest concept here: Birthday bound."
+    ]
+   },
+   {
+    "index": 11,
+    "score": 0.64,
+    "label": "Medium",
+    "confidence": 0.94,
+    "concept_ids": [
+     "md"
+    ],
+    "reasons": [
+     "Hardest concept here: Merkle-Damgard construction."
+    ]
+   },
+   {
+    "index": 12,
+    "score": 0.659,
+    "label": "Medium",
+    "confidence": 0.94,
+    "concept_ids": [
+     "md"
+    ],
+    "reasons": [
+     "Hardest concept here: Merkle-Damgard construction."
+    ]
+   },
+   {
+    "index": 13,
+    "score": 0.679,
+    "label": "Medium",
+    "confidence": 0.84,
+    "concept_ids": [
+     "sponge"
+    ],
+    "reasons": [
+     "Hardest concept here: Sponge construction."
+    ]
+   },
+   {
+    "index": 14,
+    "score": 0.403,
+    "label": "Medium",
+    "confidence": 0.87,
+    "concept_ids": [
+     "mac"
+    ],
+    "reasons": [
+     "Hardest concept here: Message authentication code."
+    ]
+   },
+   {
+    "index": 15,
+    "score": 0.524,
+    "label": "Medium",
+    "confidence": 0.86,
+    "concept_ids": [
+     "hmac"
+    ],
+    "reasons": [
+     "Hardest concept here: HMAC."
+    ]
+   },
+   {
+    "index": 16,
+    "score": 0.425,
+    "label": "Medium",
+    "confidence": 0.95,
+    "concept_ids": [
+     "block"
+    ],
+    "reasons": [
+     "Hardest concept here: Block cipher."
+    ]
+   },
+   {
+    "index": 17,
+    "score": 0.508,
+    "label": "Medium",
+    "confidence": 0.9,
+    "concept_ids": [
+     "block",
+     "perm"
+    ],
+    "reasons": [
+     "Hardest concept here: Pseudorandom permutation."
+    ]
+   },
+   {
+    "index": 18,
+    "score": 0.614,
+    "label": "Medium",
+    "confidence": 0.97,
+    "concept_ids": [
+     "feistel"
+    ],
+    "reasons": [
+     "Hardest concept here: Feistel network."
+    ]
+   },
+   {
+    "index": 19,
+    "score": 0.617,
+    "label": "Medium",
+    "confidence": 0.95,
+    "concept_ids": [
+     "feistel",
+     "sbox"
+    ],
+    "reasons": [
+     "Hardest concept here: Feistel network.",
+     "Text-heavy slide (213 words)."
+    ]
+   },
+   {
+    "index": 20,
+    "score": 0.545,
+    "label": "Medium",
+    "confidence": 0.95,
+    "concept_ids": [
+     "sbox",
+     "spn"
+    ],
+    "reasons": [
+     "Hardest concept here: Substitution-permutation network."
+    ]
+   },
+   {
+    "index": 21,
+    "score": 0.587,
+    "label": "Medium",
+    "confidence": 0.91,
+    "concept_ids": [
+     "spn",
+     "keysched"
+    ],
+    "reasons": [
+     "Hardest concept here: Substitution-permutation network.",
+     "Text-heavy slide (167 words)."
+    ]
+   },
+   {
+    "index": 22,
+    "score": 0.372,
+    "label": "Low",
+    "confidence": 0.92,
+    "concept_ids": [
+     "ecb",
+     "cbc"
+    ],
+    "reasons": [
+     "Hardest concept here: CBC mode."
+    ]
+   },
+   {
+    "index": 23,
+    "score": 0.371,
+    "label": "Low",
+    "confidence": 0.88,
+    "concept_ids": [
+     "cbc",
+     "ctr",
+     "iv"
+    ],
+    "reasons": [
+     "Hardest concept here: Counter mode."
+    ]
+   },
+   {
+    "index": 24,
+    "score": 0.266,
+    "label": "Low",
+    "confidence": 0.85,
+    "concept_ids": [
+     "padding"
+    ],
+    "reasons": [
+     "Hardest concept here: Padding."
+    ]
+   },
+   {
+    "index": 25,
+    "score": 0.657,
+    "label": "Medium",
+    "confidence": 0.88,
+    "concept_ids": [
+     "aead"
+    ],
+    "reasons": [
+     "Hardest concept here: Authenticated encryption."
+    ]
+   },
+   {
+    "index": 26,
+    "score": 0.412,
+    "label": "Medium",
+    "confidence": 0.84,
+    "concept_ids": [
+     "summary"
+    ],
+    "reasons": [
+     "Hardest concept here: Design trade-offs."
+    ]
+   }
+  ],
+  "concepts": [
+   {
+    "concept_id": "bits",
+    "concept_label": "Bit strings",
+    "slide_indexes": [
+     2,
+     3
+    ],
+    "score": 0.103,
+    "label": "Low",
+    "confidence": 0.99,
+    "reasons": [
+     "No single layer stands out; the score is a blend."
+    ],
+    "signals": {
+     "A": 0.073,
+     "B": 0.2,
+     "C": 0.108,
+     "D": 0.149
+    }
+   },
+   {
+    "concept_id": "modular",
+    "concept_label": "Modular arithmetic",
+    "slide_indexes": [
+     3,
+     4
+    ],
+    "score": 0.24,
+    "label": "Low",
+    "confidence": 0.98,
+    "reasons": [
+     "No single layer stands out; the score is a blend."
+    ],
+    "signals": {
+     "A": 0.19,
+     "B": 0.25,
+     "C": 0.113,
+     "D": 0.376
+    }
+   },
+   {
+    "concept_id": "xor",
+    "concept_label": "XOR operation",
+    "slide_indexes": [
+     4
+    ],
+    "score": 0.103,
+    "label": "Low",
+    "confidence": 0.88,
+    "reasons": [
+     "No single layer stands out; the score is a blend."
+    ],
+    "signals": {
+     "A": 0.085,
+     "B": 0.312,
+     "C": 0.023,
+     "D": 0.062
+    }
+   },
+   {
+    "concept_id": "hash",
+    "concept_label": "Hash function",
+    "slide_indexes": [
+     5,
+     6
+    ],
+    "score": 0.389,
+    "label": "Low",
+    "confidence": 0.94,
+    "reasons": [
+     "Sits deep in the prerequisite chain (2 levels).",
+     "The two text models disagree, so treat the score with care."
+    ],
+    "signals": {
+     "A": 0.377,
+     "B": 0.55,
+     "C": 0.271,
+     "D": 0.485
+    }
+   },
+   {
+    "concept_id": "preimage",
+    "concept_label": "Preimage resistance",
+    "slide_indexes": [
+     7
+    ],
+    "score": 0.559,
+    "label": "Medium",
+    "confidence": 0.89,
+    "reasons": [
+     "Technical wording is dense compared with the reference decks.",
+     "Few definitions or worked examples on its slides.",
+     "Its slides are crowded."
+    ],
+    "signals": {
+     "A": 0.602,
+     "B": 0.371,
+     "C": 0.54,
+     "D": 0.663
+    }
+   },
+   {
+    "concept_id": "collision",
+    "concept_label": "Collision resistance",
+    "slide_indexes": [
+     8,
+     9
+    ],
+    "score": 0.604,
+    "label": "Medium",
+    "confidence": 0.98,
+    "reasons": [
+     "Technical wording is dense compared with the reference decks.",
+     "Few definitions or worked examples on its slides.",
+     "Its slides are crowded."
+    ],
+    "signals": {
+     "A": 0.65,
+     "B": 0.496,
+     "C": 0.741,
+     "D": 0.621
+    }
+   },
+   {
+    "concept_id": "birthday",
+    "concept_label": "Birthday bound",
+    "slide_indexes": [
+     9,
+     10
+    ],
+    "score": 0.718,
+    "label": "High",
+    "confidence": 1.0,
+    "reasons": [
+     "Technical wording is dense compared with the reference decks.",
+     "Few definitions or worked examples on its slides.",
+     "Its slides are crowded."
+    ],
+    "signals": {
+     "A": 0.738,
+     "B": 0.463,
+     "C": 0.712,
+     "D": 0.779
+    }
+   },
+   {
+    "concept_id": "md",
+    "concept_label": "Merkle-Damgard construction",
+    "slide_indexes": [
+     11,
+     12
+    ],
+    "score": 0.727,
+    "label": "High",
+    "confidence": 0.94,
+    "reasons": [
+     "Technical wording is dense compared with the reference decks.",
+     "Sits deep in the prerequisite chain (4 levels).",
+     "Few definitions or worked examples on its slides.",
+     "Its slides are crowded.",
+     "The two text models disagree, so treat the score with care."
+    ],
+    "signals": {
+     "A": 0.751,
+     "B": 0.588,
+     "C": 0.73,
+     "D": 0.817
+    }
+   },
+   {
+    "concept_id": "sponge",
+    "concept_label": "Sponge construction",
+    "slide_indexes": [
+     13
+    ],
+    "score": 0.754,
+    "label": "High",
+    "confidence": 0.84,
+    "reasons": [
+     "Technical wording is dense compared with the reference decks.",
+     "Sits deep in the prerequisite chain (5 levels).",
+     "Few definitions or worked examples on its slides.",
+     "Its slides are crowded.",
+     "The two text models disagree, so treat the score with care."
+    ],
+    "signals": {
+     "A": 0.739,
+     "B": 0.604,
+     "C": 0.696,
+     "D": 0.786
+    }
+   },
+   {
+    "concept_id": "mac",
+    "concept_label": "Message authentication code",
+    "slide_indexes": [
+     14
+    ],
+    "score": 0.436,
+    "label": "Medium",
+    "confidence": 0.87,
+    "reasons": [
+     "No single layer stands out; the score is a blend."
+    ],
+    "signals": {
+     "A": 0.529,
+     "B": 0.496,
+     "C": 0.49,
+     "D": 0.376
+    }
+   },
+   {
+    "concept_id": "hmac",
+    "concept_label": "HMAC",
+    "slide_indexes": [
+     15
+    ],
+    "score": 0.564,
+    "label": "Medium",
+    "confidence": 0.86,
+    "reasons": [
+     "Technical wording is dense compared with the reference decks.",
+     "Sits deep in the prerequisite chain (5 levels).",
+     "Few definitions or worked examples on its slides."
+    ],
+    "signals": {
+     "A": 0.573,
+     "B": 0.625,
+     "C": 0.603,
+     "D": 0.511
+    }
+   },
+   {
+    "concept_id": "block",
+    "concept_label": "Block cipher",
+    "slide_indexes": [
+     16,
+     17
+    ],
+    "score": 0.418,
+    "label": "Medium",
+    "confidence": 0.95,
+    "reasons": [
+     "No single layer stands out; the score is a blend."
+    ],
+    "signals": {
+     "A": 0.443,
+     "B": 0.467,
+     "C": 0.471,
+     "D": 0.456
+    }
+   },
+   {
+    "concept_id": "perm",
+    "concept_label": "Pseudorandom permutation",
+    "slide_indexes": [
+     17
+    ],
+    "score": 0.728,
+    "label": "High",
+    "confidence": 0.85,
+    "reasons": [
+     "Technical wording is dense compared with the reference decks.",
+     "Few definitions or worked examples on its slides.",
+     "Its slides are crowded.",
+     "The two text models disagree, so treat the score with care."
+    ],
+    "signals": {
+     "A": 0.816,
+     "B": 0.433,
+     "C": 0.803,
+     "D": 0.761
+    }
+   },
+   {
+    "concept_id": "feistel",
+    "concept_label": "Feistel network",
+    "slide_indexes": [
+     18,
+     19
+    ],
+    "score": 0.682,
+    "label": "Medium",
+    "confidence": 0.97,
+    "reasons": [
+     "Technical wording is dense compared with the reference decks.",
+     "Sits deep in the prerequisite chain (3 levels).",
+     "Few definitions or worked examples on its slides.",
+     "Its slides are crowded."
+    ],
+    "signals": {
+     "A": 0.748,
+     "B": 0.517,
+     "C": 0.812,
+     "D": 0.636
+    }
+   },
+   {
+    "concept_id": "sbox",
+    "concept_label": "Substitution box",
+    "slide_indexes": [
+     19,
+     20
+    ],
+    "score": 0.544,
+    "label": "Medium",
+    "confidence": 0.94,
+    "reasons": [
+     "Technical wording is dense compared with the reference decks.",
+     "Sits deep in the prerequisite chain (4 levels).",
+     "Its slides are crowded.",
+     "The two text models disagree, so treat the score with care."
+    ],
+    "signals": {
+     "A": 0.622,
+     "B": 0.525,
+     "C": 0.441,
+     "D": 0.635
+    }
+   },
+   {
+    "concept_id": "spn",
+    "concept_label": "Substitution-permutation network",
+    "slide_indexes": [
+     20,
+     21
+    ],
+    "score": 0.707,
+    "label": "High",
+    "confidence": 0.97,
+    "reasons": [
+     "Technical wording is dense compared with the reference decks.",
+     "Sits deep in the prerequisite chain (5 levels).",
+     "Few definitions or worked examples on its slides.",
+     "Its slides are crowded."
+    ],
+    "signals": {
+     "A": 0.652,
+     "B": 0.688,
+     "C": 0.627,
+     "D": 0.76
+    }
+   },
+   {
+    "concept_id": "keysched",
+    "concept_label": "Key schedule",
+    "slide_indexes": [
+     21
+    ],
+    "score": 0.502,
+    "label": "Medium",
+    "confidence": 0.84,
+    "reasons": [
+     "Sits deep in the prerequisite chain (6 levels).",
+     "Few definitions or worked examples on its slides.",
+     "Its slides are crowded.",
+     "The two text models disagree, so treat the score with care."
+    ],
+    "signals": {
+     "A": 0.394,
+     "B": 0.583,
+     "C": 0.686,
+     "D": 0.571
+    }
+   },
+   {
+    "concept_id": "ecb",
+    "concept_label": "ECB mode",
+    "slide_indexes": [
+     22
+    ],
+    "score": 0.258,
+    "label": "Low",
+    "confidence": 0.89,
+    "reasons": [
+     "No single layer stands out; the score is a blend."
+    ],
+    "signals": {
+     "A": 0.156,
+     "B": 0.433,
+     "C": 0.171,
+     "D": 0.297
+    }
+   },
+   {
+    "concept_id": "cbc",
+    "concept_label": "CBC mode",
+    "slide_indexes": [
+     22,
+     23
+    ],
+    "score": 0.467,
+    "label": "Medium",
+    "confidence": 0.94,
+    "reasons": [
+     "Sits deep in the prerequisite chain (4 levels).",
+     "The two text models disagree, so treat the score with care."
+    ],
+    "signals": {
+     "A": 0.489,
+     "B": 0.671,
+     "C": 0.391,
+     "D": 0.46
+    }
+   },
+   {
+    "concept_id": "ctr",
+    "concept_label": "Counter mode",
+    "slide_indexes": [
+     23
+    ],
+    "score": 0.534,
+    "label": "Medium",
+    "confidence": 0.86,
+    "reasons": [
+     "Sits deep in the prerequisite chain (5 levels).",
+     "Few definitions or worked examples on its slides."
+    ],
+    "signals": {
+     "A": 0.487,
+     "B": 0.688,
+     "C": 0.557,
+     "D": 0.32
+    }
+   },
+   {
+    "concept_id": "iv",
+    "concept_label": "Initialisation vector",
+    "slide_indexes": [
+     23
+    ],
+    "score": 0.238,
+    "label": "Low",
+    "confidence": 0.85,
+    "reasons": [
+     "No single layer stands out; the score is a blend."
+    ],
+    "signals": {
+     "A": 0.202,
+     "B": 0.138,
+     "C": 0.285,
+     "D": 0.333
+    }
+   },
+   {
+    "concept_id": "padding",
+    "concept_label": "Padding",
+    "slide_indexes": [
+     24
+    ],
+    "score": 0.259,
+    "label": "Low",
+    "confidence": 0.85,
+    "reasons": [
+     "Sits deep in the prerequisite chain (5 levels)."
+    ],
+    "signals": {
+     "A": 0.138,
+     "B": 0.542,
+     "C": 0.244,
+     "D": 0.179
+    }
+   },
+   {
+    "concept_id": "aead",
+    "concept_label": "Authenticated encryption",
+    "slide_indexes": [
+     25
+    ],
+    "score": 0.724,
+    "label": "High",
+    "confidence": 0.88,
+    "reasons": [
+     "Technical wording is dense compared with the reference decks.",
+     "Sits deep in the prerequisite chain (6 levels).",
+     "Few definitions or worked examples on its slides.",
+     "Its slides are crowded."
+    ],
+    "signals": {
+     "A": 0.775,
+     "B": 0.729,
+     "C": 0.743,
+     "D": 0.808
+    }
+   },
+   {
+    "concept_id": "summary",
+    "concept_label": "Design trade-offs",
+    "slide_indexes": [
+     26
+    ],
+    "score": 0.47,
+    "label": "Medium",
+    "confidence": 0.84,
+    "reasons": [
+     "Sits deep in the prerequisite chain (7 levels).",
+     "The two text models disagree, so treat the score with care."
+    ],
+    "signals": {
+     "A": 0.426,
+     "B": 0.667,
+     "C": 0.38,
+     "D": 0.438
+    }
+   }
+  ]
+ },
+ "warnings": [
+  "Sample data: invented lecture content for demonstration only."
+ ],
+ "disclaimer": "Scores are percentile-like and relative to a small provisional reference set. Confidence describes evidence quality, not a probability."
+}</script>
+<script>
+(function(){
+"use strict";
+var $=function(i){return document.getElementById(i)};
+var D=null, sel=null, panelId="result", overrides={}, filt={label:"",minc:0,q:"",sortKey:"score",desc:true}, heatSel=null;
+try{var o=localStorage.getItem("edusync_overrides");if(o)overrides=JSON.parse(o)||{}}catch(e){overrides={}}
+function saveOv(){try{localStorage.setItem("edusync_overrides",JSON.stringify(overrides))}catch(e){}}
+function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
+function add(p){for(var i=1;i<arguments.length;i++)if(arguments[i]!=null)p.appendChild(arguments[i]);return p}
+function isn(x){return typeof x==="number"&&isFinite(x)}
+function f2(x){return isn(x)?x.toFixed(2):"-"}
+function arr(x){return Array.isArray(x)?x:[]}
+function obj(x){return x&&typeof x==="object"?x:{}}
+function lbl(s,c){if(c)return c;if(!isn(s))return "";var k=obj(obj(obj(D).layers).combine).cutoffs||{};var lo=isn(k.low)?k.low:.4,hi=isn(k.high)?k.high:.7;return s<lo?"Low":(s<hi?"Medium":"High")}
+function badge(l){var b=el("span","badge b-"+(l||""),l||"-");return b}
+function bar(v,cls){var b=el("div","bar "+(cls||""));var i=el("i");i.style.width=(isn(v)?Math.round(Math.max(0,Math.min(1,v))*100):0)+"%";b.appendChild(i);b.title=f2(v);return b}
+function meter(v){var m=el("span","meter");var i=el("i");i.style.width=(isn(v)?Math.round(v*100):0)+"%";m.appendChild(i);m.title="Confidence "+f2(v)+" - evidence quality, not a probability";return m}
+function chips(list,pre){var s=el("span");arr(list).forEach(function(x){s.appendChild(el("span","chip",(pre||"")+x))});return s}
+function tip(e,t){var d=$("tip");d.textContent=t;d.style.display="block";var x=e.clientX+12,y=e.clientY+12;d.style.left=Math.min(x,innerWidth-270)+"px";d.style.top=y+"px"}
+function untip(){$("tip").style.display="none"}
+function show(id,on){$(id).hidden=!on}
+
+/* ---------- data helpers ---------- */
+var M={};
+function index(){
+  M={c:{},comb:{},L:{A:{},B:{},C:{},D:{}},t:{},fin:{},slides:{},ss:{}};
+  var L=obj(D.layers);
+  arr(obj(L.parse).concepts).forEach(function(c){M.c[c.id]=c});
+  arr(obj(L.parse).slides).forEach(function(s){M.slides[s.index]=s});
+  arr(obj(L.combine).per_concept).forEach(function(c){M.comb[c.concept_id]=c});
+  ["A","B","C","D"].forEach(function(g){arr(obj(L[g]).per_concept).forEach(function(c){M.L[g][c.concept_id]=c})});
+  arr(obj(L.text).per_concept).forEach(function(c){M.t[c.concept_id]=c});
+  arr(obj(D.final).concepts).forEach(function(c){M.fin[c.concept_id||c.id]=c});
+  arr(obj(D.final).slide_scores).forEach(function(c){M.ss[c.index]=c});
+}
+function cScore(id){var c=M.comb[id];if(c&&isn(c.score))return c.score;var f=M.fin[id];return f&&isn(f.score)?f.score:null}
+function cls(r){if(!r)return "";var o=["Low","Medium","High"];return o.indexOf(r.label)>=0?r.label:(o.indexOf(r.label_class)>=0?r.label_class:(o.indexOf(r.difficulty)>=0?r.difficulty:""))}
+function cLabel(id){return cls(M.comb[id])||cls(M.fin[id])||lbl(cScore(id))}
+function cConf(id){var c=M.comb[id];if(c&&isn(c.confidence))return c.confidence;var f=M.fin[id];return f&&isn(f.confidence)?f.confidence:null}
+function cName(id){var c=M.c[id];if(c&&c.label)return c.label;var f=M.fin[id];if(f&&f.concept_label)return f.concept_label;var o=arr(obj(D.final).hotspots);for(var i=0;i<o.length;i++)if(o[i].concept_id===id&&o[i].concept_label)return o[i].concept_label;return id}
+function cSlides(id){var c=M.c[id];return c?arr(c.slide_indexes):[]}
+function eff(id){return overrides[id]||cLabel(id)}
+function avgGroup(g){var v=[];arr(obj(obj(D.layers)[g]).per_concept).forEach(function(c){if(isn(c.group_score))v.push(c.group_score)});return v.length?v.reduce(function(a,b){return a+b},0)/v.length:null}
+
+/* ---------- graph depth ---------- */
+function graph(){
+  var G=obj(obj(D.meta).graph),nodes=arr(G.nodes),edges=arr(G.edges),ids={};
+  nodes.forEach(function(n){ids[n.id]=1});
+  edges=edges.filter(function(e){return e&&ids[e.source]&&ids[e.target]&&e.source!==e.target});
+  var pre={},dep={};nodes.forEach(function(n){pre[n.id]=[];dep[n.id]=[]});
+  edges.forEach(function(e){pre[e.target].push(e.source);dep[e.source].push(e.target)});
+  var depth={};
+  function d(n,seen){if(depth[n]!=null)return depth[n];if(seen[n])return 0;seen[n]=1;var m=0;pre[n].forEach(function(p){m=Math.max(m,1+d(p,seen))});delete seen[n];depth[n]=m;return m}
+  nodes.forEach(function(n){d(n.id,{})});
+  return {nodes:nodes,edges:edges,pre:pre,dep:dep,depth:depth};
+}
+function ancestors(g,id){var out={},st=[id];while(st.length){var n=st.pop();(g.pre[n]||[]).forEach(function(p){if(!out[p]){out[p]=1;st.push(p)}})}return out}
+
+/* ---------- pipeline strip ---------- */
+var STEPS=[["parse","Parse"],["A","A Language"],["B","B Prerequisites"],["C","C Explanation"],["D","D Density"],["text","Text models"],["combine","Combine"],["result","Result"],["quality","Model quality"]];
+function stepInfo(id){
+  var m=obj(D.meta),L=obj(D.layers);
+  if(id==="parse")return [m.slide_count+" slides, "+m.concept_count+" concepts",null];
+  if(id==="A"||id==="B"||id==="C"||id==="D"){var s=obj(obj(L[id]).summary).available_share;return [isn(s)?Math.round(s*100)+"% of concepts measurable":"no data",avgGroup(id)]}
+  if(id==="text"){var v=[];arr(obj(L.text).per_concept).forEach(function(c){if(isn(c.t1))v.push(c.t1)});var ag=arr(obj(L.text).per_concept).filter(function(c){return c.agreement==="agree"}).length;return [ag+" of "+arr(obj(L.text).per_concept).length+" agree",v.length?v.reduce(function(a,b){return a+b},0)/v.length:null]}
+  if(id==="combine"){var w=obj(obj(L.combine).weights);return [Object.keys(w).length+" weighted layers",null]}
+  if(id==="result"){var h=arr(obj(D.final).hotspots).length;return [h+" hotspots ranked",null]}
+  return ["Evaluation summary",null];
+}
+function buildStrip(){
+  var s=$("strip");s.textContent="";
+  STEPS.forEach(function(st){
+    var b=el("button","step");b.type="button";b.setAttribute("role","tab");b.setAttribute("aria-selected",st[0]===panelId?"true":"false");
+    var inf=stepInfo(st[0]);add(b,el("b",null,st[1]),el("small",null,inf[0]));
+    var mi=el("div","mini");var i=el("i");i.style.width=(isn(inf[1])?Math.round(inf[1]*100):0)+"%";mi.appendChild(i);if(isn(inf[1]))b.appendChild(mi);
+    b.addEventListener("click",function(){panelId=st[0];buildStrip();renderPanel()});
+    s.appendChild(b);
+  });
+}
+function renderPanel(){
+  var p=$("panel");p.textContent="";
+  var f={parse:pParse,A:function(p){pGroup(p,"A")},B:pGraph,C:function(p){pGroup(p,"C")},D:function(p){pGroup(p,"D")},text:pText,combine:pCombine,result:pResult,quality:pQuality}[panelId];
+  try{f(p)}catch(e){p.appendChild(el("div","err","This panel could not be drawn: "+e.message))}
+}
+
+/* ---------- Parse ---------- */
+function pParse(p){
+  add(p,el("h2",null,"Parse"),el("p","muted","What the system read from the file: the slides and the concepts it found, with the slides each concept appears on."));
+  var tw=el("div","tw"),t=el("table"),h=el("tr");["Slide","Title","Words"].forEach(function(x){h.appendChild(el("th",null,x))});t.appendChild(h);
+  arr(obj(D.layers.parse).slides).forEach(function(s){var r=el("tr");add(r,el("td",null,s.index),el("td",null,s.title||"-"),el("td",null,isn(s.words)?s.words:"-"));t.appendChild(r)});
+  tw.appendChild(t);p.appendChild(tw);
+  p.appendChild(el("h3",null,"Concepts"));
+  var ul=el("div");arr(obj(D.layers.parse).concepts).forEach(function(c){var r=el("div");r.style.margin="4px 0";add(r,el("b",null,c.label||c.id+" "),chips(arr(c.slide_indexes),"slide "));ul.appendChild(r)});p.appendChild(ul);
+}
+
+/* ---------- A / C / D ---------- */
+var MEANS={A:"Language: how rare, long and technical the wording on a concept's slides is. Higher means harder wording.",C:"Explanation: whether a concept comes with a definition, an example or visual support. Higher means less support.",D:"Density: how crowded the slides carrying the concept are. Higher means denser."};
+function pGroup(p,g){
+  var Ly=obj(D.layers[g]);
+  add(p,el("h2",null,g+" "+(Ly.name||STEPS.filter(function(s){return s[0]===g})[0][1].slice(2))),el("p","muted",(MEANS[g]||"")+(Ly.direction?" ("+Ly.direction+")":"")));
+  var f=el("div","filters"),q=el("input");q.type="search";q.placeholder="Filter concepts";q.setAttribute("aria-label","Filter concepts");
+  var so=el("select");so.setAttribute("aria-label","Sort");[["desc","Highest score first"],["asc","Lowest score first"],["name","Name"]].forEach(function(o){var e=el("option",null,o[1]);e.value=o[0];so.appendChild(e)});
+  add(f,q,so);p.appendChild(f);
+  var tw=el("div","tw");p.appendChild(tw);
+  function draw(){
+    tw.textContent="";var rows=arr(Ly.per_concept).filter(function(c){return !q.value||cName(c.concept_id).toLowerCase().indexOf(q.value.toLowerCase())>=0});
+    rows.sort(function(a,b){if(so.value==="name")return cName(a.concept_id).localeCompare(cName(b.concept_id));var x=isn(a.group_score)?a.group_score:-1,y=isn(b.group_score)?b.group_score:-1;return so.value==="asc"?x-y:y-x});
+    var t=el("table"),h=el("tr");["Concept","Score","Features (value / percentile)"].forEach(function(x){h.appendChild(el("th",null,x))});t.appendChild(h);
+    rows.forEach(function(c){
+      var r=el("tr"),td=el("td");td.style.minWidth="130px";td.textContent=cName(c.concept_id);
+      var sc=el("td");sc.style.minWidth="120px";add(sc,bar(c.group_score,lbl(c.group_score)),el("span","muted",isn(c.group_score)?f2(c.group_score):"not measurable"));
+      var fe=el("td");arr(c.features).forEach(function(x){
+        var ok=x.status==="ok"&&isn(x.value);var ch=el("span","chip"+(ok?"":" off"),(x.name||"").replace(/_/g," ")+": "+(ok?f2(x.value)+(isn(x.percentile)?" / p"+Math.round(x.percentile*100):""):"-"));
+        ch.title=x.note||(ok?"":"Unavailable");fe.appendChild(ch);
+        if(!ok&&x.note)ch.addEventListener("mousemove",function(e){tip(e,x.note)}),ch.addEventListener("mouseleave",untip)});
+      add(r,td,sc,fe);t.appendChild(r)});
+    tw.appendChild(t);
+  }
+  q.addEventListener("input",draw);so.addEventListener("change",draw);draw();
+}
+
+/* ---------- B graph ---------- */
+function pGraph(p){
+  add(p,el("h2",null,"B Prerequisites"),el("p","muted","Which concepts must be understood first. Arrows point from a prerequisite to the concept that builds on it; colour is the final difficulty label. Click a concept to highlight everything it depends on."));
+  var G=graph(),nodes=G.nodes;
+  if(!nodes.length){p.appendChild(el("p","muted","No graph was supplied for this lecture."));return}
+  var lg=el("div","legend");[["Low","#1e9e5a"],["Medium","#d98a00"],["High","#d6334a"]].forEach(function(x){var s=el("span");var d=el("span","dot");d.style.background=x[1];add(s,d,document.createTextNode(x[0]));lg.appendChild(s)});p.appendChild(lg);
+  var info=el("p","muted","");p.appendChild(info);
+  if(nodes.length>60){var ul=el("ul");nodes.forEach(function(n){var li=el("li",null,(n.label||n.id)+" - depth "+G.depth[n.id]+", needs: "+(G.pre[n.id].map(cName).join(", ")||"nothing"));ul.appendChild(li)});p.appendChild(ul);return}
+  var layers={},maxD=0;nodes.forEach(function(n){var d=G.depth[n.id];(layers[d]=layers[d]||[]).push(n);maxD=Math.max(maxD,d)});
+  var colW=170,rowH=70,maxN=0;Object.keys(layers).forEach(function(k){maxN=Math.max(maxN,layers[k].length)});
+  var W=(maxD+1)*colW+40,H=maxN*rowH+30,pos={};
+  Object.keys(layers).forEach(function(k){var l=layers[k],off=(maxN-l.length)*rowH/2;l.forEach(function(n,i){pos[n.id]={x:30+k*colW+60,y:25+off+i*rowH}})});
+  var NS="http://www.w3.org/2000/svg",svg=document.createElementNS(NS,"svg");svg.setAttribute("width",W);svg.setAttribute("height",H);svg.setAttribute("viewBox","0 0 "+W+" "+H);svg.setAttribute("role","img");svg.setAttribute("aria-label","Prerequisite graph");
+  var defs=document.createElementNS(NS,"defs"),mk=document.createElementNS(NS,"marker");mk.setAttribute("id","arr");mk.setAttribute("viewBox","0 0 10 10");mk.setAttribute("refX","10");mk.setAttribute("refY","5");mk.setAttribute("markerWidth","7");mk.setAttribute("markerHeight","7");mk.setAttribute("orient","auto");
+  var ap=document.createElementNS(NS,"path");ap.setAttribute("d","M0,0 L10,5 L0,10 z");ap.setAttribute("fill","#7a8da3");mk.appendChild(ap);defs.appendChild(mk);svg.appendChild(defs);
+  var eds=[];G.edges.forEach(function(e){var a=pos[e.source],b=pos[e.target];var ln=document.createElementNS(NS,"path");var x1=a.x+20,x2=b.x-22,mx=(x1+x2)/2;ln.setAttribute("d","M"+x1+","+a.y+" C"+mx+","+a.y+" "+mx+","+b.y+" "+x2+","+b.y);ln.setAttribute("fill","none");ln.setAttribute("stroke","#aebccb");ln.setAttribute("stroke-width","1.5");ln.setAttribute("marker-end","url(#arr)");svg.appendChild(ln);eds.push([e,ln])});
+  var COL={Low:"#1e9e5a",Medium:"#d98a00",High:"#d6334a"},gs=[];
+  nodes.forEach(function(n){
+    var g=document.createElementNS(NS,"g");g.setAttribute("class","node");g.setAttribute("tabindex","0");g.setAttribute("role","button");
+    var l=eff(n.id),sc=cScore(n.id);g.setAttribute("aria-label",cName(n.id)+", "+(l||"no label")+", depth "+G.depth[n.id]);
+    var c=document.createElementNS(NS,"circle");c.setAttribute("cx",pos[n.id].x);c.setAttribute("cy",pos[n.id].y);c.setAttribute("r",18);c.setAttribute("fill",COL[l]||"#8a99ab");c.setAttribute("stroke","#fff");c.setAttribute("stroke-width","2");
+    var t=document.createElementNS(NS,"text");t.setAttribute("x",pos[n.id].x);t.setAttribute("y",pos[n.id].y+31);t.setAttribute("text-anchor","middle");t.setAttribute("font-size","10.5");t.setAttribute("fill","#1c2b3a");t.setAttribute("stroke","#fff");t.setAttribute("stroke-width","3");t.setAttribute("paint-order","stroke");(function(){var w=cName(n.id).split(/\s+/),ln=["",""],k=0;w.forEach(function(x){if(k===0&&ln[0].length+x.length>19&&ln[0])k=1;ln[k]=(ln[k]?ln[k]+" ":"")+x});if(ln[1].length>22)ln[1]=ln[1].slice(0,21)+"...";ln.forEach(function(s,i){if(!s)return;var ts=document.createElementNS(NS,"tspan");ts.setAttribute("x",pos[n.id].x);ts.setAttribute("dy",i?"11":"0");ts.textContent=s;t.appendChild(ts)})})();
+    var tt=document.createElementNS(NS,"title");tt.textContent=cName(n.id);g.appendChild(tt);
+    g.appendChild(c);g.appendChild(t);svg.appendChild(g);gs.push([n,g,c]);
+    var msg=cName(n.id)+" | depth "+G.depth[n.id]+" | "+G.dep[n.id].length+" dependents | score "+f2(sc);
+    g.addEventListener("mousemove",function(e){tip(e,msg)});g.addEventListener("mouseleave",untip);
+    function pick(){sel=sel===n.id?null:n.id;hl()}
+    g.addEventListener("click",pick);g.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();pick()}});
+  });
+  function hl(){
+    var an=sel?ancestors(G,sel):{};
+    gs.forEach(function(x){var on=!sel||x[0].id===sel||an[x[0].id];x[2].setAttribute("opacity",on?1:.25);x[2].setAttribute("stroke",x[0].id===sel?"#06172A":"#fff");x[2].setAttribute("stroke-width",x[0].id===sel?4:2)});
+    eds.forEach(function(x){var on=!sel||((an[x[0].source]||x[0].source===sel)&&(an[x[0].target]||x[0].target===sel));x[1].setAttribute("opacity",on?1:.12);x[1].setAttribute("stroke",sel&&on?"#0F70D7":"#aebccb")});
+    info.textContent=sel?cName(sel)+" needs "+Object.keys(an).length+" earlier concept(s): "+Object.keys(an).map(cName).join(", ")+".":"Click a concept to highlight its prerequisites.";
+  }
+  var box=el("div");box.id="graphbox";box.appendChild(svg);p.appendChild(box);hl();
+}
+
+/* ---------- Text ---------- */
+function pText(p){
+  var T=obj(D.layers.text),mod=obj(T.models);
+  add(p,el("h2",null,"Text models"),el("p","muted","Two language models rate how hard the slide text reads. T1: "+(mod.t1||"-")+". T2: "+(mod.t2||"-")+". When they agree the text signal is more trustworthy."));
+  var wrap=el("div");arr(T.per_concept).forEach(function(c){
+    var r=el("div","pair");var bars=el("div","bars");
+    [["T1",c.t1],["T2",c.t2]].forEach(function(x){var d=el("div");add(d,el("span",null,x[0]),bar(x[1]),el("span",null,f2(x[1])));bars.appendChild(d)});
+    var ag=el("span","badge",c.agreement||"-");ag.style.background=c.agreement==="agree"?"var(--gbg)":(c.agreement==="disagree"?"var(--rbg)":"var(--abg)");
+    add(r,el("b",null,cName(c.concept_id)),bars,ag);wrap.appendChild(r)});
+  p.appendChild(wrap);
+  p.appendChild(el("h3",null,"Per slide (T1 / T2)"));
+  var h=el("div","heat");arr(T.per_slide).forEach(function(s){var v=isn(s.t1)&&isn(s.t2)?(s.t1+s.t2)/2:(isn(s.t1)?s.t1:s.t2);var c=el("div","cell "+lbl(v));c.style.cursor="default";c.style.display="flex";c.style.alignItems="center";c.style.justifyContent="center";c.textContent=s.index;c.title="Slide "+s.index+": T1 "+f2(s.t1)+", T2 "+f2(s.t2);h.appendChild(c)});p.appendChild(h);
+}
+
+/* ---------- Combine ---------- */
+var GC={A:"g-A",B:"g-B",C:"g-C",D:"g-D",text:"g-text"};
+function pCombine(p){
+  var C=obj(D.layers.combine),w=obj(C.weights),k=obj(C.cutoffs);
+  add(p,el("h2",null,"Combine"),el("p","muted","Layer scores are blended with fixed weights into one score per concept. Cut-offs turn the score into a label: below "+f2(k.low)+" Low, from "+f2(k.high)+" High, otherwise Medium. Weights and cut-offs are unvalidated."));
+  var lg=el("div","legend");
+  Object.keys(w).forEach(function(g){var s=el("span");var d=el("span","dot "+(GC[g]||""));s.appendChild(d);s.appendChild(document.createTextNode(g+" "+Math.round((w[g]||0)*100)+"%"));lg.appendChild(s)});p.appendChild(lg);
+  var wb=el("div","stack");Object.keys(w).forEach(function(g){var i=el("i",GC[g]||"");i.style.width=((w[g]||0)*100)+"%";i.title=g+" weight "+f2(w[g]);wb.appendChild(i)});p.appendChild(wb);
+  p.appendChild(el("h3",null,"Contribution of each layer, per concept (click a row for the confidence breakdown)"));
+  var tw=el("div","tw"),t=el("table"),h=el("tr");["Concept","Contributions","Score","Label","Conf."].forEach(function(x){h.appendChild(el("th",null,x))});t.appendChild(h);
+  var rows=arr(C.per_concept).slice().sort(function(a,b){return (b.score||0)-(a.score||0)}),detail=el("div","card");detail.style.background="#f8fbff";detail.style.boxShadow="none";
+  function showD(c){detail.textContent="";add(detail,el("b",null,cName(c.concept_id)+" - confidence "+f2(c.confidence)));var pt=obj(c.confidence_parts);Object.keys(pt).forEach(function(n){var r=el("div","pair");r.style.gridTemplateColumns="170px 1fr 50px";add(r,el("span",null,n.replace(/_/g," ")),bar(pt[n]),el("span",null,f2(pt[n])));detail.appendChild(r)});detail.appendChild(el("p","muted","Confidence is evidence quality (how much was measurable, whether models agree, how many slides), not a probability."))}
+  rows.forEach(function(c){
+    var r=el("tr");r.tabIndex=0;r.style.cursor="pointer";var st=el("div","stack");var ct=obj(c.contributions);
+    Object.keys(ct).forEach(function(g){var i=el("i",GC[g]||"");i.style.width=Math.min(100,(ct[g]||0)*100)+"%";i.title=g+" "+f2(ct[g]);st.appendChild(i)});
+    var td=el("td");td.appendChild(st);add(r,el("td",null,cName(c.concept_id)),td,el("td",null,f2(c.score)),(function(){var x=el("td");x.appendChild(badge(cls(c)||lbl(c.score)));return x})(),el("td",null,f2(c.confidence)));
+    function go(){showD(c)}r.addEventListener("click",go);r.addEventListener("keydown",function(e){if(e.key==="Enter")go()});t.appendChild(r)});
+  tw.appendChild(t);p.appendChild(tw);p.appendChild(detail);if(rows[0])showD(rows[0]);
+}
+
+/* ---------- Result ---------- */
+function pResult(p){
+  var F=obj(D.final);
+  add(p,el("h2",null,"Result"),el("p","muted","Where students are most likely to struggle, most important first."));
+  var g=el("div","grid");
+  arr(F.hotspots).forEach(function(h){
+    var id=h.concept_id,c=el("div","hot"),hd=el("h3");add(hd,el("span","rk",h.rank!=null?h.rank:"-"),document.createTextNode(id?cName(id):("Slide "+(h.slide_index!=null?h.slide_index:"-"))));
+    c.appendChild(hd);
+    var s=el("div");add(s,badge(cls(h)||lbl(h.score)),document.createTextNode(" "),el("span","muted","score "+f2(h.score)+"  confidence "),meter(h.confidence),document.createTextNode(" "+f2(h.confidence)));c.appendChild(s);
+    c.appendChild(bar(h.score,cls(h)||lbl(h.score)));var sl=el("div");sl.style.marginTop="6px";sl.appendChild(chips(arr(h.slides).length?h.slides:(id?cSlides(id):[]),"slide "));c.appendChild(sl);
+    var ul=el("ul");arr(h.reasons).forEach(function(r){ul.appendChild(el("li",null,r))});c.appendChild(ul);g.appendChild(c)});
+  if(!g.childNodes.length)g.appendChild(el("p","muted","No hotspots were reported."));
+  p.appendChild(g);
+  p.appendChild(el("h3",null,"Slide heat strip"));
+  var heat=el("div","heat"),det=el("div","info");det.textContent="Click a slide to see its concepts and reasons.";
+  var slides=arr(obj(D.layers.parse).slides);
+  slides.forEach(function(s){
+    var ss=M.ss[s.index]||{};var b=el("button","cell "+(ss.label||""),s.index);b.type="button";b.setAttribute("aria-pressed",heatSel===s.index?"true":"false");
+    if(!ss.label)b.style.background="#8a99ab";b.title="Slide "+s.index+": "+(s.title||"")+" - score "+f2(ss.score);
+    b.addEventListener("click",function(){heatSel=s.index;Array.prototype.forEach.call(heat.children,function(x){x.setAttribute("aria-pressed","false")});b.setAttribute("aria-pressed","true");sd(s,ss)});heat.appendChild(b)});
+  function sd(s,ss){det.textContent="";add(det,el("b",null,"Slide "+s.index+": "+(s.title||"-")+"  "),badge(ss.label),document.createTextNode("  score "+f2(ss.score)+", confidence "+f2(ss.confidence)));
+    var cs=arr(ss.concept_ids);det.appendChild(el("div",null,"Concepts: "+(cs.map(cName).join(", ")||"none detected")));var ul=el("ul");arr(ss.reasons).forEach(function(r){ul.appendChild(el("li",null,r))});det.appendChild(ul)}
+  add(p,heat,det);
+  /* table */
+  p.appendChild(el("h3",null,"All concepts"));
+  var f=el("div","filters");
+  var sl=el("select");sl.setAttribute("aria-label","Label filter");[["","All labels"],["Low","Low"],["Medium","Medium"],["High","High"]].forEach(function(o){var e=el("option",null,o[1]);e.value=o[0];sl.appendChild(e)});sl.value=filt.label;
+  var mc=el("input");mc.type="range";mc.min=0;mc.max=100;mc.value=filt.minc*100;mc.setAttribute("aria-label","Minimum confidence");var mv=el("span","muted","min confidence "+f2(filt.minc));
+  var q=el("input");q.type="search";q.placeholder="Search";q.value=filt.q;q.setAttribute("aria-label","Search concepts");
+  add(f,sl,mc,mv,q);p.appendChild(f);
+  var tw=el("div","tw");p.appendChild(tw);
+  function draw(){
+    tw.textContent="";var t=el("table"),h=el("tr");
+    [["name","Concept"],["slides","Slides"],["score","Score"],["label","Model label"],["conf","Confidence"],["","Your label"]].forEach(function(x){var th=el("th",null,x[1]);if(x[0]){th.setAttribute("data-sort",x[0]);th.tabIndex=0;th.title="Sort";var s=function(){if(filt.sortKey===x[0])filt.desc=!filt.desc;else{filt.sortKey=x[0];filt.desc=x[0]!=="name"}draw()};th.addEventListener("click",s);th.addEventListener("keydown",function(e){if(e.key==="Enter")s()})}h.appendChild(th)});t.appendChild(h);
+    var ids=Object.keys(M.c).filter(function(id){var l=cLabel(id);return (!filt.label||l===filt.label)&&(cConf(id)==null?filt.minc===0:cConf(id)>=filt.minc)&&(!filt.q||cName(id).toLowerCase().indexOf(filt.q.toLowerCase())>=0)});
+    var key={name:function(i){return cName(i).toLowerCase()},slides:function(i){return cSlides(i)[0]||0},score:function(i){return cScore(i)==null?-1:cScore(i)},label:function(i){return {Low:0,Medium:1,High:2}[cLabel(i)]},conf:function(i){return cConf(i)==null?-1:cConf(i)}}[filt.sortKey];
+    ids.sort(function(a,b){var x=key(a),y=key(b);var r=x<y?-1:(x>y?1:0);return filt.desc?-r:r});
+    ids.forEach(function(id){
+      var r=el("tr"),o=el("select");o.setAttribute("aria-label","Override label for "+cName(id));[["","(keep)"],["Low","Low"],["Medium","Medium"],["High","High"]].forEach(function(x){var e=el("option",null,x[1]);e.value=x[0];o.appendChild(e)});o.value=overrides[id]||"";
+      o.addEventListener("change",function(){if(o.value)overrides[id]=o.value;else delete overrides[id];saveOv();csvUpdate()});
+      var s1=el("td"),s2=el("td"),s3=el("td"),s4=el("td"),s5=el("td");s1.appendChild(chips(cSlides(id)));s2.appendChild(bar(cScore(id),cLabel(id)));s2.appendChild(el("span","muted",f2(cScore(id))));s3.appendChild(badge(cLabel(id)));s4.appendChild(meter(cConf(id)));s5.appendChild(o);
+      add(r,el("td",null,cName(id)),s1,s2,s3,s4,s5);t.appendChild(r)});
+    tw.appendChild(t);
+  }
+  sl.addEventListener("change",function(){filt.label=sl.value;draw()});mc.addEventListener("input",function(){filt.minc=mc.value/100;mv.textContent="min confidence "+f2(filt.minc);draw()});q.addEventListener("input",function(){filt.q=q.value;draw()});draw();
+  /* export */
+  var ex=el("div","row"),bt=el("button","btn sec","Export overrides CSV");bt.type="button";var ta=el("textarea");ta.readOnly=true;ta.hidden=true;ta.setAttribute("aria-label","Overrides CSV");
+  function csv(){var rows=["concept_id,concept,slides,model_label,model_score,model_confidence,lecturer_label"];Object.keys(M.c).forEach(function(id){if(overrides[id])rows.push([id,'"'+cName(id).replace(/"/g,'""')+'"','"'+cSlides(id).join(" ")+'"',cLabel(id),f2(cScore(id)),f2(cConf(id)),overrides[id]].join(","))});return rows.join("\n")}
+  window.csvUpdate=function(){if(!ta.hidden)ta.value=csv()};
+  bt.addEventListener("click",function(){ta.value=csv();ta.hidden=false;ta.select();
+    try{var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([ta.value],{type:"text/csv"}));a.download="edusync_overrides.csv";document.body.appendChild(a);a.click();a.remove()}catch(e){}});
+  add(ex,bt,el("span","muted","Overrides stay in this browser; if the download is blocked, copy the text below."));add(p,ex,ta);
+}
+
+/* ---------- Quality ---------- */
+function pQuality(p){
+  add(p,el("h2",null,"Model quality"));
+  p.appendChild(el("div","warn","Text models were trained on general English reading passages, not lecture slides; the Lecture 07 ratings shown are illustrative demo ratings, not independent human validation."));
+  var rows=[["Dataset","Model","Spearman (95% CI)"],
+   ["CLEAR test","Flesch-Kincaid formula","0.56"],["CLEAR test","Simple-feature ridge","0.66"],["CLEAR test","T2","0.82 [0.79-0.85]"],["CLEAR test","T1 fp32","0.88 [0.86-0.90]"],["CLEAR test","T1 INT8","0.87"],
+   ["OneStopEnglish test (n=57)","T2","0.50 (wide CI)"],["OneStopEnglish test (n=57)","T1","0.64 (wide CI)"],["OneStopEnglish test (n=57)","T1 INT8","0.60 (wide CI)"]];
+  var tw=el("div","tw"),t=el("table");rows.forEach(function(r,i){var tr=el("tr");r.forEach(function(x){tr.appendChild(el(i?"td":"th",null,x))});t.appendChild(tr)});tw.appendChild(t);p.appendChild(tw);
+  p.appendChild(el("p","muted","Size and speed: T1 INT8 is 55.9 MB against 86.2 MB for fp32, and about 40% faster. Confidence intervals on the small OneStopEnglish set are wide, so differences there are not conclusive."));
+  var ev=el("div");p.appendChild(ev);
+  fetch("demo/evaluation").then(function(r){return r.ok?r.json():null}).then(function(j){
+    if(!j||!arr(j.snippets).length)return;
+    ev.appendChild(el("h3",null,"Demo snippet check (illustrative)"));
+    ev.appendChild(el("p","muted","n = "+(j.n!=null?j.n:j.snippets.length)+(isn(j.spearman)?", Spearman "+f2(j.spearman):"")+(isn(j.qwk)?", QWK "+f2(j.qwk):"")));
+    var tw2=el("div","tw"),t2=el("table"),h=el("tr");["Snippet","Slide","Model label","Demo rating"].forEach(function(x){h.appendChild(el("th",null,x))});t2.appendChild(h);
+    j.snippets.forEach(function(s){var r=el("tr");add(r,el("td",null,s.id!=null?s.id:"-"),el("td",null,s.slide!=null?s.slide:"-"),el("td",null,s.model_label||"-"),el("td",null,s.demo_label||"-"));t2.appendChild(r)});tw2.appendChild(t2);ev.appendChild(tw2)}).catch(function(){});
+}
+
+/* ---------- load / run ---------- */
+function setData(j,note){
+  if(!j||!j.meta||!j.layers){err("The server answer did not look like an analysis result.");return}
+  D=j;index();sel=null;heatSel=null;panelId="result";
+  var m=obj(D.meta),r=obj(m.reference);
+  $("status").textContent=(m.filename||"lecture")+" - "+(m.slide_count!=null?m.slide_count:"?")+" slides - reference "+(r.n_decks!=null?r.n_decks+" decks":"n/a")+(r.provisional?" (provisional)":"")+" - "+(m.score_version||m.pipeline_version||"");
+  $("fN").textContent=r.n_decks!=null?r.n_decks:"a few";
+  var n=$("note");n.textContent="";var ws=arr(D.warnings);if(note)n.appendChild(el("div",null,note));ws.forEach(function(w){n.appendChild(el("div",null,String(w)))});if(D.disclaimer)n.appendChild(el("div",null,String(D.disclaimer)));n.hidden=!n.childNodes.length;
+  show("results",true);buildStrip();renderPanel();
+}
+function err(m){var e=$("error");e.textContent=m;e.hidden=false}
+function embedded(){try{return JSON.parse($("sample").textContent)}catch(e){return null}}
+function loadSample(){
+  $("error").hidden=true;
+  fetch("demo/sample").then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}).then(function(j){setData(j,"Showing the built-in sample lecture (invented content).")})
+  .catch(function(){var j=embedded();if(j)setData(j,"Showing the sample embedded in this page (the server sample route was not reachable). Content is invented.");else err("The sample could not be loaded.")});
+}
+var file=null,timer=null;
+function pick(f){if(!f)return;var ok=/\.(pdf|pptx)$/i.test(f.name);if(!ok){err("Please choose a .pdf or .pptx file.");return}file=f;$("error").hidden=true;$("dropmsg").textContent="Selected: "+f.name+" ("+Math.round(f.size/1024)+" KB)";$("go").disabled=false}
+function run(){
+  if(!file)return;$("error").hidden=true;$("go").disabled=true;show("busy",true);
+  var msgs=["Reading the slides...","Finding concepts...","Measuring language, prerequisites, explanation, density...","Running the text models...","Combining the layers..."],i=0;$("busymsg").textContent=msgs[0];
+  timer=setInterval(function(){i=Math.min(i+1,msgs.length-1);$("busymsg").textContent=msgs[i]},2500);
+  var fd=new FormData();fd.append("file",file);if($("demograph").checked)fd.append("use_demo_graph","true");
+  fetch("difficulty/analyze",{method:"POST",body:fd}).then(function(r){return r.text().then(function(t){var j=null;try{j=JSON.parse(t)}catch(e){}return {r:r,j:j,t:t}})}).then(function(x){
+    if(!x.r.ok){var d=x.j&&x.j.detail;if(d&&typeof d!=="string")d=JSON.stringify(d);err("Analysis failed ("+x.r.status+"): "+(d||x.t.slice(0,300)||"no details"));return}
+    setData(x.j);
+  }).catch(function(e){err("Could not reach the server: "+e.message)}).then(function(){clearInterval(timer);show("busy",false);$("go").disabled=!file});
+}
+var dz=$("drop");
+dz.addEventListener("click",function(){$("file").click()});
+dz.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();$("file").click()}});
+dz.addEventListener("dragover",function(e){e.preventDefault();dz.classList.add("over")});
+dz.addEventListener("dragleave",function(){dz.classList.remove("over")});
+dz.addEventListener("drop",function(e){e.preventDefault();dz.classList.remove("over");pick(e.dataTransfer.files[0])});
+$("file").addEventListener("change",function(){pick(this.files[0])});
+$("go").addEventListener("click",run);
+$("trysample").addEventListener("click",loadSample);
+(function(){var q=location.search,m=/[?&]data=([^&]+)/.exec(q),pm=/[?&]panel=([A-Za-z]+)/.exec(q);
+window.onerror=function(msg){var d=document.createElement("div");d.id="jserr";d.textContent="JSERR "+msg;document.body.appendChild(d)};
+if(m){fetch(decodeURIComponent(m[1])).then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}).then(function(j){setData(j,"Showing data loaded from "+decodeURIComponent(m[1])+".");if(pm&&STEPS.some(function(s){return s[0]===pm[1]})){panelId=pm[1];buildStrip();renderPanel()}}).catch(function(e){err("Could not load data: "+e.message)})}
+else if(/[?&]sample=1/.test(q))loadSample()})();
+})();
+</script>
+</body>
+</html>

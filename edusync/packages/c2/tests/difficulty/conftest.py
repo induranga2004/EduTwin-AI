@@ -1,7 +1,9 @@
 """Shared fixtures for the difficulty tests: a hand-built deck and C1 graphs (v0 and v1)."""
 
 import random
+import sys
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -13,6 +15,9 @@ from edusync_c2.difficulty.schemas import (
     ParagraphRecord,
     SlideRecord,
 )
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # sibling test helpers
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # tests/contract_keys.py
 
 SlideFactory = Callable[..., SlideRecord]
 VariantFactory = Callable[..., dict[str, list[SlideRecord]]]

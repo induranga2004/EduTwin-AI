@@ -3,9 +3,12 @@
 import json
 from collections.abc import Callable
 from functools import lru_cache
+from importlib import resources
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
@@ -23,7 +26,13 @@ from edusync_c2.difficulty.features.semantic_loader import get_default_encoder
 from edusync_c2.difficulty.materials import MaterialsError
 from edusync_c2.difficulty.models import create_model
 from edusync_c2.difficulty.pipeline import SEMANTIC_UNAVAILABLE, DifficultyPipeline
-from edusync_c2.difficulty.providers import C1ApiGraphProvider, FileGraphProvider, GraphProvider
+from edusync_c2.difficulty.providers import (
+    C1ApiGraphProvider,
+    FileGraphProvider,
+    GraphProvider,
+    MockC1GraphProvider,
+    find_mocked_graph,
+)
 from edusync_c2.difficulty.schemas import C1GraphResponse, DifficultyInfo, DifficultyResponse
 from edusync_c2.logger import (
     configure_logging,
@@ -169,6 +178,141 @@ async def difficulty(
             raise HTTPException(501, str(exc)) from exc
     finally:
         reset_request_id(token)
+
+
+def run_analysis(*args, **kwargs) -> dict:
+    """Layered analysis; imported lazily because it needs numpy (the package imports without)."""
+    from edusync_c2.difficulty.scoring.analyze import analyze
+
+    return analyze(*args, **kwargs)
+
+
+def get_score_artifact() -> object:
+    """FastAPI dependency: the loaded score artifact, or 501 with the reason."""
+    from edusync_c2.difficulty.scoring.artifact import get_artifact
+    from edusync_c2.difficulty.scoring.reference import ScoringError
+
+    settings = get_c2_settings()
+    if settings.score_dir is None:
+        raise HTTPException(501, "Layered analysis is not configured: set EDUSYNC_C2_SCORE_DIR")
+    try:
+        return get_artifact(settings.score_dir, model_dir=settings.semantic_model_dir)
+    except ScoringError as exc:
+        logger.warning("score_artifact_unavailable reason=%s", exc)
+        raise HTTPException(501, f"Score artifact cannot be used: {exc}") from exc
+
+
+ArtifactDep = Annotated[object, Depends(get_score_artifact)]
+
+
+@lru_cache
+def _analysis_parts() -> tuple[object, object, str]:
+    """Concept filter, semantic scorer and its status for layered analysis (built once)."""
+    settings = get_c2_settings()
+    try:
+        concept_filter = create_concept_filter(
+            settings.concept_filter, settings.concept_filter_extras
+        )
+    except NotImplementedError as exc:
+        raise HTTPException(501, str(exc)) from exc
+    semantic, status = _semantic_scorer(settings)
+    return concept_filter, semantic, status
+
+
+def _demo_graph_provider(
+    settings: C2Settings, filename: str
+) -> Callable[[bytes, str], GraphProvider]:
+    path = find_mocked_graph(filename, settings.demo_graph_dir)
+    if path is None:  # unknown lecture: fall back to the normal provider (slide-title mock graph)
+        return _graph_provider_factory(settings) or (lambda data, name: MockC1GraphProvider())
+    return lambda data, name: FileGraphProvider(path)
+
+
+@router.post("/difficulty/analyze")
+async def difficulty_analyze(
+    artifact: ArtifactDep,
+    settings: SettingsDep,
+    file: Annotated[UploadFile, File()],
+    graph: Annotated[str | None, Form()] = None,
+    use_demo_graph: Annotated[bool, Form()] = False,
+) -> dict:
+    """Layered difficulty analysis: every layer plus ranked hotspots, as one JSON document."""
+    token = set_request_id(new_request_id())
+    try:
+        posted = _parse_graph(graph)
+        c2 = get_c2_settings()
+        limit_mb = min(settings.max_upload_mb, MAX_UPLOAD_MB_CAP)
+        try:
+            data = await file.read(limit_mb * 1024 * 1024 + 1)
+        finally:
+            await file.close()
+        if len(data) > limit_mb * 1024 * 1024:
+            logger.warning("rejected status=413 reason=too_large limit_mb=%d", limit_mb)
+            raise HTTPException(413, f"File exceeds the {limit_mb} MB limit")
+        name = file.filename or ""
+        factory = None
+        if posted is None and use_demo_graph:
+            factory = _demo_graph_provider(c2, name)
+        elif posted is None:
+            factory = _graph_provider_factory(c2)
+        concept_filter, semantic, status = _analysis_parts()
+        try:
+            return await run_in_threadpool(
+                lambda: run_analysis(
+                    data,
+                    name,
+                    artifact=artifact,
+                    graph=posted,
+                    provider_factory=factory,
+                    concept_filter=concept_filter,
+                    semantic=semantic,
+                    semantic_status=status,
+                    max_mb=limit_mb,
+                )
+            )
+        except MaterialsError as exc:
+            logger.warning("rejected status=%d reason=%s", exc.status_code, exc.message)
+            raise HTTPException(exc.status_code, exc.message) from exc
+        except GraphProviderError as exc:
+            logger.warning("rejected status=%d reason=graph_provider", exc.status_code)
+            raise HTTPException(exc.status_code, exc.message) from exc
+        except SemanticScoringError as exc:
+            logger.warning("rejected status=%d reason=semantic_scorer", exc.status_code)
+            raise HTTPException(exc.status_code, exc.message) from exc
+    finally:
+        reset_request_id(token)
+
+
+def _ui_text(name: str) -> str | None:
+    try:
+        return resources.files("edusync_c2").joinpath("ui", name).read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+
+@router.get("/demo", response_class=HTMLResponse)
+def demo_page() -> HTMLResponse:
+    html = _ui_text("index.html")
+    if html is None:
+        return HTMLResponse("The demo page is not installed", status_code=503)
+    return HTMLResponse(html)
+
+
+@router.get("/demo/sample")
+def demo_sample() -> JSONResponse:
+    text = _ui_text("sample_analysis.json")
+    if text is None:
+        raise HTTPException(503, "The sample analysis is not installed")
+    return JSONResponse(json.loads(text))
+
+
+@router.get("/demo/evaluation")
+def demo_evaluation() -> JSONResponse:
+    score_dir = get_c2_settings().score_dir
+    path = None if score_dir is None else Path(score_dir) / "demo_evaluation.json"
+    if path is None or not path.is_file():
+        raise HTTPException(404, "No demo evaluation is available")
+    return JSONResponse(json.loads(path.read_text(encoding="utf-8")))
 
 
 @router.get("/difficulty/info", response_model=DifficultyInfo)

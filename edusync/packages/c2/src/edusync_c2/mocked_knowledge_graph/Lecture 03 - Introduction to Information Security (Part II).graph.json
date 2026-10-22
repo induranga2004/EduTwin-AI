@@ -1,0 +1,788 @@
+{
+ "concept_count": 36,
+ "concepts": [
+  {
+   "frequency": 2,
+   "name": "Security Controls"
+  },
+  {
+   "frequency": 2,
+   "name": "Physical Controls"
+  },
+  {
+   "frequency": 1,
+   "name": "Technical Controls"
+  },
+  {
+   "frequency": 2,
+   "name": "Administrative Controls"
+  },
+  {
+   "frequency": 1,
+   "name": "Controls categorized : By functionality"
+  },
+  {
+   "frequency": 2,
+   "name": "Preventive Controls"
+  },
+  {
+   "frequency": 2,
+   "name": "Detective Controls"
+  },
+  {
+   "frequency": 2,
+   "name": "Deterrent Controls"
+  },
+  {
+   "frequency": 3,
+   "name": "Corrective Controls"
+  },
+  {
+   "frequency": 2,
+   "name": "Recovery Controls"
+  },
+  {
+   "frequency": 2,
+   "name": "Compensating Controls"
+  },
+  {
+   "frequency": 3,
+   "name": "Risk Management"
+  },
+  {
+   "frequency": 1,
+   "name": "Risk Management Terms"
+  },
+  {
+   "frequency": 1,
+   "name": "Understanding Risk"
+  },
+  {
+   "frequency": 1,
+   "name": "Managing Risks"
+  },
+  {
+   "frequency": 1,
+   "name": "Risk Management Process"
+  },
+  {
+   "frequency": 1,
+   "name": "Quantitative Risk Analysis"
+  },
+  {
+   "frequency": 1,
+   "name": "Comprehensive Security Model"
+  },
+  {
+   "frequency": 4,
+   "name": "Data Loss"
+  },
+  {
+   "frequency": 1,
+   "name": "Data Loss can result in:"
+  },
+  {
+   "frequency": 1,
+   "name": "Vectors of Data Loss"
+  },
+  {
+   "frequency": 1,
+   "name": "BYOD (Bring Your Own Device)"
+  },
+  {
+   "frequency": 1,
+   "name": "BYOD Benefits"
+  },
+  {
+   "frequency": 1,
+   "name": "BYOD Drawbacks"
+  },
+  {
+   "frequency": 1,
+   "name": "COPE (Corporate-Owned, Personally Enabled)"
+  },
+  {
+   "frequency": 1,
+   "name": "Security measures for COPE/BYOD"
+  },
+  {
+   "frequency": 1,
+   "name": "The Hacker"
+  },
+  {
+   "frequency": 1,
+   "name": "White Hat Hackers"
+  },
+  {
+   "frequency": 2,
+   "name": "Gray Hat Hackers"
+  },
+  {
+   "frequency": 2,
+   "name": "Black Hat Hackers"
+  },
+  {
+   "frequency": 1,
+   "name": "Modern Hacking Titles"
+  },
+  {
+   "frequency": 2,
+   "name": "Script Kiddies"
+  },
+  {
+   "frequency": 2,
+   "name": "Vulnerability Brokers"
+  },
+  {
+   "frequency": 2,
+   "name": "Cyber Criminals"
+  },
+  {
+   "frequency": 2,
+   "name": "Hacktivists"
+  },
+  {
+   "frequency": 2,
+   "name": "State-Sponsored Hackers"
+  }
+ ],
+ "curated": true,
+ "filename": "L02.pptx",
+ "graph": {
+  "edge_count": 41,
+  "edges": [
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "security-controls",
+    "source_type": "curriculum_defined",
+    "target": "physical-controls"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "security-controls",
+    "source_type": "curriculum_defined",
+    "target": "technical-controls"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "security-controls",
+    "source_type": "curriculum_defined",
+    "target": "administrative-controls"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "security-controls",
+    "source_type": "curriculum_defined",
+    "target": "controls-categorized-by-functionality"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "controls-categorized-by-functionality",
+    "source_type": "curriculum_defined",
+    "target": "preventive-controls"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "controls-categorized-by-functionality",
+    "source_type": "curriculum_defined",
+    "target": "detective-controls"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "controls-categorized-by-functionality",
+    "source_type": "curriculum_defined",
+    "target": "deterrent-controls"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "controls-categorized-by-functionality",
+    "source_type": "curriculum_defined",
+    "target": "corrective-controls"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "controls-categorized-by-functionality",
+    "source_type": "curriculum_defined",
+    "target": "recovery-controls"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "controls-categorized-by-functionality",
+    "source_type": "curriculum_defined",
+    "target": "compensating-controls"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "corrective-controls",
+    "source_type": "inferred",
+    "target": "recovery-controls"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "risk-management-terms",
+    "source_type": "curriculum_defined",
+    "target": "risk-management"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "risk-management",
+    "source_type": "curriculum_defined",
+    "target": "understanding-risk"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "understanding-risk",
+    "source_type": "curriculum_defined",
+    "target": "managing-risks"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "managing-risks",
+    "source_type": "curriculum_defined",
+    "target": "risk-management-process"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "risk-management-process",
+    "source_type": "curriculum_defined",
+    "target": "quantitative-risk-analysis"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "security-controls",
+    "source_type": "inferred",
+    "target": "managing-risks"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "risk-management-process",
+    "source_type": "inferred",
+    "target": "comprehensive-security-model"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "preventive-controls",
+    "source_type": "inferred",
+    "target": "comprehensive-security-model"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "detective-controls",
+    "source_type": "inferred",
+    "target": "comprehensive-security-model"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "data-loss",
+    "source_type": "curriculum_defined",
+    "target": "data-loss-can-result-in"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "data-loss",
+    "source_type": "curriculum_defined",
+    "target": "vectors-of-data-loss"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "risk-management",
+    "source_type": "inferred",
+    "target": "data-loss"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "vectors-of-data-loss",
+    "source_type": "inferred",
+    "target": "byod-bring-your-own-device"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "byod-bring-your-own-device",
+    "source_type": "curriculum_defined",
+    "target": "byod-benefits"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "byod-bring-your-own-device",
+    "source_type": "curriculum_defined",
+    "target": "byod-drawbacks"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "byod-bring-your-own-device",
+    "source_type": "inferred",
+    "target": "cope-corporate-owned-personally-enabled"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "byod-drawbacks",
+    "source_type": "curriculum_defined",
+    "target": "security-measures-for-cope-byod"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "cope-corporate-owned-personally-enabled",
+    "source_type": "curriculum_defined",
+    "target": "security-measures-for-cope-byod"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "technical-controls",
+    "source_type": "inferred",
+    "target": "security-measures-for-cope-byod"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "the-hacker",
+    "source_type": "curriculum_defined",
+    "target": "white-hat-hackers"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "the-hacker",
+    "source_type": "curriculum_defined",
+    "target": "gray-hat-hackers"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "the-hacker",
+    "source_type": "curriculum_defined",
+    "target": "black-hat-hackers"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "black-hat-hackers",
+    "source_type": "inferred",
+    "target": "modern-hacking-titles"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "modern-hacking-titles",
+    "source_type": "curriculum_defined",
+    "target": "script-kiddies"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "modern-hacking-titles",
+    "source_type": "curriculum_defined",
+    "target": "vulnerability-brokers"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "modern-hacking-titles",
+    "source_type": "curriculum_defined",
+    "target": "cyber-criminals"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "modern-hacking-titles",
+    "source_type": "curriculum_defined",
+    "target": "hacktivists"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "modern-hacking-titles",
+    "source_type": "curriculum_defined",
+    "target": "state-sponsored-hackers"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "vectors-of-data-loss",
+    "source_type": "inferred",
+    "target": "cyber-criminals"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "risk-management-terms",
+    "source_type": "inferred",
+    "target": "the-hacker"
+   }
+  ],
+  "node_count": 36,
+  "nodes": [
+   {
+    "description": "Draft from the title of slide 2: replace this text.",
+    "frequency": 2,
+    "id": "security-controls",
+    "label": "Security Controls"
+   },
+   {
+    "description": "Draft from the title of slide 4: replace this text.",
+    "frequency": 2,
+    "id": "physical-controls",
+    "label": "Physical Controls"
+   },
+   {
+    "description": "Draft from the title of slide 5: replace this text.",
+    "frequency": 1,
+    "id": "technical-controls",
+    "label": "Technical Controls"
+   },
+   {
+    "description": "Draft from the title of slide 6: replace this text.",
+    "frequency": 2,
+    "id": "administrative-controls",
+    "label": "Administrative Controls"
+   },
+   {
+    "description": "Draft from the title of slide 7: replace this text.",
+    "frequency": 1,
+    "id": "controls-categorized-by-functionality",
+    "label": "Controls categorized : By functionality"
+   },
+   {
+    "description": "Draft from the title of slide 8: replace this text.",
+    "frequency": 2,
+    "id": "preventive-controls",
+    "label": "Preventive Controls"
+   },
+   {
+    "description": "Draft from the title of slide 9: replace this text.",
+    "frequency": 2,
+    "id": "detective-controls",
+    "label": "Detective Controls"
+   },
+   {
+    "description": "Draft from the title of slide 10: replace this text.",
+    "frequency": 2,
+    "id": "deterrent-controls",
+    "label": "Deterrent Controls"
+   },
+   {
+    "description": "Draft from the title of slide 11: replace this text.",
+    "frequency": 3,
+    "id": "corrective-controls",
+    "label": "Corrective Controls"
+   },
+   {
+    "description": "Draft from the title of slide 12: replace this text.",
+    "frequency": 2,
+    "id": "recovery-controls",
+    "label": "Recovery Controls"
+   },
+   {
+    "description": "Draft from the title of slide 13: replace this text.",
+    "frequency": 2,
+    "id": "compensating-controls",
+    "label": "Compensating Controls"
+   },
+   {
+    "description": "Draft from the title of slide 14: replace this text.",
+    "frequency": 3,
+    "id": "risk-management",
+    "label": "Risk Management"
+   },
+   {
+    "description": "Draft from the title of slide 15: replace this text.",
+    "frequency": 1,
+    "id": "risk-management-terms",
+    "label": "Risk Management Terms"
+   },
+   {
+    "description": "Draft from the title of slide 16: replace this text.",
+    "frequency": 1,
+    "id": "understanding-risk",
+    "label": "Understanding Risk"
+   },
+   {
+    "description": "Draft from the title of slide 17: replace this text.",
+    "frequency": 1,
+    "id": "managing-risks",
+    "label": "Managing Risks"
+   },
+   {
+    "description": "Draft from the title of slide 18: replace this text.",
+    "frequency": 1,
+    "id": "risk-management-process",
+    "label": "Risk Management Process"
+   },
+   {
+    "description": "Draft from the title of slide 19: replace this text.",
+    "frequency": 1,
+    "id": "quantitative-risk-analysis",
+    "label": "Quantitative Risk Analysis"
+   },
+   {
+    "description": "Draft from the title of slide 20: replace this text.",
+    "frequency": 1,
+    "id": "comprehensive-security-model",
+    "label": "Comprehensive Security Model"
+   },
+   {
+    "description": "Draft from the title of slide 21: replace this text.",
+    "frequency": 4,
+    "id": "data-loss",
+    "label": "Data Loss"
+   },
+   {
+    "description": "Draft from the title of slide 22: replace this text.",
+    "frequency": 1,
+    "id": "data-loss-can-result-in",
+    "label": "Data Loss can result in:"
+   },
+   {
+    "description": "Draft from the title of slide 23: replace this text.",
+    "frequency": 1,
+    "id": "vectors-of-data-loss",
+    "label": "Vectors of Data Loss"
+   },
+   {
+    "description": "Draft from the title of slide 24: replace this text.",
+    "frequency": 1,
+    "id": "byod-bring-your-own-device",
+    "label": "BYOD (Bring Your Own Device)"
+   },
+   {
+    "description": "Draft from the title of slide 25: replace this text.",
+    "frequency": 1,
+    "id": "byod-benefits",
+    "label": "BYOD Benefits"
+   },
+   {
+    "description": "Draft from the title of slide 26: replace this text.",
+    "frequency": 1,
+    "id": "byod-drawbacks",
+    "label": "BYOD Drawbacks"
+   },
+   {
+    "description": "Draft from the title of slide 27: replace this text.",
+    "frequency": 1,
+    "id": "cope-corporate-owned-personally-enabled",
+    "label": "COPE (Corporate-Owned, Personally Enabled)"
+   },
+   {
+    "description": "Draft from the title of slide 28: replace this text.",
+    "frequency": 1,
+    "id": "security-measures-for-cope-byod",
+    "label": "Security measures for COPE/BYOD"
+   },
+   {
+    "description": "Draft from the title of slide 29: replace this text.",
+    "frequency": 1,
+    "id": "the-hacker",
+    "label": "The Hacker"
+   },
+   {
+    "description": "Draft from the title of slide 30: replace this text.",
+    "frequency": 1,
+    "id": "white-hat-hackers",
+    "label": "White Hat Hackers"
+   },
+   {
+    "description": "Draft from the title of slide 31: replace this text.",
+    "frequency": 2,
+    "id": "gray-hat-hackers",
+    "label": "Gray Hat Hackers"
+   },
+   {
+    "description": "Draft from the title of slide 32: replace this text.",
+    "frequency": 2,
+    "id": "black-hat-hackers",
+    "label": "Black Hat Hackers"
+   },
+   {
+    "description": "Draft from the title of slide 33: replace this text.",
+    "frequency": 1,
+    "id": "modern-hacking-titles",
+    "label": "Modern Hacking Titles"
+   },
+   {
+    "description": "Draft from the title of slide 34: replace this text.",
+    "frequency": 2,
+    "id": "script-kiddies",
+    "label": "Script Kiddies"
+   },
+   {
+    "description": "Draft from the title of slide 35: replace this text.",
+    "frequency": 2,
+    "id": "vulnerability-brokers",
+    "label": "Vulnerability Brokers"
+   },
+   {
+    "description": "Draft from the title of slide 36: replace this text.",
+    "frequency": 2,
+    "id": "cyber-criminals",
+    "label": "Cyber Criminals"
+   },
+   {
+    "description": "Draft from the title of slide 37: replace this text.",
+    "frequency": 2,
+    "id": "hacktivists",
+    "label": "Hacktivists"
+   },
+   {
+    "description": "Draft from the title of slide 38: replace this text.",
+    "frequency": 2,
+    "id": "state-sponsored-hackers",
+    "label": "State-Sponsored Hackers"
+   }
+  ]
+ },
+ "lecture_id": "l02",
+ "page_count": 40,
+ "review_status": "hand-curated demo graph (lecture 03); team review recommended"
+}

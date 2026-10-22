@@ -1,0 +1,248 @@
+{
+ "concept_count": 10,
+ "concepts": [
+  {
+   "frequency": 17,
+   "name": "Access Control"
+  },
+  {
+   "frequency": 4,
+   "name": "Access Control Policies"
+  },
+  {
+   "frequency": 1,
+   "name": "Elements of Access Control"
+  },
+  {
+   "frequency": 2,
+   "name": "Discretionary Access Control"
+  },
+  {
+   "frequency": 4,
+   "name": "Access Matrix"
+  },
+  {
+   "frequency": 1,
+   "name": "ACLs and Capability Tickets"
+  },
+  {
+   "frequency": 2,
+   "name": "Access Control Lists (ACLs)"
+  },
+  {
+   "frequency": 3,
+   "name": "Capability Tickets"
+  },
+  {
+   "frequency": 4,
+   "name": "Role-based Access Control (RBAC)"
+  },
+  {
+   "frequency": 5,
+   "name": "Access Control Requirements"
+  }
+ ],
+ "curated": true,
+ "filename": "L04.pptx",
+ "graph": {
+  "edge_count": 13,
+  "edges": [
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "access-control",
+    "source_type": "curriculum_defined",
+    "target": "access-control-policies"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "access-control",
+    "source_type": "curriculum_defined",
+    "target": "elements-of-access-control"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "access-control-policies",
+    "source_type": "curriculum_defined",
+    "target": "discretionary-access-control"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "elements-of-access-control",
+    "source_type": "inferred",
+    "target": "discretionary-access-control"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "discretionary-access-control",
+    "source_type": "curriculum_defined",
+    "target": "access-matrix"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "access-matrix",
+    "source_type": "curriculum_defined",
+    "target": "acls-and-capability-tickets"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "acls-and-capability-tickets",
+    "source_type": "curriculum_defined",
+    "target": "access-control-lists-acls"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "acls-and-capability-tickets",
+    "source_type": "curriculum_defined",
+    "target": "capability-tickets"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "access-control-policies",
+    "source_type": "curriculum_defined",
+    "target": "role-based-access-control-rbac"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "discretionary-access-control",
+    "source_type": "inferred",
+    "target": "role-based-access-control-rbac"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "access-control-lists-acls",
+    "source_type": "inferred",
+    "target": "role-based-access-control-rbac"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "role-based-access-control-rbac",
+    "source_type": "inferred",
+    "target": "access-control-requirements"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "elements-of-access-control",
+    "source_type": "inferred",
+    "target": "access-control-requirements"
+   }
+  ],
+  "node_count": 10,
+  "nodes": [
+   {
+    "description": "Draft from the title of slide 3: replace this text.",
+    "frequency": 17,
+    "id": "access-control",
+    "label": "Access Control"
+   },
+   {
+    "description": "Draft from the title of slide 5: replace this text.",
+    "frequency": 4,
+    "id": "access-control-policies",
+    "label": "Access Control Policies"
+   },
+   {
+    "description": "Draft from the title of slide 8: replace this text.",
+    "frequency": 1,
+    "id": "elements-of-access-control",
+    "label": "Elements of Access Control"
+   },
+   {
+    "description": "Draft from the title of slide 9: replace this text.",
+    "frequency": 2,
+    "id": "discretionary-access-control",
+    "label": "Discretionary Access Control"
+   },
+   {
+    "description": "Draft from the title of slide 10: replace this text.",
+    "frequency": 4,
+    "id": "access-matrix",
+    "label": "Access Matrix"
+   },
+   {
+    "description": "Draft from the title of slide 11: replace this text.",
+    "frequency": 1,
+    "id": "acls-and-capability-tickets",
+    "label": "ACLs and Capability Tickets"
+   },
+   {
+    "description": "Draft from the title of slide 12: replace this text.",
+    "frequency": 2,
+    "id": "access-control-lists-acls",
+    "label": "Access Control Lists (ACLs)"
+   },
+   {
+    "description": "Draft from the title of slide 13: replace this text.",
+    "frequency": 3,
+    "id": "capability-tickets",
+    "label": "Capability Tickets"
+   },
+   {
+    "description": "Draft from the title of slide 15: replace this text.",
+    "frequency": 4,
+    "id": "role-based-access-control-rbac",
+    "label": "Role-based Access Control (RBAC)"
+   },
+   {
+    "description": "Draft from the title of slide 18: replace this text.",
+    "frequency": 5,
+    "id": "access-control-requirements",
+    "label": "Access Control Requirements"
+   }
+  ]
+ },
+ "lecture_id": "l04",
+ "page_count": 24,
+ "review_status": "hand-curated demo graph (lecture 05); team review recommended"
+}

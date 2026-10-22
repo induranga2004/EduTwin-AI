@@ -1,0 +1,758 @@
+{
+ "concept_count": 35,
+ "concepts": [
+  {
+   "frequency": 1,
+   "name": "Cryptology - The Secret Is in the Keys"
+  },
+  {
+   "frequency": 1,
+   "name": "BASIC INTEGRITY AND AUTHENTICITY"
+  },
+  {
+   "frequency": 4,
+   "name": "Cryptographic Hash Functions"
+  },
+  {
+   "frequency": 2,
+   "name": "Cryptographic Hash Function Properties"
+  },
+  {
+   "frequency": 1,
+   "name": "Well-Known Hash Functions"
+  },
+  {
+   "frequency": 1,
+   "name": "Message Digest 5 Algorithm"
+  },
+  {
+   "frequency": 3,
+   "name": "Secure Hash Algorithm"
+  },
+  {
+   "frequency": 1,
+   "name": "MD5 Versus SHA-1"
+  },
+  {
+   "frequency": 3,
+   "name": "Keyed-Hash Message Authentication Code"
+  },
+  {
+   "frequency": 1,
+   "name": "HMAC Operation"
+  },
+  {
+   "frequency": 5,
+   "name": "Characteristics of Key Management"
+  },
+  {
+   "frequency": 1,
+   "name": "Key Management - The Keyspace"
+  },
+  {
+   "frequency": 1,
+   "name": "Types of Cryptographic Keys"
+  },
+  {
+   "frequency": 1,
+   "name": "Choosing Cryptographic Keys"
+  },
+  {
+   "frequency": 3,
+   "name": "CONFIDENTIALITY"
+  },
+  {
+   "frequency": 1,
+   "name": "Cryptographic Encryption"
+  },
+  {
+   "frequency": 3,
+   "name": "Symmetric Encryption Algorithms"
+  },
+  {
+   "frequency": 1,
+   "name": "Asymmetric Encryption Algorithms"
+  },
+  {
+   "frequency": 2,
+   "name": "Symmetric Encryption Techniques"
+  },
+  {
+   "frequency": 5,
+   "name": "Block Ciphers"
+  },
+  {
+   "frequency": 3,
+   "name": "Stream Ciphers"
+  },
+  {
+   "frequency": 3,
+   "name": "Choosing an Encryption Algorithm"
+  },
+  {
+   "frequency": 1,
+   "name": "Data Encryption Standard"
+  },
+  {
+   "frequency": 1,
+   "name": "DES Operation - ECB"
+  },
+  {
+   "frequency": 1,
+   "name": "DES Operation - CBC"
+  },
+  {
+   "frequency": 1,
+   "name": "DES Operations Cont."
+  },
+  {
+   "frequency": 1,
+   "name": "DES Summary"
+  },
+  {
+   "frequency": 2,
+   "name": "3DES - Improving DES with 3DES"
+  },
+  {
+   "frequency": 1,
+   "name": "3DES - 3DES Operation"
+  },
+  {
+   "frequency": 1,
+   "name": "Advanced Encryption Standard (AES)"
+  },
+  {
+   "frequency": 1,
+   "name": "AES Summary"
+  },
+  {
+   "frequency": 2,
+   "name": "Advanced Encryption Standard"
+  },
+  {
+   "frequency": 2,
+   "name": "Software-Optimized Encryption Algorithm"
+  },
+  {
+   "frequency": 2,
+   "name": "RC Algorithms"
+  },
+  {
+   "frequency": 1,
+   "name": "RC Algorithms Cont."
+  }
+ ],
+ "curated": true,
+ "filename": "L06.pptx",
+ "graph": {
+  "edge_count": 39,
+  "edges": [
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "cryptology-the-secret-is-in-the-keys",
+    "source_type": "inferred",
+    "target": "basic-integrity-and-authenticity"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "basic-integrity-and-authenticity",
+    "source_type": "curriculum_defined",
+    "target": "cryptographic-hash-functions"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "cryptographic-hash-functions",
+    "source_type": "curriculum_defined",
+    "target": "cryptographic-hash-function-properties"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "cryptographic-hash-function-properties",
+    "source_type": "curriculum_defined",
+    "target": "well-known-hash-functions"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "well-known-hash-functions",
+    "source_type": "curriculum_defined",
+    "target": "message-digest-5-algorithm"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "well-known-hash-functions",
+    "source_type": "curriculum_defined",
+    "target": "secure-hash-algorithm"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "message-digest-5-algorithm",
+    "source_type": "curriculum_defined",
+    "target": "md5-versus-sha-1"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "secure-hash-algorithm",
+    "source_type": "curriculum_defined",
+    "target": "md5-versus-sha-1"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "cryptographic-hash-functions",
+    "source_type": "curriculum_defined",
+    "target": "keyed-hash-message-authentication-code"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "types-of-cryptographic-keys",
+    "source_type": "inferred",
+    "target": "keyed-hash-message-authentication-code"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "keyed-hash-message-authentication-code",
+    "source_type": "curriculum_defined",
+    "target": "hmac-operation"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "characteristics-of-key-management",
+    "source_type": "curriculum_defined",
+    "target": "key-management-the-keyspace"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "key-management-the-keyspace",
+    "source_type": "curriculum_defined",
+    "target": "types-of-cryptographic-keys"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "types-of-cryptographic-keys",
+    "source_type": "curriculum_defined",
+    "target": "choosing-cryptographic-keys"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "confidentiality",
+    "source_type": "curriculum_defined",
+    "target": "cryptographic-encryption"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "cryptographic-encryption",
+    "source_type": "curriculum_defined",
+    "target": "symmetric-encryption-algorithms"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "cryptographic-encryption",
+    "source_type": "curriculum_defined",
+    "target": "asymmetric-encryption-algorithms"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "cryptographic-encryption",
+    "source_type": "inferred",
+    "target": "symmetric-encryption-techniques"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "symmetric-encryption-algorithms",
+    "source_type": "curriculum_defined",
+    "target": "block-ciphers"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "symmetric-encryption-algorithms",
+    "source_type": "curriculum_defined",
+    "target": "stream-ciphers"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "symmetric-encryption-techniques",
+    "source_type": "inferred",
+    "target": "block-ciphers"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "symmetric-encryption-techniques",
+    "source_type": "inferred",
+    "target": "stream-ciphers"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "block-ciphers",
+    "source_type": "curriculum_defined",
+    "target": "data-encryption-standard"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "types-of-cryptographic-keys",
+    "source_type": "inferred",
+    "target": "data-encryption-standard"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "data-encryption-standard",
+    "source_type": "curriculum_defined",
+    "target": "des-operation-ecb"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "des-operation-ecb",
+    "source_type": "curriculum_defined",
+    "target": "des-operation-cbc"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "des-operation-cbc",
+    "source_type": "curriculum_defined",
+    "target": "des-operations-cont"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "des-operations-cont",
+    "source_type": "curriculum_defined",
+    "target": "des-summary"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "data-encryption-standard",
+    "source_type": "curriculum_defined",
+    "target": "3des-improving-des-with-3des"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "3des-improving-des-with-3des",
+    "source_type": "curriculum_defined",
+    "target": "3des-3des-operation"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "des-summary",
+    "source_type": "curriculum_defined",
+    "target": "advanced-encryption-standard-aes"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "advanced-encryption-standard-aes",
+    "source_type": "curriculum_defined",
+    "target": "aes-summary"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "advanced-encryption-standard-aes",
+    "source_type": "inferred",
+    "target": "advanced-encryption-standard"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "stream-ciphers",
+    "source_type": "curriculum_defined",
+    "target": "software-optimized-encryption-algorithm"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "software-optimized-encryption-algorithm",
+    "source_type": "curriculum_defined",
+    "target": "rc-algorithms"
+   },
+   {
+    "confidence": 0.9,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "rc-algorithms",
+    "source_type": "curriculum_defined",
+    "target": "rc-algorithms-cont"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "choosing-cryptographic-keys",
+    "source_type": "inferred",
+    "target": "choosing-an-encryption-algorithm"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "symmetric-encryption-algorithms",
+    "source_type": "inferred",
+    "target": "choosing-an-encryption-algorithm"
+   },
+   {
+    "confidence": 0.7,
+    "direction": "source_is_prerequisite_of_target",
+    "evidence": [],
+    "evidence_count": 0,
+    "relation_type": "prerequisite",
+    "source": "aes-summary",
+    "source_type": "inferred",
+    "target": "choosing-an-encryption-algorithm"
+   }
+  ],
+  "node_count": 35,
+  "nodes": [
+   {
+    "description": "Draft from the title of slide 4: replace this text.",
+    "frequency": 1,
+    "id": "cryptology-the-secret-is-in-the-keys",
+    "label": "Cryptology - The Secret Is in the Keys"
+   },
+   {
+    "description": "Draft from the title of slide 5: replace this text.",
+    "frequency": 1,
+    "id": "basic-integrity-and-authenticity",
+    "label": "BASIC INTEGRITY AND AUTHENTICITY"
+   },
+   {
+    "description": "Draft from the title of slide 6: replace this text.",
+    "frequency": 4,
+    "id": "cryptographic-hash-functions",
+    "label": "Cryptographic Hash Functions"
+   },
+   {
+    "description": "Draft from the title of slide 8: replace this text.",
+    "frequency": 2,
+    "id": "cryptographic-hash-function-properties",
+    "label": "Cryptographic Hash Function Properties"
+   },
+   {
+    "description": "Draft from the title of slide 9: replace this text.",
+    "frequency": 1,
+    "id": "well-known-hash-functions",
+    "label": "Well-Known Hash Functions"
+   },
+   {
+    "description": "Draft from the title of slide 10: replace this text.",
+    "frequency": 1,
+    "id": "message-digest-5-algorithm",
+    "label": "Message Digest 5 Algorithm"
+   },
+   {
+    "description": "Draft from the title of slide 11: replace this text.",
+    "frequency": 3,
+    "id": "secure-hash-algorithm",
+    "label": "Secure Hash Algorithm"
+   },
+   {
+    "description": "Draft from the title of slide 13: replace this text.",
+    "frequency": 1,
+    "id": "md5-versus-sha-1",
+    "label": "MD5 Versus SHA-1"
+   },
+   {
+    "description": "Draft from the title of slide 14: replace this text.",
+    "frequency": 3,
+    "id": "keyed-hash-message-authentication-code",
+    "label": "Keyed-Hash Message Authentication Code"
+   },
+   {
+    "description": "Draft from the title of slide 16: replace this text.",
+    "frequency": 1,
+    "id": "hmac-operation",
+    "label": "HMAC Operation"
+   },
+   {
+    "description": "Draft from the title of slide 17: replace this text.",
+    "frequency": 5,
+    "id": "characteristics-of-key-management",
+    "label": "Characteristics of Key Management"
+   },
+   {
+    "description": "Draft from the title of slide 21: replace this text.",
+    "frequency": 1,
+    "id": "key-management-the-keyspace",
+    "label": "Key Management - The Keyspace"
+   },
+   {
+    "description": "Draft from the title of slide 22: replace this text.",
+    "frequency": 1,
+    "id": "types-of-cryptographic-keys",
+    "label": "Types of Cryptographic Keys"
+   },
+   {
+    "description": "Draft from the title of slide 23: replace this text.",
+    "frequency": 1,
+    "id": "choosing-cryptographic-keys",
+    "label": "Choosing Cryptographic Keys"
+   },
+   {
+    "description": "Draft from the title of slide 24: replace this text.",
+    "frequency": 3,
+    "id": "confidentiality",
+    "label": "CONFIDENTIALITY"
+   },
+   {
+    "description": "Draft from the title of slide 25: replace this text.",
+    "frequency": 1,
+    "id": "cryptographic-encryption",
+    "label": "Cryptographic Encryption"
+   },
+   {
+    "description": "Draft from the title of slide 26: replace this text.",
+    "frequency": 3,
+    "id": "symmetric-encryption-algorithms",
+    "label": "Symmetric Encryption Algorithms"
+   },
+   {
+    "description": "Draft from the title of slide 27: replace this text.",
+    "frequency": 1,
+    "id": "asymmetric-encryption-algorithms",
+    "label": "Asymmetric Encryption Algorithms"
+   },
+   {
+    "description": "Draft from the title of slide 29: replace this text.",
+    "frequency": 2,
+    "id": "symmetric-encryption-techniques",
+    "label": "Symmetric Encryption Techniques"
+   },
+   {
+    "description": "Draft from the title of slide 30: replace this text.",
+    "frequency": 5,
+    "id": "block-ciphers",
+    "label": "Block Ciphers"
+   },
+   {
+    "description": "Draft from the title of slide 31: replace this text.",
+    "frequency": 3,
+    "id": "stream-ciphers",
+    "label": "Stream Ciphers"
+   },
+   {
+    "description": "Draft from the title of slide 32: replace this text.",
+    "frequency": 3,
+    "id": "choosing-an-encryption-algorithm",
+    "label": "Choosing an Encryption Algorithm"
+   },
+   {
+    "description": "Draft from the title of slide 34: replace this text.",
+    "frequency": 1,
+    "id": "data-encryption-standard",
+    "label": "Data Encryption Standard"
+   },
+   {
+    "description": "Draft from the title of slide 35: replace this text.",
+    "frequency": 1,
+    "id": "des-operation-ecb",
+    "label": "DES Operation - ECB"
+   },
+   {
+    "description": "Draft from the title of slide 36: replace this text.",
+    "frequency": 1,
+    "id": "des-operation-cbc",
+    "label": "DES Operation - CBC"
+   },
+   {
+    "description": "Draft from the title of slide 37: replace this text.",
+    "frequency": 1,
+    "id": "des-operations-cont",
+    "label": "DES Operations Cont."
+   },
+   {
+    "description": "Draft from the title of slide 38: replace this text.",
+    "frequency": 1,
+    "id": "des-summary",
+    "label": "DES Summary"
+   },
+   {
+    "description": "Draft from the title of slide 39: replace this text.",
+    "frequency": 2,
+    "id": "3des-improving-des-with-3des",
+    "label": "3DES - Improving DES with 3DES"
+   },
+   {
+    "description": "Draft from the title of slide 41: replace this text.",
+    "frequency": 1,
+    "id": "3des-3des-operation",
+    "label": "3DES - 3DES Operation"
+   },
+   {
+    "description": "Draft from the title of slide 42: replace this text.",
+    "frequency": 1,
+    "id": "advanced-encryption-standard-aes",
+    "label": "Advanced Encryption Standard (AES)"
+   },
+   {
+    "description": "Draft from the title of slide 43: replace this text.",
+    "frequency": 1,
+    "id": "aes-summary",
+    "label": "AES Summary"
+   },
+   {
+    "description": "Draft from the title of slide 44: replace this text.",
+    "frequency": 2,
+    "id": "advanced-encryption-standard",
+    "label": "Advanced Encryption Standard"
+   },
+   {
+    "description": "Draft from the title of slide 45: replace this text.",
+    "frequency": 2,
+    "id": "software-optimized-encryption-algorithm",
+    "label": "Software-Optimized Encryption Algorithm"
+   },
+   {
+    "description": "Draft from the title of slide 47: replace this text.",
+    "frequency": 2,
+    "id": "rc-algorithms",
+    "label": "RC Algorithms"
+   },
+   {
+    "description": "Draft from the title of slide 48: replace this text.",
+    "frequency": 1,
+    "id": "rc-algorithms-cont",
+    "label": "RC Algorithms Cont."
+   }
+  ]
+ },
+ "lecture_id": "l06",
+ "page_count": 50,
+ "review_status": "hand-curated demo graph (lecture 07); team review recommended"
+}
