@@ -433,3 +433,35 @@ def test_dependents_and_weighted_depth_are_order_invariant() -> None:
         assert {i: sorted(v.dependents_of(i)) for i in ids} == {
             i: sorted(ref.dependents_of(i)) for i in ids
         }
+
+
+def test_duplicate_edges_without_aliases_count_one_dependent() -> None:
+    edges = [_pre("a", "b", confidence=0.2), _pre("a", "b", confidence=0.9)]
+    view = GraphView(_graph(["a", "b"], edges))
+    assert view.dependents_of("a") == ["b"]
+    assert _m(view, "a").dependents_count == 1
+    # duplicates are kept without aliases, so the heaviest single edge decides the depth
+    assert _m(view, "b").direct_count == 2
+    assert _m(view, "b").weighted_depth == pytest.approx(0.9)
+
+
+def test_cyclic_metrics_are_order_invariant() -> None:
+    nodes = ["a", "b", "c", "d"]
+    edges = [
+        _pre("a", "b", confidence=0.4),
+        _pre("b", "c", confidence=0.6),
+        _pre("c", "a", confidence=0.8),
+        _pre("c", "d"),
+        _pre("a", "d", confidence=0.3),
+    ]
+    ref = GraphView(_graph(nodes, edges))
+    expected = {i: _m(ref, i) for i in nodes}
+    assert all(m.has_cycle for i, m in expected.items() if i != "d") or expected["d"].has_cycle
+    assert all(m.weighted_depth >= 0 and m.weighted_depth < float("inf") for m in expected.values())
+    rng = random.Random(5)
+    for _ in range(15):
+        n2, e2 = nodes[:], edges[:]
+        rng.shuffle(n2)
+        rng.shuffle(e2)
+        v = GraphView(_graph(n2, e2))
+        assert {i: _m(v, i) for i in nodes} == expected

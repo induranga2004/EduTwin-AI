@@ -221,3 +221,38 @@ def test_default_pipeline_output_has_empty_merged_from(pptx):
     resp = DifficultyPipeline().run(pptx, "deck.pptx", graph("v1"))
     assert all(p.merged_from == [] for p in resp.predictions)
     assert all(p["merged_from"] == [] for p in resp.model_dump(mode="json")["predictions"])
+
+
+GRAPH_B = ("prereq.weighted_depth", "prereq.dependents_count")
+
+
+def test_v1_graph_metrics_computed_including_roots(pptx):
+    resp = DifficultyPipeline().run(pptx, "deck.pptx", graph("v1"))
+    for p in resp.predictions:
+        for name in GRAPH_B:
+            f = feat(p, name)
+            assert f.status is FeatureStatus.COMPUTED
+            assert f.value is not None
+            assert f.value >= 0.0
+            assert f.source == "c1_graph:prerequisite_edges"
+    roots = [p for p in resp.predictions if feat(p, "prereq.direct_count").value == 0.0]
+    assert roots
+    assert all(feat(p, "prereq.weighted_depth").value == 0.0 for p in roots)  # honest: no chain
+    assert any(feat(p, "prereq.dependents_count").value for p in resp.predictions)
+
+
+def test_v0_graph_metrics_unavailable_with_honest_note(pptx):
+    resp = DifficultyPipeline().run(pptx, "deck.pptx", graph("v0"))
+    for p in resp.predictions:
+        for name in GRAPH_B:
+            f = feat(p, name)
+            assert f.status is FeatureStatus.UNAVAILABLE
+            assert f.value is None
+            assert "no prerequisite edges" in f.note
+
+
+def test_mock_graph_metrics_are_mocked_not_computed(pptx):
+    resp = DifficultyPipeline().run(pptx, "deck.pptx")
+    for p in resp.predictions:
+        for name in GRAPH_B:
+            assert feat(p, name).status is FeatureStatus.MOCKED

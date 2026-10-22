@@ -195,7 +195,7 @@ the same properties the decks expose, so it only tests plumbing and must never b
 | # | Layer | Content | Status |
 |---|---|---|---|
 | 1 | Input | lecture file (PPTX/PDF) to slide records (`materials.py`); C1 graph, real or labelled mock (`graph.py`, `providers.py`); concept alignment (`concepts.py`) | exists |
-| 2 | Feature | the 35 registry features in groups A to D with provenance (computed, mocked, unavailable; 24 implemented, 1 mock, 10 planned) | exists |
+| 2 | Feature | the 35 registry features in groups A to D with provenance (computed, mocked, unavailable; 26 implemented, 1 mock, 8 planned) | exists |
 | 2b | Learned feature models (optional) | replace the remaining placeholders `expl.semantic_support_score` (mock) and `dens.visual_complexity` (todo); each outputs one number into its existing registry slot. Turning a planned or mock feature into an implemented one does not change names, groups or order, so it does not change the hash or the version (maturity is not hashed), unless the meaning of an existing feature changes, which bumps `FEATURE_SCHEMA_VERSION`. Adding, removing, renaming or reordering a feature changes the hash and the version: Feature A did (24 to 26 features, version 0.2) and the nine pre-registered planned features did (35 features, version 0.3), which was safe because no trained artifact exists yet. Phase 2 may still change the schema; it is to be frozen as `1.0` at its end, and after that any change needs retraining (see the "Schema versioning policy" in the design document) | proposed |
 | 3 | Group experts | four models, each predicting overall difficulty from one group's inputs only | proposed |
 | 4 | Combiner | small stacking model over the four group outputs, tolerant of a missing group | proposed |
@@ -216,7 +216,7 @@ Lecturers label one difficulty per concept, so a per-group target would need ext
 | Group | Features | Inputs | Model type |
 |---|---|---|---|
 | A language | 8 `lang.*` (all implemented) | text plus features | MiniLM plus numeric head |
-| B prerequisites | 7 `prereq.*` (5 implemented, 2 planned) | features only (from the C1 graph) | small tabular model |
+| B prerequisites | 7 `prereq.*` (7 implemented) | features only (from the C1 graph) | small tabular model |
 | C explanation | 7 `expl.*` (4 implemented, 1 mock, 2 planned) | text plus features | MiniLM plus numeric head, or tabular |
 | D density | 13 `dens.*` (7 implemented, 6 planned) | features only | small tabular model |
 

@@ -23,7 +23,7 @@ replaced one at a time without changing the response shape. What exists:
 
 - a parser for PPTX and PDF lecture files;
 - a way to accept C1's graph (as a request payload) or build a clearly labelled mock graph from slide titles;
-- 35 registered features in four groups (A = 8, B = 7, C = 7, D = 13): 24 implemented (15 computed from the lecture text, 3 from PPTX structure only, 6 from the C1 graph), 1 mock (`expl.semantic_support_score`) and 10 planned, which are always `unavailable` until their milestone (see section 4; the vocabulary features of group A became real in Phase 2, milestone M1, see "Feature A method" in section 4; the nine other planned features were pre-registered in schema version 0.3, see "Schema versioning policy");
+- 35 registered features in four groups (A = 8, B = 7, C = 7, D = 13): 26 implemented (15 computed from the lecture text, 3 from PPTX structure only, 8 from the C1 graph), 1 mock (`expl.semantic_support_score`) and 8 planned, which are always `unavailable` until their milestone (see section 4; the vocabulary features of group A became real in Phase 2, milestone M1, see "Feature A method" in section 4; the other planned features were pre-registered in schema version 0.3 and `prereq.weighted_depth` / `prereq.dependents_count` have since been built without a schema change, see "Schema versioning policy");
 - ordered, mask-aware fusion input;
 - a transparent rule baseline (`RuleBaselineModel`) that produces a label and a raw score, with no probabilities and no
   confidence;
@@ -120,7 +120,7 @@ Source of truth: `difficulty/registry.py`. Each feature has two registry fields:
 The legacy `phase1` field (`real`, `real_needs_structure`, `graph`, `mock`, `todo`) is no longer stored. It is derived from `maturity` and
 `requires` and is still in the JSON of `/difficulty/info` for one more release; it is deprecated, so read `maturity` and `requires`.
 
-Counts: 24 implemented (15 `text`, 3 `pptx_structure`, 6 `c1_graph`), 1 mock, 10 planned. Group sizes: A = 8, B = 7, C = 7, D = 13.
+Counts: 26 implemented (15 `text`, 3 `pptx_structure`, 8 `c1_graph`), 1 mock, 8 planned (group B: 7 implemented, 0 planned). Group sizes: A = 8, B = 7, C = 7, D = 13.
 
 | # | Name | Group | Maturity | Requires | Description |
 |---|------|-------|----------|----------|-------------|
@@ -137,8 +137,8 @@ Counts: 24 implemented (15 `text`, 3 `pptx_structure`, 6 `c1_graph`), 1 mock, 10
 | 11 | `prereq.transitive_count` | B | implemented | c1_graph | All distinct (transitive) prerequisites. |
 | 12 | `prereq.mean_confidence` | B | implemented | c1_graph | Mean confidence of direct prerequisites. |
 | 13 | `prereq.curriculum_defined_share` | B | implemented | c1_graph | Share of direct prerequisites from the curriculum. |
-| 14 | `prereq.weighted_depth` | B | planned | c1_graph | Sum of confidences along the heaviest prerequisite chain. |
-| 15 | `prereq.dependents_count` | B | planned | c1_graph | Number of concepts that directly depend on this one. |
+| 14 | `prereq.weighted_depth` | B | implemented | c1_graph | Sum of edge confidences along the heaviest prerequisite chain below the concept (a missing confidence counts 1.0; cycle-safe like `prereq.chain_depth`; 0.0 when it has no prerequisites). |
+| 15 | `prereq.dependents_count` | B | implemented | c1_graph | Number of distinct concepts that directly depend on this one (prerequisite edges only; 0.0 when none). |
 | 16 | `expl.definition_count` | C | implemented | text | Definition phrases on the concept's slides. |
 | 17 | `expl.example_count` | C | implemented | text | Worked-example phrases on the concept's slides. |
 | 18 | `expl.step_count` | C | implemented | text | Step-by-step markers (Step 1, numbered lists). |
@@ -257,7 +257,7 @@ Every `FeatureValue` in the response has a `status`, a `source` and a `note`.
 |--------|---------|------------------|
 | `computed` | Real value from real inputs | Language, explanation and density features with slides found; group B from a caller-supplied graph; `dens.concept_frequency` from a caller graph |
 | `mocked` | Placeholder, or computed from a mocked input; never treated as real | `expl.semantic_support_score` (0.0) always (the only mock left in the registry); every group B feature and `dens.concept_frequency` when the graph is the mock graph |
-| `unavailable` | Cannot be produced; carries no value | No prerequisite edges in the graph -> all five group B features, note "C1 graph has no prerequisite edges"; concept id unknown to the graph -> group B; PDF -> `expl.diagram_support`, `dens.max_bullet_depth`, `dens.shape_count_mean`; concept not found on any slide -> every slide-based feature of groups A, C, D; vocabulary resources missing, or no words under the vocabulary word rule -> the three vocabulary features of group A (see "Feature A method"); no direct prerequisites -> `prereq.mean_confidence` and `prereq.curriculum_defined_share`; every `planned` feature always (10 of them; source `todo:<name>`; the note is "not yet implemented" for those filled by `features/_common.assemble`, and `dens.visual_complexity` keeps its own TODO note) |
+| `unavailable` | Cannot be produced; carries no value | No prerequisite edges in the graph (a v0 graph) -> all seven group B features, note "C1 graph has no prerequisite edges"; concept id unknown to the graph -> group B; PDF -> `expl.diagram_support`, `dens.max_bullet_depth`, `dens.shape_count_mean`; concept not found on any slide -> every slide-based feature of groups A, C, D; vocabulary resources missing, or no words under the vocabulary word rule -> the three vocabulary features of group A (see "Feature A method"); no direct prerequisites -> `prereq.mean_confidence` and `prereq.curriculum_defined_share`; every `planned` feature always (8 of them; source `todo:<name>`; the note is "not yet implemented" for those filled by `features/_common.assemble`, and `dens.visual_complexity` keeps its own TODO note) |
 
 A computed value never hides a mock: a feature derived from the mock graph is `mocked`, not `computed`.
 
@@ -271,7 +271,7 @@ The materials are always `real`; the graph is `real` when the caller supplied it
 graph).
 
 A prediction itself has `status` `ok` (all 35 features computed), `partial` (some mocked or unavailable) or `failed`
-(not enough computed features, `difficulty` is `null`). Because the registry holds 10 planned features that are
+(not enough computed features, `difficulty` is `null`). Because the registry holds 8 planned features that are
 `unavailable` by design and 1 mock, a prediction is `partial` by design until those milestones are built; `partial` here
 does not mean something went wrong. What matters for the baseline is whether enough of its own components are computed
 (`MIN_COMPONENTS`), not the overall status.
@@ -321,6 +321,16 @@ versioned: `FEATURE_SCHEMA_VERSION` in `difficulty/registry.py` (currently `0.3`
   maturity, status counts and the number of distinct computed values, and flags `constant`, `all-unavailable`, `planned` and
   `partial` features (synthetic data makes some features constant by construction, for example `dens.concepts_per_slide`).
   Options: `--json`, `--write-snapshot PATH`, `--seed`, `--lectures`, `--concepts`; exit code 0 on success, 2 on bad arguments.
+- **Graph metrics** (`graph.py`, `features/prerequisites.py`): `prereq.weighted_depth` is the largest sum of edge confidences
+  along any prerequisite chain below the concept (a missing confidence counts 1.0; an edge back to a concept already on the
+  chain is ignored, so cycles terminate like `prereq.chain_depth`); `prereq.dependents_count` is the number of distinct
+  concepts with a direct prerequisite edge from it (`co_mentioned` and invalid edges never count; alias merges and dropped
+  concepts are applied first). Both are computed (0.0 for a concept without prerequisites or dependents) on any graph
+  with prerequisite edges, `mocked` on the mock graph, and `unavailable` ("C1 graph has no prerequisite edges (waiting for C1)")
+  on a v0 graph, never a fake 0.0. Observed with `feature_report.py` on the seeded decks (v1 graphs): `prereq.weighted_depth`
+  computed 48/48, 19 distinct values, 0 to 4.17; `prereq.dependents_count` computed 48/48, 5 distinct values, 0 to 5; neither
+  is flagged. The v0 and mock cases are covered by `test_pipeline.py` and `test_features_prerequisites.py`. Neither feature
+  is read by the baseline, so scores and labels are unchanged and the schema version stays 0.3 (maturity is not hashed).
 
 ## 6. Fusion and the baseline model
 
@@ -626,12 +636,11 @@ text, default path builds one plain view), `test_settings.py`, `test_router.py` 
 
 1. Real C1 connection (`C1ApiGraphProvider`); the graph is a mock unless supplied by the caller.
 2. Concept filter: alias merging (TDE = Transparent Data Encryption) and generic phrases. **Status:** a heuristic filter exists behind `EDUSYNC_C2_CONCEPT_FILTER=heuristic` (see "Concept filter"); the default is still the mock `mock_keep_all` until the heuristic has been validated on real C1 output, so this item stays open and its text in `PHASE1_TODO` is unchanged.
-3. Feature B: `prereq.weighted_depth` and `prereq.dependents_count` (planned, from the C1 graph).
-4. Feature C: semantic definition/example detection (`expl.semantic_support_score` is a mock; `expl.semantic_definition_count` and `expl.semantic_example_count` are planned).
-5. Feature D: visual/diagram complexity analysis (`dens.visual_complexity`, text and picture area ratios, minimum font size, diagram elements and table cells are planned).
-6. `MiniLMFusionModel` and learned feature fusion (Phase 3, trained on lecturer labels).
-7. Calibrated confidence and probabilities (never invented before a trained, evaluated model).
-8. Prediction persistence for Phase 5 comparison with live comprehension.
+3. Feature C: semantic definition/example detection (`expl.semantic_support_score` is a mock; `expl.semantic_definition_count` and `expl.semantic_example_count` are planned).
+4. Feature D: visual/diagram complexity analysis (`dens.visual_complexity`, text and picture area ratios, minimum font size, diagram elements and table cells are planned).
+5. `MiniLMFusionModel` and learned feature fusion (Phase 3, trained on lecturer labels).
+6. Calibrated confidence and probabilities (never invented before a trained, evaluated model).
+7. Prediction persistence for Phase 5 comparison with live comprehension.
 
 The former item "Feature A: unfamiliar-vocabulary score from a domain word list" was removed when Feature A became real (Phase 2, M1).
 
@@ -646,7 +655,7 @@ Per-module mocks and TODOs found in the code:
 | `concept_filter.HeuristicConceptFilter` | Real but not validated on real C1 output, and off by default (`EDUSYNC_C2_CONCEPT_FILTER=heuristic`); recall figures come from hand-written lists; known limits in "Concept filter" |
 | `features/language.py`, `features/vocab.py` | No mock left in group A. Limits: the vocabulary features measure general-English rarity plus a CS/IT/ML lexicon, with unvalidated thresholds (see "Feature A method") |
 | `features/explanation.py` | `expl.semantic_support_score` is a 0.0 placeholder (mocked, the only mock in the registry); `expl.semantic_definition_count` and `expl.semantic_example_count` are planned (unavailable); definition/example/step counts are regex cues only |
-| `features/prerequisites.py` | `prereq.weighted_depth` and `prereq.dependents_count` planned (unavailable, also from a mock graph) |
+| `features/prerequisites.py` | All seven group B features are implemented; a mock graph gives `mocked` values, a v0 graph (no prerequisite edges) gives `unavailable` |
 | `features/density.py` | `dens.visual_complexity` and the five other planned density features (text and picture area ratio, minimum font size, diagram elements, table cells) are unavailable (TODO) |
 | `features/_common.assemble` | Any planned feature a processor does not produce is filled as unavailable, source `todo:<name>`, note "not yet implemented" |
 | `models.MiniLMFusionModel` | Not implemented (Phase 3) |
@@ -789,7 +798,7 @@ What remains before Phase 1 can be called fully closed: merge PR #19 and these c
 1. Feature A: done in milestone M1. `lang.unfamiliar_vocab_ratio` is now real (MiniLM word pieces), with `lang.subword_fragmentation` and `lang.domain_term_ratio` added (section 4, "Feature A method"). Open: validate the thresholds and the lexicon against real lectures.
 2. Feature D: `dens.visual_complexity` and the five other planned density features (`dens.text_area_ratio`, `dens.picture_area_ratio`, `dens.min_font_pt`, `dens.diagram_element_count`, `dens.table_cell_count`).
 3. Feature C: `expl.semantic_support_score` (mock) and the planned `expl.semantic_definition_count` and `expl.semantic_example_count` (semantic definition/example detection).
-4. Feature B against the real C1 graph, including the planned `prereq.weighted_depth` and `prereq.dependents_count` (needs the v1 contract to exist; see the contract doc and its contract tests).
+4. Feature B against the real C1 graph: `prereq.weighted_depth` and `prereq.dependents_count` are built (graph-metrics step, no schema change). Open: run all of group B on a real C1 v1 graph (needs the v1 contract to exist; see the contract doc and its contract tests).
 5. Concept filter: a heuristic filter (alias merging, generic phrases) exists since milestone M2 behind `EDUSYNC_C2_CONCEPT_FILTER=heuristic` (section "Concept filter"). Open: run it on real C1 output, then decide whether to make it the default; C1 aliases could replace parts of it.
 6. `C1ApiGraphProvider`, calling C1's graph endpoint with the same file.
 

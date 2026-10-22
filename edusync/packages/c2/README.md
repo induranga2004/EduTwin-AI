@@ -101,7 +101,7 @@ Logging conventions and the checklist for new features: see the "Logging and dev
 
 ## Feature report and registry snapshot
 
-The registry (`difficulty/registry.py`) has 35 features (A = 8, B = 7, C = 7, D = 13): 24 implemented, 1 mock and 10 planned. Planned
+The registry (`difficulty/registry.py`) has 35 features (A = 8, B = 7, C = 7, D = 13): 26 implemented, 1 mock and 8 planned. Planned
 features are always `unavailable` (`todo:<name>`) until their milestone. The schema is versioned (`FEATURE_SCHEMA_VERSION`, now `0.3`)
 and pinned by `tests/difficulty/golden/registry_snapshot.json`, checked by `tests/difficulty/test_registry_snapshot.py`.
 `scripts/feature_report.py` prints, per feature, maturity, status counts and distinct computed values over the seeded synthetic decks,
