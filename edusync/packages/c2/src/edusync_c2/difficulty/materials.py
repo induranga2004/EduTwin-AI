@@ -9,7 +9,9 @@ import re
 from io import BytesIO
 
 from pptx import Presentation
-from pptx.enum.shapes import MSO_SHAPE_TYPE
+from pptx.shapes.group import GroupShape
+from pptx.shapes.picture import Picture
+from pptx.shapes.placeholder import PlaceholderPicture
 from pptx.slide import Slide
 from pptx.text.text import TextFrame
 from pypdf import PdfReader
@@ -170,10 +172,13 @@ class _SlideCollector:
             self.shapes += 1
             if shape.shape_id == title_id:
                 continue
-            if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+            # isinstance, not shape.shape_type: that raises NotImplementedError for an autoshape
+            # without recognisable geometry, which would turn a valid deck into an HTTP 400.
+            if isinstance(shape, GroupShape):
                 self.walk(shape.shapes, title_id)
                 continue
-            if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+            # A filled picture placeholder is a PlaceholderPicture (shape_type PLACEHOLDER).
+            if isinstance(shape, Picture | PlaceholderPicture):
                 self.pictures += 1
             if shape.has_chart:
                 self.charts += 1

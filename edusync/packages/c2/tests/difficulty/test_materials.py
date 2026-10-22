@@ -232,3 +232,46 @@ def test_detect_code_true(text: str) -> None:
 )
 def test_detect_code_false(text: str) -> None:
     assert not detect_code(text)
+
+
+# ------------------------------------------------------------------ parser regressions
+_UNRECOGNISED_SP = (
+    '<p:sp xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" '
+    'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+    '<p:nvSpPr><p:cNvPr id="99" name="Odd shape"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>'
+    '<p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="100" cy="100"/></a:xfrm></p:spPr>'
+    "</p:sp>"
+)
+
+
+def test_shape_without_recognisable_geometry_does_not_fail_the_deck() -> None:
+    from lxml import etree
+
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[5])
+    slide.shapes.title.text = "Odd"
+    slide.shapes._spTree.append(etree.fromstring(_UNRECOGNISED_SP))
+    odd = next(s for s in slide.shapes if s.shape_id == 99)
+    with pytest.raises(NotImplementedError):  # the python-pptx behaviour that used to give a 400
+        _ = odd.shape_type
+    doc = parse_materials(_save(prs), "odd.pptx")
+    assert doc.slide_count == 1
+    assert doc.slides[0].shape_count == 2
+    assert doc.slides[0].picture_count == 0
+
+
+def test_filled_picture_placeholder_counts_as_a_picture() -> None:
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[8])  # Picture with Caption
+    picture_ph = next(p for p in slide.placeholders if p.placeholder_format.type.name == "PICTURE")
+    slide.shapes.title.text = "Pic"
+    picture_ph.insert_picture(BytesIO(_png()))
+    doc = parse_materials(_save(prs), "pic.pptx")
+    assert doc.slides[0].picture_count == 1
+
+
+def test_unfilled_picture_placeholder_is_not_a_picture() -> None:
+    prs = Presentation()
+    prs.slides.add_slide(prs.slide_layouts[8]).shapes.title.text = "Empty"
+    doc = parse_materials(_save(prs), "empty.pptx")
+    assert doc.slides[0].picture_count == 0
