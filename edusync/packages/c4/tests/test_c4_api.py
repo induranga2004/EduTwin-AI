@@ -253,9 +253,9 @@ def test_database_lives_under_data_dir(tmp_path):
 
 def test_sqlite_schema_version_and_foreign_keys(repo):
     with sqlite3.connect(repo.db_path) as conn:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 2
         tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    assert {"events", "groups", "analyses"} <= tables
+    assert {"events", "groups", "analyses", "slides"} <= tables
 
 
 def test_slide_ids_containing_slashes_work_in_paths(client):
@@ -275,3 +275,93 @@ def test_slide_ids_containing_slashes_work_in_paths(client):
         assert len(client.post(f"{base}/group").json()) == 1
         assert client.post(f"{base}/analyze").status_code == 200
     assert client.get(f"{BASE}/lectures/{L}/slides/other/2/snapshot?timestamp=1").status_code == 404
+
+
+# --- Demo Step 1: slides and lecture reset ---
+
+SLIDE = "pres-1/2"  # BBB page ids contain a slash
+SVG = '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" width="960" height="540"></svg>'
+
+
+def _put_slide(client, slide=SLIDE, **body):
+    return client.put(f"{BASE}/lectures/{L}/slides/{slide}", json=body)
+
+
+def test_slide_roundtrip_with_slash_id(client):
+    resp = _put_slide(
+        client,
+        number=2,
+        width=960,
+        height=540,
+        scaled_width=1440,
+        scaled_height=810,
+        text="High Availability",
+        svg=SVG,
+    )
+    assert resp.status_code == 200
+    info = resp.json()
+    assert info["slide_id"] == SLIDE
+    assert info["has_svg"] is True
+    assert info["scaled_width"] == 1440
+    listing = client.get(f"{BASE}/lectures/{L}/slides").json()
+    assert [s["slide_id"] for s in listing] == [SLIDE]
+    assert "svg" not in listing[0]  # list never carries the image
+    svg = client.get(f"{BASE}/lectures/{L}/slides/{SLIDE}/svg")
+    assert svg.status_code == 200
+    assert svg.headers["content-type"].startswith("image/svg+xml")
+    assert svg.headers["content-security-policy"] == "sandbox"
+    assert svg.text == SVG
+
+
+def test_slide_upsert_keeps_fields_not_resent(client):
+    _put_slide(client, number=2, text="first", svg=SVG)
+    again = _put_slide(client, text="second").json()
+    assert again["text"] == "second"
+    assert again["number"] == 2
+    assert again["has_svg"] is True
+
+
+def test_slides_are_ordered_by_number(client):
+    for n in (3, 1, 2):
+        _put_slide(client, slide=f"p/{n}", number=n)
+    assert [s["number"] for s in client.get(f"{BASE}/lectures/{L}/slides").json()] == [1, 2, 3]
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"svg": "<html></html>"},
+        {"svg": '<!DOCTYPE svg [<!ENTITY a "b">]><svg></svg>'},
+        {"svg": "<svg>" + "x" * 5_000_001},
+        {"width": -1},
+        {"number": -3},
+    ],
+)
+def test_invalid_slide_payloads_are_rejected(client, bad):
+    assert _put_slide(client, **bad).status_code == 422
+
+
+def test_missing_slide_image_is_404(client):
+    assert client.get(f"{BASE}/lectures/{L}/slides/none/svg").status_code == 404
+    _put_slide(client, number=1)  # no svg stored
+    assert client.get(f"{BASE}/lectures/{L}/slides/{SLIDE}/svg").status_code == 404
+    assert client.get(f"{BASE}/lectures/unknown/slides").json() == []
+
+
+def test_delete_lecture_removes_everything_and_only_that_lecture(client):
+    _import(client)
+    client.post(f"{BASE}/lectures/{L}/slides/{S}/analyze")
+    _put_slide(client, svg=SVG)
+    other = {"lecture_id": "keep", "slide_id": S, "events": [_txt("k", 1)]}
+    client.post(f"{BASE}/events/import", json=other)
+    counts = client.delete(f"{BASE}/lectures/{L}").json()
+    assert counts == {"groups": 2, "slides": 1, "events": 3}
+    assert client.get(f"{BASE}/lectures/{L}/events").status_code == 404
+    assert client.get(f"{BASE}/lectures/{L}/slides").json() == []
+    assert client.get(f"{BASE}/lectures/{L}/catchup").status_code == 404
+    assert len(client.get(f"{BASE}/lectures/keep/events").json()) == 1
+    assert client.delete(f"{BASE}/lectures/nothing").json() == {
+        "groups": 0,
+        "slides": 0,
+        "events": 0,
+    }

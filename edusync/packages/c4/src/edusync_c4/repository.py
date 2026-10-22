@@ -26,10 +26,12 @@ from edusync_c4.schemas import (
     GroupingConfig,
     NormalizedAnnotation,
     ShapeType,
+    SlideInfo,
+    SlideUpsert,
 )
 from edusync_c4.timeline import build_timeline
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS events (
@@ -64,6 +66,19 @@ CREATE TABLE IF NOT EXISTS analyses (
     lecture_id TEXT NOT NULL,
     analysis_json TEXT NOT NULL,
     computed_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS slides (
+    lecture_id TEXT NOT NULL,
+    slide_id TEXT NOT NULL,
+    number INTEGER,
+    width REAL,
+    height REAL,
+    scaled_width REAL,
+    scaled_height REAL,
+    text TEXT,
+    svg TEXT,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (lecture_id, slide_id)
 );
 """
 
@@ -288,3 +303,86 @@ class AnnotationRepository:
             )
             for r in rows
         ]
+
+    # ------------------------------------------------------------------ slides
+
+    def save_slide(self, lecture_id: str, slide_id: str, slide: SlideUpsert) -> SlideInfo:
+        """Insert or replace one slide. Fields left out (None) keep their stored value."""
+        with self._connect() as conn:
+            old = conn.execute(
+                "SELECT * FROM slides WHERE lecture_id = ? AND slide_id = ?",
+                (lecture_id, slide_id),
+            ).fetchone()
+
+            def pick(name: str) -> Any:
+                new = getattr(slide, name)
+                return new if new is not None else (old[name] if old is not None else None)
+
+            conn.execute(
+                "INSERT OR REPLACE INTO slides VALUES (?,?,?,?,?,?,?,?,?,?)",
+                (
+                    lecture_id,
+                    slide_id,
+                    pick("number"),
+                    pick("width"),
+                    pick("height"),
+                    pick("scaled_width"),
+                    pick("scaled_height"),
+                    pick("text"),
+                    pick("svg"),
+                    _now(),
+                ),
+            )
+        info = self.get_slide_info(lecture_id, slide_id)
+        assert info is not None
+        return info
+
+    @staticmethod
+    def _slide_info(row: sqlite3.Row) -> SlideInfo:
+        return SlideInfo(
+            lecture_id=row["lecture_id"],
+            slide_id=row["slide_id"],
+            number=row["number"],
+            width=row["width"],
+            height=row["height"],
+            scaled_width=row["scaled_width"],
+            scaled_height=row["scaled_height"],
+            text=row["text"],
+            has_svg=bool(row["svg"]),
+        )
+
+    def get_slide_info(self, lecture_id: str, slide_id: str) -> SlideInfo | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM slides WHERE lecture_id = ? AND slide_id = ?",
+                (lecture_id, slide_id),
+            ).fetchone()
+        return self._slide_info(row) if row is not None else None
+
+    def list_slides(self, lecture_id: str) -> list[SlideInfo]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM slides WHERE lecture_id = ? ORDER BY number, slide_id",
+                (lecture_id,),
+            ).fetchall()
+        return [self._slide_info(r) for r in rows]
+
+    def get_slide_svg(self, lecture_id: str, slide_id: str) -> str | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT svg FROM slides WHERE lecture_id = ? AND slide_id = ?",
+                (lecture_id, slide_id),
+            ).fetchone()
+        return row["svg"] if row is not None else None
+
+    # ------------------------------------------------------------------ reset
+
+    def delete_lecture(self, lecture_id: str) -> dict[str, int]:
+        """Remove everything stored for one lecture; returns row counts per table."""
+        counts: dict[str, int] = {}
+        with self._connect() as conn:
+            conn.execute("DELETE FROM analyses WHERE lecture_id = ?", (lecture_id,))
+            for table in ("groups", "slides", "events"):
+                cur = conn.execute(f"DELETE FROM {table} WHERE lecture_id = ?", (lecture_id,))
+                counts[table] = cur.rowcount
+        return counts

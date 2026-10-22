@@ -3,7 +3,7 @@
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from edusync_core import ConceptRef, EvidenceItem, Flag
 
@@ -339,3 +339,46 @@ class CatchUpResponse(BaseModel):
     since_seconds: float
     items: list[CatchUpItem]
     note: str
+
+
+# --- Demo Step 1: slides (page info, text and the slide image as SVG) ---
+
+MAX_SLIDE_SVG_CHARS = 5_000_000
+MAX_SLIDE_TEXT_CHARS = 200_000
+
+
+class SlideUpsert(BaseModel):
+    """Page info captured from BBB for one slide. All fields optional so partial captures work."""
+
+    number: int | None = Field(default=None, ge=0)
+    width: float | None = Field(default=None, gt=0)
+    height: float | None = Field(default=None, gt=0)
+    scaled_width: float | None = Field(default=None, gt=0)
+    scaled_height: float | None = Field(default=None, gt=0)
+    text: str | None = Field(default=None, max_length=MAX_SLIDE_TEXT_CHARS)
+    svg: str | None = Field(default=None, max_length=MAX_SLIDE_SVG_CHARS)
+
+    @field_validator("svg")
+    @classmethod
+    def _svg_is_plain_svg(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        head = v.lstrip()[:2000].lower()
+        if "<svg" not in head:
+            raise ValueError("svg must contain an <svg> element")
+        lowered = v.lower()
+        if "<!doctype" in lowered or "<!entity" in lowered:
+            raise ValueError("svg must not contain a DOCTYPE or entity declarations")
+        return v
+
+
+class SlideInfo(BaseModel):
+    lecture_id: str
+    slide_id: str
+    number: int | None = None
+    width: float | None = None
+    height: float | None = None
+    scaled_width: float | None = None
+    scaled_height: float | None = None
+    text: str | None = None
+    has_svg: bool = False

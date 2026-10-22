@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
 
 from edusync_c4.c2_mock import DeterministicDifficultyPredictor, StaticComprehensionEvaluator
 from edusync_c4.context import ContextConfig
@@ -24,8 +24,10 @@ from edusync_c4.schemas import (
     NormalizedAnnotation,
     ReconcileRequest,
     ReconcileResponse,
+    SlideInfo,
     SlideSnapshot,
     SlideText,
+    SlideUpsert,
 )
 from edusync_c4.timeline import reconstruct_snapshot
 from edusync_core import CoreSettings, get_settings
@@ -214,3 +216,29 @@ def catchup(
     return CatchUpResponse(
         lecture_id=lecture_id, since_seconds=since, items=items, note=CATCHUP_NOTE
     )
+
+
+# Specific "/slides/{slide}/<suffix>" routes are declared above; this one is the bare slide id.
+@router.get("/lectures/{lecture_id}/slides")
+def list_slides(lecture_id: str, repo: RepoDep) -> list[SlideInfo]:
+    return repo.list_slides(lecture_id)
+
+
+@router.get("/lectures/{lecture_id}/slides/{slide_id:path}/svg")
+def slide_svg(lecture_id: str, slide_id: str, repo: RepoDep) -> Response:
+    svg = repo.get_slide_svg(lecture_id, slide_id)
+    if not svg:
+        raise HTTPException(404, f"No slide image for lecture {lecture_id!r} slide {slide_id!r}.")
+    # Served as a download-safe image; scripts never run when SVG is loaded via <img>.
+    return Response(svg, media_type="image/svg+xml", headers={"Content-Security-Policy": "sandbox"})
+
+
+@router.put("/lectures/{lecture_id}/slides/{slide_id:path}")
+def put_slide(lecture_id: str, slide_id: str, slide: SlideUpsert, repo: RepoDep) -> SlideInfo:
+    return repo.save_slide(lecture_id, slide_id, slide)
+
+
+@router.delete("/lectures/{lecture_id}")
+def delete_lecture(lecture_id: str, repo: RepoDep) -> dict[str, int]:
+    """Remove all stored data for a lecture (for example rehearsal data)."""
+    return repo.delete_lecture(lecture_id)
