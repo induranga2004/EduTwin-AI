@@ -11,6 +11,7 @@ from pptx import Presentation
 
 from edusync_c2 import COMPONENT
 from edusync_c2.difficulty import DifficultyPipeline
+from edusync_c2.difficulty.registry import FEATURE_SCHEMA_VERSION
 from edusync_c2.difficulty.synthetic import build_c1_graph, build_pdf, build_pptx, make_deck_spec
 from edusync_c2.router import get_pipeline
 from edusync_core.settings import CoreSettings, get_settings
@@ -140,6 +141,8 @@ def test_info_shows_model_fields(client):
     body = client.get("/difficulty/info").json()
     assert body["selected_model"] == "baseline"
     assert len(body["feature_schema_hash"]) == 64
+    assert body["feature_schema_version"] == FEATURE_SCHEMA_VERSION
+    assert {"maturity", "requires", "phase1"} <= set(body["features"][0])
 
 
 def test_real_dependency_baseline(real_app, monkeypatch):

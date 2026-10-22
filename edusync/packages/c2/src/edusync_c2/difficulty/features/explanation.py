@@ -2,6 +2,7 @@
 
 import re
 
+from edusync_c2.difficulty.features._common import assemble
 from edusync_c2.difficulty.registry import features_of
 from edusync_c2.difficulty.schemas import (
     ConceptRecord,
@@ -52,43 +53,43 @@ def explanation_features(
     concept: ConceptRecord, slides: list[SlideRecord], structure_available: bool
 ) -> list[FeatureValue]:
     """Group C features in registry order."""
-    names = features_of(FeatureGroup.EXPLANATION)
     if not slides:
-        return [
-            _fv(
-                n,
-                None,
-                FeatureStatus.UNAVAILABLE,
-                "materials:regex",
-                "concept not found in materials",
-            )
-            for n in names
-        ]
+        return assemble(
+            FeatureGroup.EXPLANATION,
+            {
+                n: _fv(
+                    n,
+                    None,
+                    FeatureStatus.UNAVAILABLE,
+                    "materials:regex",
+                    "concept not found in materials",
+                )
+                for n in features_of(FeatureGroup.EXPLANATION)
+            },
+        )
     text = "\n".join(f"{s.title or ''}\n{s.text}\n{s.notes}" for s in slides)
-    out = [
-        _fv(n, float(len(rx.findall(text))), FeatureStatus.COMPUTED, "materials:regex")
+    out = {
+        n: _fv(n, float(len(rx.findall(text))), FeatureStatus.COMPUTED, "materials:regex")
         for n, rx in _COUNT_RES.items()
-    ]
+    }
     if structure_available:
         total = sum((s.picture_count or 0) + (s.chart_count or 0) for s in slides)
-        out.append(_fv("expl.diagram_support", float(total), FeatureStatus.COMPUTED, _STRUCT))
+        out["expl.diagram_support"] = _fv(
+            "expl.diagram_support", float(total), FeatureStatus.COMPUTED, _STRUCT
+        )
     else:
-        out.append(
-            _fv(
-                "expl.diagram_support",
-                None,
-                FeatureStatus.UNAVAILABLE,
-                _STRUCT,
-                "PDF: structure not available",
-            )
+        out["expl.diagram_support"] = _fv(
+            "expl.diagram_support",
+            None,
+            FeatureStatus.UNAVAILABLE,
+            _STRUCT,
+            "PDF: structure not available",
         )
-    out.append(
-        _fv(
-            "expl.semantic_support_score",
-            0.0,
-            FeatureStatus.MOCKED,
-            "mock:todo_semantic_detection",
-            "TODO: placeholder 0.0, no semantic detection yet",
-        )
+    out["expl.semantic_support_score"] = _fv(
+        "expl.semantic_support_score",
+        0.0,
+        FeatureStatus.MOCKED,
+        "mock:todo_semantic_detection",
+        "TODO: placeholder 0.0, no semantic detection yet",
     )
-    return out
+    return assemble(FeatureGroup.EXPLANATION, out)

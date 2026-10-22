@@ -15,7 +15,11 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from edusync_c2.difficulty.errors import ModelArtifactError, ModelNotAvailableError
-from edusync_c2.difficulty.registry import FEATURE_NAMES, feature_schema_hash
+from edusync_c2.difficulty.registry import (
+    FEATURE_NAMES,
+    FEATURE_SCHEMA_VERSION,
+    feature_schema_hash,
+)
 from edusync_c2.difficulty.schemas import (
     DifficultyLabel,
     FeatureStatus,
@@ -62,6 +66,28 @@ SUPPORT_FEATURES: tuple[str, ...] = (
     "expl.step_count",
 )
 SUPPORT_CREDIT_MAX = 0.25  # largest amount the support credit can subtract
+
+
+def _validate_constants(
+    weights: dict[str, float],
+    norm: dict[str, tuple[float, float]],
+    support: tuple[str, ...],
+    names: tuple[str, ...],
+) -> None:
+    """Fail fast when the baseline constants and the registry drift apart."""
+    if set(weights) != set(norm):
+        diff = sorted(set(weights) ^ set(norm))
+        raise ValueError(f"weights and normalisation keys differ: {', '.join(diff)}")
+    unknown = sorted({*weights, *support} - set(names))
+    if unknown:
+        raise ValueError(f"baseline features not in the registry: {', '.join(unknown)}")
+    bad = sorted(name for name, (_offset, span) in norm.items() if not span > 0)
+    if bad:
+        raise ValueError(f"normalisation span must be > 0 for: {', '.join(bad)}")
+
+
+_validate_constants(RAISING_WEIGHTS, _NORMALISATION, SUPPORT_FEATURES, FEATURE_NAMES)
+
 MIN_COMPONENTS = 3  # fewer computed difficulty-raising components -> no prediction
 # Placeholder thresholds, NOT validated. They sit where the baseline scores of the three synthetic
 # decks separate (Low up to about 0.11, Medium 0.06-0.24, High above 0.24), so the labels spread
@@ -169,8 +195,9 @@ A Phase 3 model folder (EDUSYNC_C2_MODEL_DIR) must contain:
   {ARTIFACT_INT8} or {ARTIFACT_FP32}: the ONNX graph (exactly one required; int8 is preferred
       when both exist)
   {ARTIFACT_LABELS}: JSON list {list(LABEL_ORDER)} in exactly this ordinal order (not alphabetical)
-  {ARTIFACT_FEATURE_SCHEMA}: JSON object with schema_version (str), names (equal to
-      registry.FEATURE_NAMES, in order) and hash (equal to registry.feature_schema_hash())
+  {ARTIFACT_FEATURE_SCHEMA}: JSON object with schema_version (str, equal to
+      registry.FEATURE_SCHEMA_VERSION), names (equal to registry.FEATURE_NAMES, in order) and
+      hash (equal to registry.feature_schema_hash())
   {ARTIFACT_INFERENCE_CONFIG}: JSON object with max_length (int, 1..{MAX_LENGTH_LIMIT}),
       base_model (str), base_revision (str); optional trained_on (str)
   {ARTIFACT_TOKENIZER}: the non-empty tokenizer file
@@ -241,6 +268,12 @@ class OnnxFusionModel:
         if not _is_nonempty_str(version):
             raise ModelArtifactError(
                 f"{ARTIFACT_FEATURE_SCHEMA} must be an object with a string schema_version"
+            )
+        if version != FEATURE_SCHEMA_VERSION:
+            raise ModelArtifactError(
+                f"{ARTIFACT_FEATURE_SCHEMA} schema_version {version!r} does not match the "
+                f"current FEATURE_SCHEMA_VERSION {FEATURE_SCHEMA_VERSION!r}: the feature "
+                "registry changed since training; retrain or restore the registry"
             )
         if schema.get("names") != list(FEATURE_NAMES):
             raise ModelArtifactError(

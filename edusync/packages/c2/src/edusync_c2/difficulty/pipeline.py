@@ -17,7 +17,12 @@ from edusync_c2.difficulty.providers import (
     MockC1GraphProvider,
     PayloadGraphProvider,
 )
-from edusync_c2.difficulty.registry import FEATURE_SPECS, PHASE1_TODO, feature_schema_hash
+from edusync_c2.difficulty.registry import (
+    FEATURE_SCHEMA_VERSION,
+    FEATURE_SPECS,
+    PHASE1_TODO,
+    feature_schema_hash,
+)
 from edusync_c2.difficulty.schemas import (
     AlignmentStatus,
     C1GraphResponse,
@@ -70,6 +75,7 @@ class DifficultyPipeline:
             todo=list(PHASE1_TODO),
             selected_model=self.selected_model,
             feature_schema_hash=feature_schema_hash(),
+            feature_schema_version=FEATURE_SCHEMA_VERSION,
         )
 
     def run(

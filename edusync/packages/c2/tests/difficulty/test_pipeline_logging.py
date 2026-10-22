@@ -5,6 +5,7 @@ from pptx import Presentation
 
 from edusync_c2.difficulty import DifficultyPipeline
 from edusync_c2.difficulty.materials import MaterialsError
+from edusync_c2.difficulty.registry import FEATURE_SCHEMA_VERSION
 from edusync_c2.difficulty.schemas import C1GraphResponse
 from edusync_c2.difficulty.synthetic import build_c1_graph, build_pptx, make_deck_spec
 
@@ -115,6 +116,7 @@ def test_info_fields():
     info = DifficultyPipeline(selected_model="minilm").info()
     assert info.selected_model == "minilm"
     assert len(info.feature_schema_hash) == 64
+    assert info.feature_schema_version == FEATURE_SCHEMA_VERSION
     assert DifficultyPipeline().info().selected_model == "baseline"
 
 

@@ -2,6 +2,7 @@
 
 import re
 
+from edusync_c2.difficulty.features._common import assemble
 from edusync_c2.difficulty.schemas import (
     ConceptRecord,
     FeatureGroup,
@@ -57,16 +58,18 @@ def density_features(
     )
     if not slides:
         note = "concept not found in materials"
-        return [
-            _fv("dens.words_per_slide", None, _U, _SRC, note),
-            _fv("dens.concepts_per_slide", None, _U, _SRC, note),
-            _fv("dens.formula_presence", None, _U, _SRC, note),
-            _fv("dens.code_presence", None, _U, _SRC, note),
-            _fv("dens.max_bullet_depth", None, _U, _STRUCT, note),
-            _fv("dens.shape_count_mean", None, _U, _STRUCT, note),
-            freq,
-            visual,
-        ]
+        return _assemble(
+            [
+                _fv("dens.words_per_slide", None, _U, _SRC, note),
+                _fv("dens.concepts_per_slide", None, _U, _SRC, note),
+                _fv("dens.formula_presence", None, _U, _SRC, note),
+                _fv("dens.code_presence", None, _U, _SRC, note),
+                _fv("dens.max_bullet_depth", None, _U, _STRUCT, note),
+                _fv("dens.shape_count_mean", None, _U, _STRUCT, note),
+                freq,
+                visual,
+            ]
+        )
     n = len(slides)
     words = sum(len(_WORD_RE.findall(s.text)) for s in slides) / n
     per_slide = sum(sum(1 for k in all_concepts if s.index in k.slide_indexes) for s in slides) / n
@@ -87,4 +90,8 @@ def density_features(
     else:
         out.append(_fv("dens.max_bullet_depth", None, _U, _STRUCT, _PDF_NOTE))
         out.append(_fv("dens.shape_count_mean", None, _U, _STRUCT, _PDF_NOTE))
-    return [*out, freq, visual]
+    return _assemble([*out, freq, visual])
+
+
+def _assemble(values: list[FeatureValue]) -> list[FeatureValue]:
+    return assemble(FeatureGroup.DENSITY, {v.name: v for v in values})
