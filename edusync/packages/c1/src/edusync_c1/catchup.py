@@ -116,17 +116,22 @@ class LateJoinerCatchupEngine:
                 note="No concepts were missed prior to your join time.",
             )
 
-        # 2. Induce Subgraph and Perform Topological Sort (Kahn's Algorithm)
+        # 2. Induce Subgraph and Perform Pedagogical Topological Sort
         subgraph = self.dag.subgraph(missed_concept_ids).copy()
 
-        # In case of any orphan or cycle edge, ensure acyclic ordering
+        # In case of any cycle or skipped intermediary, ensure foundational depth ordering
         if not nx.is_directed_acyclic_graph(subgraph):
             topological_order = sorted(
                 list(missed_concept_ids),
                 key=lambda cid: (self.compute_chain_depth(cid), cid),
             )
         else:
-            topological_order = list(nx.topological_sort(subgraph))
+            topo_gen = list(nx.topological_generations(subgraph))
+            topological_order = []
+            for gen in topo_gen:
+                topological_order.extend(
+                    sorted(gen, key=lambda cid: (self.compute_chain_depth(cid), cid))
+                )
 
         # 3. Build Concept Summaries & Audio Anchors
         summaries: list[CatchupConceptSummary] = []
