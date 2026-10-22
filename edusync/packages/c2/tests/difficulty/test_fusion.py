@@ -2,7 +2,7 @@
 
 from edusync_c2.difficulty.features import compute_all_features
 from edusync_c2.difficulty.fusion import build_fusion_input, summarize_features, to_vector
-from edusync_c2.difficulty.registry import FEATURE_NAMES, FEATURE_SPECS
+from edusync_c2.difficulty.registry import FEATURE_NAMES, FEATURE_SPECS, features_of
 from edusync_c2.difficulty.schemas import (
     AlignmentStatus,
     ConceptRecord,
@@ -94,8 +94,8 @@ def test_summary(deck):
     s = summarize_features(fs)
     assert set(s) == set(FeatureGroup)
     assert sum(g.computed + g.mocked + g.unavailable for g in s.values()) == len(FEATURE_NAMES)
-    assert s[FeatureGroup.PREREQUISITES].mocked == 5
-    assert s[FeatureGroup.PREREQUISITES].unavailable == 2  # planned
+    assert s[FeatureGroup.PREREQUISITES].mocked == len(features_of(FeatureGroup.PREREQUISITES))
+    assert s[FeatureGroup.PREREQUISITES].unavailable == 0  # group B is fully built
     assert s[FeatureGroup.LANGUAGE].mocked == 0
     assert s[FeatureGroup.LANGUAGE].computed == 8
     assert s[FeatureGroup.DENSITY].unavailable == 6  # the six planned density features

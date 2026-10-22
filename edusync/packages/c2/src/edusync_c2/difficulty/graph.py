@@ -84,8 +84,10 @@ class GraphView:
                 "merge and were ignored"
             )
         self._incoming: dict[str, list[C1Edge]] = {}
+        self._dependents: dict[str, list[str]] = {}
         for e in best.values():
             self._incoming.setdefault(e.target, []).append(e)
+            self._dependents.setdefault(e.source, []).append(e.target)
 
     def _problem(self, e: C1Edge) -> str | None:
         label = f"'{e.source}' -> '{e.target}'"
@@ -108,6 +110,12 @@ class GraphView:
         """Direct valid prerequisite edges whose target is the concept, in graph order."""
         return list(self._incoming.get(self._canon.get(concept_id, concept_id), []))
 
+    def dependents_of(self, concept_id: str) -> list[str]:
+        """Distinct concepts that directly depend on the concept, in graph order."""
+        return list(
+            dict.fromkeys(self._dependents.get(self._canon.get(concept_id, concept_id), []))
+        )
+
     def metrics(self, concept_id: str) -> PrerequisiteMetrics | None:
         concept_id = self._canon.get(concept_id, concept_id)
         if concept_id not in self._nodes:
@@ -115,6 +123,7 @@ class GraphView:
         direct = self.prerequisites_of(concept_id)
         confs = [e.confidence for e in direct if e.confidence is not None]
         depth, cyclic = self._depth(concept_id, set(), {})
+        weighted, _ = self._weighted_depth(concept_id, set(), {})
         return PrerequisiteMetrics(
             direct_count=len(direct),
             chain_depth=depth,
@@ -126,6 +135,8 @@ class GraphView:
                 else None
             ),
             has_cycle=cyclic,
+            dependents_count=len(self.dependents_of(concept_id)),
+            weighted_depth=weighted,
         )
 
     def _depth(self, cid: str, path: set[str], memo: dict[str, int]) -> tuple[int, bool]:
@@ -142,6 +153,30 @@ class GraphView:
             best, cyclic = max(best, d + 1), cyclic or c
         path.discard(cid)
         if not cyclic:  # results below a cycle depend on the path, so only cache clean ones
+            memo[cid] = best
+        return best, cyclic
+
+    def _weighted_depth(
+        self, cid: str, path: set[str], memo: dict[str, float]
+    ) -> tuple[float, bool]:
+        """Heaviest prerequisite chain below ``cid`` (sum of edge confidences, None counts 1.0).
+
+        Cycle safe like ``_depth``: an edge back to a node on the current path is ignored, and
+        only cycle-free results are cached.
+        """
+        if cid in memo:
+            return memo[cid], False
+        path.add(cid)
+        best, cyclic = 0.0, False
+        for e in self._incoming.get(cid, []):
+            if e.source in path:
+                cyclic = True
+                continue
+            w, c = self._weighted_depth(e.source, path, memo)
+            weight = 1.0 if e.confidence is None else e.confidence
+            best, cyclic = max(best, w + weight), cyclic or c
+        path.discard(cid)
+        if not cyclic:
             memo[cid] = best
         return best, cyclic
 

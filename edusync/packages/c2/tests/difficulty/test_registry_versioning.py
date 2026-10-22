@@ -48,17 +48,17 @@ LEGACY_PHASE1 = {
             "prereq.transitive_count",
             "prereq.mean_confidence",
             "prereq.curriculum_defined_share",
+            "prereq.weighted_depth",
+            "prereq.dependents_count",
             "dens.concept_frequency",
         ),
         "graph",
     ),
     "expl.semantic_support_score": "mock",
     "dens.visual_complexity": "todo",
-    # pre-registered in schema 0.3, all planned
+    # pre-registered in schema 0.3, still planned
     **dict.fromkeys(
         (
-            "prereq.weighted_depth",
-            "prereq.dependents_count",
             "expl.semantic_definition_count",
             "expl.semantic_example_count",
             "dens.text_area_ratio",

@@ -309,3 +309,127 @@ def test_order_invariance() -> None:
         assert {i: v.metrics(i) for i in ids} == expected
         kept = v.prerequisites_of("b")
         assert [(e.source_type, e.confidence) for e in kept] == [("curriculum_defined", 0.1)]
+
+
+# --------------------------------------------------------- dependents_count and weighted_depth
+
+
+def _m(view: GraphView, cid: str):
+    m = view.metrics(cid)
+    assert m is not None
+    return m
+
+
+def test_v0_dependents_and_weighted_depth_are_zero(graph_v0: C1GraphResponse) -> None:
+    view = GraphView(graph_v0)
+    for node in graph_v0.graph.nodes:
+        assert _m(view, node.id).dependents_count == 0
+        assert _m(view, node.id).weighted_depth == 0.0
+        assert view.dependents_of(node.id) == []
+
+
+def test_v1_dependents_and_weighted_depth(graph_v1: C1GraphResponse) -> None:
+    view = GraphView(graph_v1)
+    assert {n.id: _m(view, n.id).dependents_count for n in graph_v1.graph.nodes} == {
+        "loss function": 1,  # the co_mentioned edge does not count
+        "learning rate": 1,
+        "gradient descent": 1,
+        "backpropagation": 0,
+    }
+    assert _m(view, "gradient descent").weighted_depth == pytest.approx(0.9)
+    assert _m(view, "backpropagation").weighted_depth == pytest.approx(1.6)
+    assert _m(view, "loss function").weighted_depth == 0.0
+    assert view.dependents_of("learning rate") == ["gradient descent"]
+    assert view.dependents_of("nope") == []
+
+
+def test_unknown_concept_has_no_metrics_or_dependents() -> None:
+    view = GraphView(_graph(["a", "b"], [_pre("a", "b")]))
+    assert view.metrics("nope") is None
+    assert view.dependents_of("nope") == []
+
+
+def test_diamond_weighted_depth_takes_the_heaviest_chain() -> None:
+    edges = [
+        _pre("a", "b", confidence=0.9),
+        _pre("a", "c", confidence=0.1),
+        _pre("b", "d", confidence=0.5),
+        _pre("c", "d", confidence=0.8),
+    ]
+    view = GraphView(_graph(["a", "b", "c", "d"], edges))
+    assert _m(view, "d").weighted_depth == pytest.approx(1.4)  # a->b->d beats a->c->d (0.9)
+    assert _m(view, "d").chain_depth == 2
+    assert _m(view, "a").dependents_count == 2
+    assert _m(view, "b").dependents_count == 1
+    assert _m(view, "d").dependents_count == 0
+
+
+def test_missing_confidence_counts_as_one() -> None:
+    edges = [_pre("a", "b"), _pre("b", "c", confidence=0.25)]
+    view = GraphView(_graph(["a", "b", "c"], edges))
+    assert _m(view, "b").weighted_depth == 1.0
+    assert _m(view, "c").weighted_depth == pytest.approx(1.25)
+
+
+def test_cycle_weighted_depth_terminates_and_stays_finite() -> None:
+    edges = [_pre("b", "a", confidence=0.5), _pre("c", "b", confidence=0.5), _pre("a", "c")]
+    view = GraphView(_graph(["a", "b", "c"], edges))
+    m = _m(view, "a")
+    assert m.has_cycle is True
+    # a <- b <- c, the edge a -> c would revisit a and is ignored: 0.5 + 0.5
+    assert m.weighted_depth == pytest.approx(1.0)
+    assert (m.dependents_count, m.chain_depth) == (1, 2)
+
+
+def test_cycle_memo_does_not_leak_between_queries() -> None:
+    edges = [_pre("a", "b", confidence=0.5), _pre("b", "a", confidence=0.5), _pre("b", "c")]
+    view = GraphView(_graph(["a", "b", "c"], edges))
+    first = _m(view, "c")
+    assert _m(view, "c") == first
+    assert first.has_cycle is True
+
+
+def test_aliases_merge_dependents_and_dedupe() -> None:
+    edges = [
+        _pre("a", "b", confidence=0.3),
+        _pre("a2", "b", confidence=0.6),  # duplicate of a -> b after the merge
+        _pre("a2", "c", confidence=0.2),
+    ]
+    view = GraphView(_graph(["a", "a2", "b", "c"], edges), aliases={"a2": "a"})
+    assert view.dependents_of("a2") == ["b", "c"]
+    assert _m(view, "a").dependents_count == 2
+    assert _m(view, "b").weighted_depth == pytest.approx(0.6)  # the better duplicate is kept
+
+
+def test_dropped_concepts_are_cut_from_dependents() -> None:
+    edges = [_pre("a", "b"), _pre("a", "c"), _pre("c", "d")]
+    view = GraphView(_graph(["a", "b", "c", "d"], edges), dropped={"c"})
+    assert _m(view, "a").dependents_count == 1
+    assert view.metrics("c") is None
+    assert _m(view, "d").weighted_depth == 0.0
+
+
+def test_dependents_and_weighted_depth_are_order_invariant() -> None:
+    nodes = ["a", "a2", "b", "c", "d"]
+    edges = [
+        _pre("a", "b", confidence=0.2),
+        _pre("a2", "b", confidence=0.7),
+        _pre("b", "c", confidence=0.4),
+        _pre("a", "c"),
+        _pre("c", "d", confidence=0.9),
+        _pre("d", "a2", confidence=0.1),
+    ]
+    amap = {"a2": "a"}
+    ids = ["a", "b", "c", "d"]
+    ref = GraphView(_graph(nodes, edges), aliases=amap)
+    expected = {i: (_m(ref, i).dependents_count, _m(ref, i).weighted_depth) for i in ids}
+    rng = random.Random(11)
+    for _ in range(10):
+        n2, e2 = nodes[:], edges[:]
+        rng.shuffle(n2)
+        rng.shuffle(e2)
+        v = GraphView(_graph(n2, e2), aliases=amap)
+        assert {i: (_m(v, i).dependents_count, _m(v, i).weighted_depth) for i in ids} == expected
+        assert {i: sorted(v.dependents_of(i)) for i in ids} == {
+            i: sorted(ref.dependents_of(i)) for i in ids
+        }

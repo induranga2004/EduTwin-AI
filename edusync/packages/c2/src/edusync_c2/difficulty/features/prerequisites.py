@@ -47,10 +47,12 @@ def prerequisite_features(
         "prereq.transitive_count": float(metrics.transitive_count),
         "prereq.mean_confidence": metrics.mean_confidence,
         "prereq.curriculum_defined_share": metrics.curriculum_defined_share,
+        "prereq.weighted_depth": metrics.weighted_depth,
+        "prereq.dependents_count": float(metrics.dependents_count),
     }
     out: dict[str, FeatureValue] = {}
     for name, value in values.items():
-        if value is None or (metrics.direct_count == 0 and name.endswith(("confidence", "share"))):
+        if value is None:
             out[name] = _unavailable(name, "no direct prerequisites")
         else:
             out[name] = FeatureValue(

@@ -126,14 +126,14 @@ FEATURE_SPECS: tuple[FeatureSpec, ...] = (
     _f(
         "prereq.weighted_depth",
         G.PREREQUISITES,
-        "planned",
+        "implemented",
         "c1_graph",
         "Sum of confidences along the heaviest prerequisite chain.",
     ),
     _f(
         "prereq.dependents_count",
         G.PREREQUISITES,
-        "planned",
+        "implemented",
         "c1_graph",
         "Number of concepts that directly depend on this one.",
     ),
@@ -280,7 +280,6 @@ FEATURE_NAMES: tuple[str, ...] = tuple(s.name for s in FEATURE_SPECS)
 PHASE1_TODO: tuple[str, ...] = (
     "Real C1 connection (C1ApiGraphProvider); the graph is a mock unless supplied by the caller.",
     "Concept filter: alias merging (TDE = Transparent Data Encryption) and generic phrases.",
-    "Feature B: prereq.weighted_depth and prereq.dependents_count (planned, from the C1 graph).",
     "Feature C: semantic definition/example detection (expl.semantic_support_score is a mock; "
     "expl.semantic_definition_count and expl.semantic_example_count are planned).",
     "Feature D: visual/diagram complexity analysis (dens.visual_complexity, text and picture "

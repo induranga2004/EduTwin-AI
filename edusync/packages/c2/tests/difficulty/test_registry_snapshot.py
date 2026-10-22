@@ -136,7 +136,8 @@ def test_planned_features_are_always_todo(deck, scenario):
     fs = _compute(deck, **SCENARIOS[scenario])
     assert [f.name for f in fs] == list(FEATURE_NAMES)
     planned = [s.name for s in FEATURE_SPECS if s.maturity == "planned"]
-    assert len(planned) == 10
+    assert planned
+    assert all(not n.startswith("prereq.") for n in planned)  # group B is fully built
     by_name = {f.name: f for f in fs}
     for name in planned:
         f = by_name[name]

@@ -193,6 +193,8 @@ class PrerequisiteMetrics(BaseModel):
     mean_confidence: float | None = None  # over direct prerequisite edges that carry a confidence
     curriculum_defined_share: float | None = None  # share of direct edges with source_type set
     has_cycle: bool = False  # a cycle was found in the prerequisite chain below the concept
+    dependents_count: int = Field(default=0, ge=0)  # distinct concepts directly depending on it
+    weighted_depth: float = 0.0  # heaviest chain below it: sum of edge confidences (None = 1.0)
 
 
 # ------------------------------------------------------------------------------- fusion/model
