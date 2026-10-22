@@ -143,6 +143,15 @@ class SlideRecord(BaseModel):
     chart_count: int | None = None
     table_count: int | None = None
     shape_count: int | None = None
+    # PPTX geometry (integer EMU, points, counts); None = unknown, always None for PDF.
+    text_area_emu: int | None = None  # union of shapes with text (title, tables; no pictures)
+    picture_area_emu: int | None = None  # union of Picture / PlaceholderPicture rects
+    visual_area_emu: int | None = None  # union of picture and diagram rects
+    min_font_pt: float | None = None  # smallest explicit font size; None = none set explicitly
+    diagram_element_count: int | None = None  # autoshapes, connectors, freeforms, SmartArt
+    table_cell_count: int | None = None  # rows x columns over the slide's tables
+    smartart_count: int | None = None
+    geometry_unknown_count: int | None = None  # shapes whose rect or font could not be read
     formula_hint: bool = False  # text looks like it contains a formula or equation
     code_hint: bool = False  # text looks like source code
 
@@ -152,6 +161,8 @@ class MaterialsDoc(BaseModel):
     file_type: Literal["pptx", "pdf"]
     slide_count: int
     structure_available: bool  # False for PDF: only text per page is known
+    slide_width_emu: int | None = None  # None for PDF or when the deck has no slide size
+    slide_height_emu: int | None = None
     slides: list[SlideRecord]
     warnings: list[str] = Field(default_factory=list)
 
