@@ -39,13 +39,14 @@ flowchart LR
   F["lecture file<br/>PPTX / PDF"] --> M["materials.py<br/>slide records"]
   G["C1 graph JSON<br/>(optional, form field)"] --> P{"graph provider"}
   M --> P
-  P -->|caller payload = real| GV["graph.py GraphView<br/>prerequisite metrics"]
+  P -->|caller payload = real| GV["graph.py GraphView (raw)<br/>validates the C1 edges"]
   P -->|no payload| MK["MockC1GraphProvider<br/>(labelled mock)"]
   MK --> GV
-  M --> CO["concepts.py<br/>concepts located on slides<br/>+ MockConceptFilter"]
+  M --> CO["concepts.py + concept_filter.py<br/>concepts located on slides<br/>filter: mock_keep_all (default) or heuristic"]
   GV --> CO
-  CO --> FE["features/ A B C D<br/>35 features + provenance"]
-  GV --> FE
+  CO --> GF["graph.py GraphView (final)<br/>aliases remapped, dropped concepts cut<br/>(the raw view itself if nothing merged)"]
+  GF --> FE["features/ A B C D<br/>35 features + provenance"]
+  CO --> FE
   FE --> FU["fusion.py<br/>ordered values + missing mask + text"]
   FU --> MO["models.py<br/>RuleBaselineModel"]
   MO --> R["DifficultyResponse"]
@@ -58,10 +59,15 @@ Flow in `difficulty/pipeline.py` (`DifficultyPipeline.run`):
    picture/chart/table/shape counts, formula and code hints). PDF yields text per page only.
 2. The graph comes from `PayloadGraphProvider` when the caller supplied `c1_graph` (a real input, not verified by C2),
    otherwise from `MockC1GraphProvider` (concepts = slide titles, prerequisites = slide order, labelled mock).
-3. `concepts.build_concepts` takes concepts from the C1 nodes (fallback: the C1 `concepts` list), locates each one on
-   the slides (whole-phrase, case-insensitive match of label or id in title or text) and passes them through the
-   concept filter. `MockConceptFilter` keeps all of them.
-4. `features.compute_all_features` produces all 35 features for each concept, each with a status and a source.
+3. `GraphView(response)` validates the C1 edges on the raw ids (the "raw view"; the `graph` log line reports these raw
+   counts). `concepts.build_concepts` then takes concepts from the C1 nodes (fallback: the C1 `concepts` list), locates
+   each one on the slides (whole-phrase, case-insensitive match of label or id in title or text) and passes them through
+   the concept filter, selected by `EDUSYNC_C2_CONCEPT_FILTER`. The default `MockConceptFilter` keeps all of them;
+   `HeuristicConceptFilter` drops generic slide phrases and merges aliases (see "Concept filter").
+   If anything was merged or dropped, a second `GraphView` (the "final view") is built with the alias map and the
+   dropped ids; otherwise the final view is the raw view object itself.
+4. `features.compute_all_features` produces all 35 features for each concept (kept canonical concepts only), using the
+   final view, each with a status and a source.
 5. `fusion.build_fusion_input` orders the features by registry, marks unavailable (and, by default, mocked) ones as
    missing, and builds the concept text (concept label + description + slide text, max 1500 characters).
 6. The model predicts a label per concept (`None` when too few features were computed).
@@ -80,9 +86,11 @@ All paths are under `edusync/packages/c2/src/edusync_c2/`.
 | `schemas.py` | Request/response models of the comprehension route |
 | `difficulty/schemas.py` | All Phase 1 contracts: C1 graph input, slide/concept/feature records, fusion, model output, `DifficultyResponse` |
 | `difficulty/materials.py` | PPTX/PDF parser, upload validation (`MaterialsError`), formula and code detectors |
-| `difficulty/graph.py` | `GraphView`: valid prerequisite edges and per-concept metrics |
+| `difficulty/graph.py` | `GraphView`: valid prerequisite edges and per-concept metrics; optional `aliases` and `dropped` arguments remap edges to canonical concepts and cut dropped ones |
 | `difficulty/providers.py` | Graph providers: `PayloadGraphProvider`, `MockC1GraphProvider`, `C1ApiGraphProvider` (TODO, raises `NotImplementedError`) |
-| `difficulty/concepts.py` | Concepts from graph nodes, slide alignment, `ConceptFilter`, `MockConceptFilter` |
+| `difficulty/concepts.py` | Concepts from graph nodes, slide alignment, `ConceptFilter` and `ContextualConceptFilter` protocols, `FilterContext`, `MockConceptFilter` (`is_mock = True`), `create_concept_filter` |
+| `difficulty/concept_filter.py` | `HeuristicConceptFilter`: generic-phrase drop, normalisation merge, abbreviation merge (see "Concept filter") |
+| `settings.py` | `C2Settings` (`EDUSYNC_C2_*`): log level, model, model dir, concept filter and its extras tier |
 | `difficulty/registry.py` | `FEATURE_SPECS` (the 35 features, in order), `FEATURE_SCHEMA_VERSION`, `feature_schema_hash()`, `PHASE1_TODO` |
 | `difficulty/features/language.py` | Group A processor and `lexical_difficulty` |
 | `difficulty/features/vocab.py` | `VocabularyAnalyzer`: word-piece fragmentation, unfamiliar share and domain-term share; shared default analyzer with one cached first load |
@@ -120,7 +128,7 @@ Counts: 24 implemented (15 `text`, 3 `pptx_structure`, 6 `c1_graph`), 1 mock, 10
 | 2 | `lang.avg_word_length` | A | implemented | text | Mean letters per word on the slides. |
 | 3 | `lang.long_word_ratio` | A | implemented | text | Share of words with 9+ letters (technical proxy). |
 | 4 | `lang.lexical_score` | A | implemented | text | Transparent lexical difficulty heuristic in [0, 1]. |
-| 5 | `lang.concept_term_density` | A | implemented | text | Concept mentions per 100 words on its slides. |
+| 5 | `lang.concept_term_density` | A | implemented | text | Concept mentions per 100 words on its slides (the label plus the labels of merged aliases, each occurrence counted once). |
 | 6 | `lang.unfamiliar_vocab_ratio` | A | implemented | text | Share of words that need 2+ MiniLM word pieces (or are `[UNK]`). |
 | 7 | `lang.subword_fragmentation` | A | implemented | text | Mean MiniLM word pieces per word. |
 | 8 | `lang.domain_term_ratio` | A | implemented | text | Share of words in the curated CS/IT lexicon. |
@@ -139,7 +147,7 @@ Counts: 24 implemented (15 `text`, 3 `pptx_structure`, 6 `c1_graph`), 1 mock, 10
 | 21 | `expl.semantic_definition_count` | C | planned | text | Semantic (embedding-based) definition detections on the concept's slides. |
 | 22 | `expl.semantic_example_count` | C | planned | text | Semantic worked-example detections on the concept's slides. |
 | 23 | `dens.words_per_slide` | D | implemented | text | Mean words per concept slide. |
-| 24 | `dens.concepts_per_slide` | D | implemented | text | Mean distinct C1 concepts per concept slide. |
+| 24 | `dens.concepts_per_slide` | D | implemented | text | Mean distinct C1 concepts per concept slide (kept canonical concepts only: a merged alias counts once, a dropped concept not at all). |
 | 25 | `dens.formula_presence` | D | implemented | text | Share of concept slides that look like formulas. |
 | 26 | `dens.code_presence` | D | implemented | text | Share of concept slides that look like code. |
 | 27 | `dens.max_bullet_depth` | D | implemented | pptx_structure | Deepest bullet level on its slides (PPTX). |
@@ -258,7 +266,8 @@ The materials are always `real`; the graph is `real` when the caller supplied it
 
 `StageStatus` (`stages[]`): `materials`, `graph`, `concepts`, `features`, `fusion`, `model`, each with
 `ok` / `partial` / `mocked` / `skipped` / `failed` and a detail text. In Phase 1 the pipeline emits `ok`, `partial` and
-`mocked` (the concept stage is `mocked` while `MockConceptFilter` is in use; the graph stage is `mocked` for a mock
+`mocked` (the concept stage is `mocked` while a filter with `is_mock = True` is in use, that is the default
+`MockConceptFilter`, and `ok` with the heuristic filter or any custom filter; the graph stage is `mocked` for a mock
 graph).
 
 A prediction itself has `status` `ok` (all 35 features computed), `partial` (some mocked or unavailable) or `failed`
@@ -318,7 +327,7 @@ versioned: `FEATURE_SCHEMA_VERSION` in `difficulty/registry.py` (currently `0.3`
 **Fusion** (`fusion.py`): the features are ordered as in the registry; each gets a `missing` flag. Unavailable features
 are missing; mocked features are also treated as missing unless the pipeline is built with `use_mocked_features=True`
 (off by default). `to_vector` yields values (0.0 for missing) and a mask (1 = missing) for a future learned model.
-Text for a text encoder is the concept label, the C1 description (if any) and the text of the concept's slides.
+Text for a text encoder is the concept label, the C1 description (if any), "Also known as: ..." with the merged alias labels (only for a concept that absorbed aliases) and the text of the concept's slides.
 
 **Baseline** (`models.py`, `RuleBaselineModel`, kind `baseline`, name `rule_baseline`, version `0.1`): a transparent
 weighted rule with fixed, untuned constants chosen for readability. It is not trained, outputs **no probabilities and
@@ -360,7 +369,7 @@ Routes (mounted by the API under `/api/c2`, see `router.py`):
 | Route | Notes |
 |-------|-------|
 | `POST /api/c2/difficulty` | multipart form: `file` (required, `.pptx` or `.pdf`), `c1_graph` (optional text field holding C1's JSON exactly as C1 returns it) |
-| `GET /api/c2/difficulty/info` | model info, graph provider name, concept filter name, the 35 `FeatureSpec`s (each with `maturity`, `requires` and the deprecated `phase1`), `feature_schema_version`, `feature_schema_hash` and the TODO list |
+| `GET /api/c2/difficulty/info` | model info, graph provider name, concept filter name (`mock_keep_all` or `heuristic`), the 35 `FeatureSpec`s (each with `maturity`, `requires` and the deprecated `phase1`), `feature_schema_version`, `feature_schema_hash` and the TODO list |
 | `GET /api/c2/health` | component health |
 | `POST /api/c2/comprehension/evaluate` | unchanged; belongs to the later live stage (Phase 5 code) |
 
@@ -444,6 +453,7 @@ from synthetic text and say nothing about real lectures.
       "confidence": null,
       "alignment_status": "aligned",
       "slide_indexes": [3],
+      "merged_from": [],
       "features": [
         {"name": "lang.lexical_score", "group": "A_language", "value": 0.1396, "status": "computed",
          "source": "materials:regex", "note": ""},
@@ -479,12 +489,143 @@ from synthetic text and say nothing about real lectures.
 }
 ```
 
+## Concept filter (Phase 2, milestone M2)
+
+C1 lists "Best Practices" as a concept and lists `TDE` and `Transparent Data Encryption` as two concepts. Both distort the
+features (a generic phrase gets a difficulty label, an alias splits one concept's slides, mentions and prerequisites over
+two entries). The concept filter sits between slide alignment and feature computation and addresses both. Code:
+`difficulty/concept_filter.py` (rules), `difficulty/concepts.py` (protocols, factory), `difficulty/graph.py` (graph side),
+`difficulty/pipeline.py` (wiring).
+
+### Two filters, mock by default
+
+| Setting | Filter | Behaviour |
+|---------|--------|-----------|
+| `EDUSYNC_C2_CONCEPT_FILTER=mock_keep_all` (default) | `MockConceptFilter` | Keeps every concept. Stage `concepts` is `mocked`. Responses are identical to those before M2 apart from the additive `merged_from: []` on each prediction |
+| `EDUSYNC_C2_CONCEPT_FILTER=heuristic` | `HeuristicConceptFilter` | Drops generic slide phrases and merges aliases (rules below). Stage `concepts` is `ok` |
+| `EDUSYNC_C2_CONCEPT_FILTER_EXTRAS=true` | (heuristic only) | Also drops the extras tier of generic phrases. Default `false`; ignored by the mock |
+
+Any other value of `EDUSYNC_C2_CONCEPT_FILTER` fails settings validation (`test_settings.py`). The filter is chosen when
+`router.get_pipeline()` builds the cached pipeline, so restart the process after changing it. `GET /difficulty/info` reports
+the active filter name. A filter whose factory raises `NotImplementedError` answers HTTP 501 and is not cached (`test_router.py`). **The default stays the mock until the heuristic has been checked on real C1 output**; the measured
+numbers below come from hand-written lists only.
+
+Protocol (`concepts.py`): the old `ConceptFilter.apply(concepts)` still works. A filter with a `resolve(concepts, ctx)` method
+(`ContextualConceptFilter`) also receives a `FilterContext(graph, slides, graph_source)` and is preferred by
+`build_concepts`. `is_mock` marks a placeholder; the stage status reads it with `getattr(filter, "is_mock", False)`, so a custom
+filter without the flag reports `ok`.
+
+### What `HeuristicConceptFilter` does
+
+Pure and deterministic (no clock, no randomness; the result does not depend on input order or the hash seed). Rules in order:
+
+1. **Generic drop.** A label that is, as a whole, a generic slide phrase is returned with `filter_status="dropped"` and the note
+   `generic slide phrase`. Comparison folds case, a leading determiner, `&`, and plurals of the last word.
+   - *Safe tier* (always on with the heuristic filter): overview, introduction, summary, agenda, outline, conclusion, question,
+     Q&A, thank you, thanks, objective, learning objective, learning outcome, next step, today, recap, key takeaway, table of
+     contents, roadmap, further reading, welcome, best practice, homework (plurals fold, so "Best Practices" matches).
+   - *Extras tier* (only with `EDUSYNC_C2_CONCEPT_FILTER_EXTRAS=true`): example, definition, exercise, demo, quiz, lab.
+   - *Never dropped*: reference, resource, background, review, discussion, motivation. An early prototype with these in a
+     "risky" tier falsely removed real concepts in a pointers/memory lecture.
+   - Only the whole label is compared, so `Summary Statistics`, `Introduction to Algorithms` and `Example-Based Learning` stay.
+   - Dropped records take no part in merging.
+2. **Normalisation merge.** Labels equal after: case, hyphens and whitespace, a leading `a`/`an`/`the`, possessives,
+   number words to digits (`three-way` = `3-way`; ordinals such as "first" are not folded), `-isation` to `-ization`,
+   run-together words (`real time` = `realtime`), and plurals whose singular **exists as another label** (`Neural
+   Networks` merges only if `Neural Network` is also a label). Abbreviation-shaped labels take no part in the plural rule.
+3. **Abbreviation merge.** An abbreviation-shaped label (2 to 6 letters or digits, mostly upper case, for example `TDE`, `k-NN`)
+   joins a multi-word expansion whose initials spell it (`Transparent Data Encryption`). Strict initials: every word counts,
+   or stop words such as `of`/`and` are skipped; an ALL-CAPS word contributes itself; a number word contributes its digit
+   (`First Normal Form` = `1NF`); a hyphen compound counts all its parts or only its first. Guards that keep precision up:
+   - **Ambiguity guard.** An abbreviation that fits two different expansions merges with neither, and an expansion claimed
+     by two abbreviations merges with neither, unless slide text picks exactly one.
+   - **Slide evidence.** `Expansion (ABBR)` or `ABBR (Expansion)` in a slide title or body selects that expansion. It only
+     applies to abbreviation-shaped labels.
+   - **Digit rule.** An expansion containing a digit token needs a digit in the abbreviation (`L1 Regularization` is not `LR`).
+   - **Prerequisite-edge veto.** If any members of the two clusters are joined by a C1 `prerequisite` edge, in either
+     direction, they are different concepts and are not merged.
+   - **Cluster cap.** A cluster of more than 4 labels (`MAX_CLUSTER`) is not merged at all (a DEBUG log line with the size only).
+   - Candidate pairs are found through a prefilter bucketed by initials, so large graphs (the mock provider makes one node per
+     slide) do not cost quadratic time.
+4. **Canonical choice.** Only an existing C1 node id is ever returned. When an abbreviation merge is involved, the
+   **expansion** is canonical (and is the display label); otherwise the member with the highest frequency, then most slide
+   hits, then the longest label, then the smallest id. The canonical record gets `merged_from` (sorted ids of the absorbed
+   records), `alias_labels`, `frequency` = the **maximum** over the members (C1 counts acronyms about twice, so a sum would
+   inflate), `slide_indexes` = union, `alignment_status` aligned if any member is aligned, and a note such as
+   `merged 2 aliases (normalisation + abbreviation)`. Absorbed records are not returned. Output order follows the earliest
+   member.
+
+Left out on purpose: description-based or synonym merging, a relaxed prefix rule (it added a false merge and no gain), and any
+repair of C1 extraction problems (see "Known limits").
+
+### How the rest of the pipeline uses the result
+
+Order in `DifficultyPipeline.run`: materials, graph provider, **raw view** `GraphView(response)` and the `graph` log line (raw C1
+counts), `build_concepts` and the `concepts` log line, then the **final view**, then features, fusion and model.
+
+- The alias map is `{absorbed id: canonical id}` taken from `merged_from`; the dropped set is the records with
+  `filter_status == "dropped"`.
+- If both are empty the final view is the same object as the raw view, so the default path is untouched.
+- `GraphView(response, aliases=..., dropped=...)`: edges are first validated on the **raw ids** (the existing warnings, unchanged).
+  Surviving prerequisite edges are then remapped to canonical ids. An edge touching a dropped concept is **cut, not bridged**
+  (a chain A -> Best Practices -> B does not become A -> B). Edges that become a self-loop after a merge are ignored, with **one**
+  warning for all of them. Duplicate `(source, target)` pairs are collapsed, keeping `curriculum_defined` over `inferred` over
+  anything else, then the higher confidence, then graph order. The collapse only happens when aliases were given. Cycles
+  created by a merge are not removed: the cycle-safe metrics and the existing `has_cycle` warning cover them. The view's
+  counters (`merged_aliases`, `rewritten_edges`, `dropped_edges`, `merge_self_loops`) feed the stage detail.
+- Features: `lang.concept_term_density` counts the label and every alias label with one longest-first pattern, each occurrence
+  once; `dens.concepts_per_slide` sees the kept canonical records only (an alias counts once, a dropped concept not at all, which
+  differs from the mock path only in heuristic mode); the fusion text appends "Also known as: ..." for merged concepts.
+- Response: `ConceptPrediction.merged_from` (list of absorbed C1 ids, `[]` by default) is the only new response field. The
+  `concepts` stage detail gains `; filter heuristic: N merged, M dropped` when something changed. The `graph` stage detail gains
+  `; N aliases merged, M edges rewritten, K edges dropped` (the non-zero parts), plus the self-loop warning, which is also in
+  the response `warnings` (once). Dropping a concept without touching any edge adds no graph note.
+- Logs: `concepts total=.. aligned=.. not_found=.. filter=heuristic dropped=M merged=N`. ` merged=N` (N = number of absorbed
+  aliases) is only appended when N > 0, so the line for the default filter is unchanged. Concept ids stay DEBUG-only and the
+  filter note contains no slide text.
+
+### Measured behaviour, and how far to trust it
+
+**These numbers were measured on hand-written label lists that the rules were tuned on. Recall is optimistic; precision is the
+number to trust. Nothing here has been run on real C1 output.**
+
+| Measurement | Result |
+|-------------|--------|
+| Committed lists (17 lists in `tests/difficulty/golden/concept_label_lists.json`, checked by `test_concept_label_lists.py`) | 71 of 73 gold merge pairs found, precision 1.0 (no false merge), recall 0.973; the test requires precision exactly 1.0 and recall at least 0.9 |
+| Full prototype fixture (44 lists, 776 labels; only the 17 lists above are committed) | merge precision 0.996, recall 0.950 (0.970 without the duplicates added to stress the generic tier); one known false merge, `Window`/`Windows` |
+| Generic safe tier | 0 false drops on the fixture |
+| Generic extras tier | 58 true positives, 0 false positives, 9 missed (by design: only whole-label matches are dropped) |
+| Without the ambiguity guard (prototype) | 12 false merges, for example `LR` with Linear/Logistic Regression and with L1 Regularization, `CD`, `ML`, `TDE` with Triple Data Encryption. That is why the guard exists |
+
+Negative cases pinned by the unit tests (`test_concept_filter.py`, `test_negative_battery` and the guard tests): `Data Encryption`
+is not `Transparent Data Encryption`, `Gradient Descent` is not `Stochastic Gradient Descent`, `Key` is not `Public Key`, `SQL` is
+not `SQL Injection`, `HTTP` is not `HTTPS`, `Process` is not `Processing`, `Cache` is not `Cache Coherence`, `AES` is not
+`Advanced Data Encryption`; `LR`, `CD`, `ML`, `TDE`, `OS`, `IP` are guarded.
+
+### Known limits
+
+- **Not merged** (no initials or normalisation rule links them): `Backprop` / Backpropagation, `Mutex` / Mutual Exclusion,
+  `Regex` / Regular Expression, `Edit distance` / `Levenshtein distance`, `Gaussian` / `Normal` distribution, `HTTPS` / its
+  full expansion, and typos such as `Dijkstras` / `Dijkstra's`.
+- **Known false merge:** `Window` and `Windows` (the plural rule only needs the singular to exist). Tested as a documented limit.
+- **C1 extraction junk is not repaired.** Slide titles fused with the first body line (`Best Practices The Transparent`), and
+  phrases that start or end with a stop word, are C1 problems. They stay concepts here (a fused label is not a whole-label
+  generic phrase) and are listed for the C1 owner in the [graph contract](c1-c2-graph-contract.md), section 10.
+- A dropped concept cuts its prerequisite edges instead of bridging them, so a real chain through a wrongly dropped node is lost.
+  The mock provider's slide-order chain is already labelled mock.
+- No synonym, description-based or semantic merging, and no per-course tuning of the generic lists.
+
+Tests (all under `edusync/packages/c2/tests/difficulty/`): `test_concept_filter.py` (rules, negatives, determinism, prefilter),
+`test_concept_label_lists.py` (golden lists), `test_graph.py` (aliases and drops in `GraphView`), `test_concepts.py` (factory and
+protocol dispatch), `test_pipeline_filter.py` (end to end, log order and the ` merged=N` suffix, privacy, alias mentions, fusion
+text, default path builds one plain view), `test_settings.py`, `test_router.py` (settings reach the pipeline).
+
 ## 8. Mock and TODO register
 
 `PHASE1_TODO` in `difficulty/registry.py` (also returned in every response and by `/difficulty/info`):
 
 1. Real C1 connection (`C1ApiGraphProvider`); the graph is a mock unless supplied by the caller.
-2. Concept filter: alias merging (TDE = Transparent Data Encryption) and generic phrases.
+2. Concept filter: alias merging (TDE = Transparent Data Encryption) and generic phrases. **Status:** a heuristic filter exists behind `EDUSYNC_C2_CONCEPT_FILTER=heuristic` (see "Concept filter"); the default is still the mock `mock_keep_all` until the heuristic has been validated on real C1 output, so this item stays open and its text in `PHASE1_TODO` is unchanged.
 3. Feature B: `prereq.weighted_depth` and `prereq.dependents_count` (planned, from the C1 graph).
 4. Feature C: semantic definition/example detection (`expl.semantic_support_score` is a mock; `expl.semantic_definition_count` and `expl.semantic_example_count` are planned).
 5. Feature D: visual/diagram complexity analysis (`dens.visual_complexity`, text and picture area ratios, minimum font size, diagram elements and table cells are planned).
@@ -501,7 +642,8 @@ Per-module mocks and TODOs found in the code:
 | `providers.MockC1GraphProvider` | Fabricates a graph from slide titles (titles ending in `?` or without alphanumerics are skipped): co-mention edges for titles sharing a slide, prerequisite edges between consecutive titles (confidence 0.5, `source_type` `inferred`); not real prerequisites |
 | `providers.C1ApiGraphProvider` | Not implemented (`NotImplementedError`) |
 | `providers.PayloadGraphProvider` | The caller's graph is trusted as C1's output; C2 does not verify that it matches the file |
-| `concepts.MockConceptFilter` | Keeps every concept (name `mock_keep_all`) |
+| `concepts.MockConceptFilter` | Keeps every concept (name `mock_keep_all`); still the default, stage `concepts` is `mocked` |
+| `concept_filter.HeuristicConceptFilter` | Real but not validated on real C1 output, and off by default (`EDUSYNC_C2_CONCEPT_FILTER=heuristic`); recall figures come from hand-written lists; known limits in "Concept filter" |
 | `features/language.py`, `features/vocab.py` | No mock left in group A. Limits: the vocabulary features measure general-English rarity plus a CS/IT/ML lexicon, with unvalidated thresholds (see "Feature A method") |
 | `features/explanation.py` | `expl.semantic_support_score` is a 0.0 placeholder (mocked, the only mock in the registry); `expl.semantic_definition_count` and `expl.semantic_example_count` are planned (unavailable); definition/example/step counts are regex cues only |
 | `features/prerequisites.py` | `prereq.weighted_depth` and `prereq.dependents_count` planned (unavailable, also from a mock graph) |
@@ -595,7 +737,7 @@ What remains before Phase 1 can be called fully closed: merge PR #19 and these c
 
 **Using the logger.** Modules use `from edusync_c2.logger import get_logger` and `logger = get_logger(__name__)`. Names are placed under the `edusync_c2` namespace.
 
-**Configuration.** `EDUSYNC_C2_LOG_LEVEL` (DEBUG, INFO, WARNING or ERROR; default INFO; see `settings.py`). Logging is configured once, when `get_pipeline()` builds the cached pipeline, and never at import. `configure_logging` sets the level of the `edusync_c2` logger; it adds its own stderr handler only if the root logger has no handlers, so it does not touch an existing root logging setup.
+**Configuration.** `EDUSYNC_C2_LOG_LEVEL` (DEBUG, INFO, WARNING or ERROR; default INFO; see `settings.py`). The concept filter has its own two variables, `EDUSYNC_C2_CONCEPT_FILTER` and `EDUSYNC_C2_CONCEPT_FILTER_EXTRAS` (see "Concept filter"). Logging is configured once, when `get_pipeline()` builds the cached pipeline, and never at import. `configure_logging` sets the level of the `edusync_c2` logger; it adds its own stderr handler only if the root logger has no handlers, so it does not touch an existing root logging setup.
 
 **Line format.** Handler format: `%(asctime)s %(levelname)s %(name)s [%(request_id)s] %(message)s`. The message is the event name first, then `key=value` fields.
 
@@ -603,7 +745,7 @@ What remains before Phase 1 can be called fully closed: merge PR #19 and these c
 |-------|-------|--------|
 | `materials` | INFO | `type`, `bytes`, `slides`, `warnings` |
 | `graph` | INFO | `source`, `nodes`, `edges`, `prerequisite_edges`, `ignored` |
-| `concepts` | INFO | `total`, `aligned`, `not_found`, `filter`, `dropped` |
+| `concepts` | INFO | `total`, `aligned`, `not_found`, `filter`, `dropped`, and ` merged=N` appended only when aliases were merged (N = absorbed aliases) |
 | `features` | INFO | `concepts`, `computed`, `mocked`, `unavailable` |
 | `fusion` | INFO | `inputs`, `features_per_input` |
 | `model` | INFO | `name`, `kind`, `predicted`, `none` |
@@ -636,6 +778,7 @@ What remains before Phase 1 can be called fully closed: merge PR #19 and these c
 - [ ] Log through `get_logger` with `key=value` fields and follow the privacy rule above.
 - [ ] Update the docs: the feature table (section 4) and the Mock and TODO register (section 8).
 - [ ] Add no new mock without a registry entry and a note.
+- [ ] If the step changes which concepts exist (a filter, merge or drop), keep the default path unchanged, keep absorbed ids in `merged_from`, build the graph view from the raw ids first, and document the rule, its measured precision and its known limits in "Concept filter".
 - [ ] Keep `edusync_c2` at 100% line and branch coverage, and ruff clean.
 - [ ] Keep consistency: ordinal label order Low < Medium < High, and deterministic output for the same input.
 
@@ -647,7 +790,7 @@ What remains before Phase 1 can be called fully closed: merge PR #19 and these c
 2. Feature D: `dens.visual_complexity` and the five other planned density features (`dens.text_area_ratio`, `dens.picture_area_ratio`, `dens.min_font_pt`, `dens.diagram_element_count`, `dens.table_cell_count`).
 3. Feature C: `expl.semantic_support_score` (mock) and the planned `expl.semantic_definition_count` and `expl.semantic_example_count` (semantic definition/example detection).
 4. Feature B against the real C1 graph, including the planned `prereq.weighted_depth` and `prereq.dependents_count` (needs the v1 contract to exist; see the contract doc and its contract tests).
-5. A real concept filter (alias merging, generic phrases), once C1 offers stable ids and aliases.
+5. Concept filter: a heuristic filter (alias merging, generic phrases) exists since milestone M2 behind `EDUSYNC_C2_CONCEPT_FILTER=heuristic` (section "Concept filter"). Open: run it on real C1 output, then decide whether to make it the default; C1 aliases could replace parts of it.
 6. `C1ApiGraphProvider`, calling C1's graph endpoint with the same file.
 
 **Phase 3 - dataset and model.**
@@ -681,6 +824,7 @@ based, not validated).
   `edusync/packages/c1/data/samples/sample_lecture_graph.json` were described by the C1 developer but are not on
   GitHub yet. C2 handles v1 only against its own synthetic graphs.
 - Group B behaviour against real C1 output has not been run.
+- The heuristic concept filter has only been run on hand-written label lists and synthetic decks, never on real C1 output. Its recall figures are optimistic (the rules were tuned on similar lists).
 - No claim is made about how well the baseline matches real lecturer judgements; no real labelled data exists.
 - The regex cues (definition, example, step, formula, code) have been tested on synthetic and unit-test text only.
 - The Windows/Docker route to the API is documented elsewhere as unverified; the commands above were not checked

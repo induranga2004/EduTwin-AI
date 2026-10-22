@@ -51,7 +51,8 @@ packages/c2/
     difficulty/
       materials.py                    # PPTX/PDF parser
       graph.py, providers.py          # C1 graph view, payload/mock/TODO providers
-      concepts.py                     # concepts on slides, mock filter
+      concepts.py                     # concepts on slides, filter protocols, mock filter, create_concept_filter
+      concept_filter.py               # HeuristicConceptFilter: generic-phrase drop, alias merge (opt-in)
       registry.py                     # 35 features, FEATURE_SCHEMA_VERSION, PHASE1_TODO
       features/                       # groups A-D; vocab.py, wordpiece.py, lexicon.py for the vocabulary features
       resources/                      # vendored vocabulary + domain lexicon (see Vendored resources)
@@ -91,6 +92,10 @@ Read from environment variables (prefix `EDUSYNC_C2_`, see `src/edusync_c2/setti
 | `EDUSYNC_C2_LOG_LEVEL` | DEBUG, INFO, WARNING, ERROR | `INFO` | Level of the `edusync_c2` logger; configured once when the pipeline is built |
 | `EDUSYNC_C2_MODEL` | `baseline`, `minilm` | `baseline` | Model used by `/difficulty`; `minilm` answers HTTP 501 until Phase 3 |
 | `EDUSYNC_C2_MODEL_DIR` | folder path | unset | Model artifact folder for `minilm` (spec in the model doc above) |
+| `EDUSYNC_C2_CONCEPT_FILTER` | `mock_keep_all`, `heuristic` | `mock_keep_all` | Concept filter. The mock keeps every concept; `heuristic` drops generic slide phrases and merges aliases (TDE = Transparent Data Encryption). Not validated on real C1 output, hence off by default |
+| `EDUSYNC_C2_CONCEPT_FILTER_EXTRAS` | `true`, `false` | `false` | With `heuristic` only: also drop Example, Definition, Exercise, Demo, Quiz, Lab slides |
+
+Rules, measured numbers and limits of the concept filter: "Concept filter" in the [design document](../../../docs/edusync/c2-difficulty.md).
 
 Logging conventions and the checklist for new features: see the "Logging and development conventions" section of the [design document](../../../docs/edusync/c2-difficulty.md).
 

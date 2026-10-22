@@ -247,7 +247,8 @@ The Phase 1 validator (`OnnxFusionModel.from_artifacts`) requires the schema ver
 5. Calibration of probabilities (a calibration step, not a separate network).
 6. Live comprehension validation (Phase 5; needs real poll data).
 
-Not models but open: the real C1 connection (`C1ApiGraphProvider`), alias merging in the concept filter and prediction
+Not models but open: the real C1 connection (`C1ApiGraphProvider`), validating the heuristic concept filter on real C1 output
+(it exists behind `EDUSYNC_C2_CONCEPT_FILTER=heuristic`, default still the mock, see "Concept filter" in `c2-difficulty.md`) and prediction
 persistence. Every trained model is blocked on real lecturer labels, so a label-collection tool is a prerequisite.
 
 ### 7.5 Where artifacts live

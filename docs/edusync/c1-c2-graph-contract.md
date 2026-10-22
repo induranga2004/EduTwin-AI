@@ -134,9 +134,14 @@ Status rules in the response: a graph supplied by the caller is `real` (C2 does 
 1. **Stable ids across lectures.** v0 ids are casefolded labels per lecture; a stable id (and lecture id) is needed to
    compare a concept across lectures and to join predictions with later live data.
 2. **Aliases.** Abbreviations such as TDE = Transparent Data Encryption should be one node (or carry an `aliases` list).
-   C2's concept filter is a mock that keeps everything until this exists.
+   *C2's current answer:* C2 does not require an alias field. It merges aliases itself in its optional heuristic concept
+   filter (`EDUSYNC_C2_CONCEPT_FILTER=heuristic`, see "Concept filter" in [c2-difficulty.md](c2-difficulty.md); the default is
+   still a mock that keeps everything). If C1 later emits `aliases`, a `description` or merge decisions, C2 can use them and
+   shrink its own rules; C1-side merging would be more reliable than C2's string rules.
 3. **Generic concepts.** Phrases such as "Best Practices" are not teachable concepts. Should C1 filter them, flag them, or
    leave it to C2?
+   *C2's current answer:* no generic flag is required. C2's heuristic filter drops whole-label generic slide phrases
+   (Overview, Best Practices, Thank You ...) itself. A `generic` flag from C1 would be used if present.
 4. **Pages per node.** Which pages mention each node (`pages: [int]`)? C2 currently re-derives this by text search, which
    can disagree with C1.
 5. **Curriculum-level graph.** Is there a graph over the whole curriculum (not per lecture) from which
@@ -276,10 +281,42 @@ Paste-ready:
 >
 > **Open questions** (details in `docs/edusync/c1-c2-graph-contract.md`)
 > 1. Stable ids across lectures: can the same concept keep the same id (and can lectures have stable ids)?
-> 2. Aliases such as TDE = Transparent Data Encryption: one node, or an `aliases` list?
-> 3. Generic concepts such as "Best Practices": will C1 filter or flag them, or should C2?
+> 2. Aliases such as TDE = Transparent Data Encryption: one node, or an `aliases` list? (C2 does not need either: its
+>    heuristic filter merges them. An `aliases` list would still help.)
+> 3. Generic concepts such as "Best Practices": will C1 filter or flag them, or should C2? (C2 drops them itself; a flag
+>    would help.)
 > 4. Pages per node: can each node carry `pages: [int]`?
 > 5. Curriculum-level graph: do `curriculum_defined` edges come from a graph over the whole curriculum?
 > 6. Will any `direction` value other than `source_is_prerequisite_of_target` exist?
 >
 > Thanks!
+
+### Addendum: C1-side extraction problems found while building C2's concept filter
+
+Paste-ready. Separate from the message above; it is about the concept labels C1 produces, not the graph shape.
+
+> Hi again! While building C2's concept filter I ran C1's own extractor on 7 realistic slide texts (69 labels in total) to see
+> what C2 will receive. Most labels are good (`SQL`, `ACID`, `TDE`, `Structured Query Language`, `Transparent Data
+> Encryption`, `Convolutional Neural Network`). These problems come from the extraction itself, and C2 does not repair them:
+>
+> 1. **Newline collapse fuses a slide title with the first body line.** Newlines become spaces before phrase extraction, so a
+>    title and the first line below it become one phrase: `Best Practices The Transparent`, `Overview Today`.
+> 2. **Phrases that start or end with a stop word.** About 21 of the 69 labels do. Some are fragments of a longer phrase,
+>    such as `controls step size`.
+> 3. **Acronym frequencies are counted about twice.** In one test `SQL` appeared 3 times on the slides and got `frequency` 5.
+>    C2 uses `frequency` as a feature (`dens.concept_frequency`) and takes the maximum when it merges aliases, so inflated
+>    counts feed the model.
+> 4. **No alias or description information.** `TDE` and `Transparent Data Encryption` come out as two unrelated nodes.
+>
+> **The ask**
+> - Strip boundary stop words from phrases (or drop phrases that become empty or a single stop word).
+> - Keep slide titles separate from body text (do not join them with the first body line before extraction).
+> - Count each mention once (an acronym and the phrase it sits in should not both add to the same count).
+> - Optional: provide `aliases` (for example `["TDE"]` on `Transparent Data Encryption`) and a short `description` per node.
+>   C2 works without them.
+>
+> Thanks!
+
+What C2 does with what it receives today: a whole-label generic phrase is dropped and obvious aliases are merged in the optional
+heuristic filter; a fused title (`Best Practices The Transparent`) or a label with boundary stop words stays a concept, because
+C2 cannot tell it from a real multi-word term (see "Known limits" in [c2-difficulty.md](c2-difficulty.md)).
