@@ -1,8 +1,15 @@
-"""Group C: explanation and example support (regex counts, diagram counts)."""
+"""Group C: explanation and example support (regex counts, diagram counts, semantic counts).
+
+The three ``expl.semantic_*`` features come only from the semantic scorer (embedding similarity to
+prototype sentences, see ``features/semantic.py``). Without a scorer (switched off or its model
+could not be loaded) they are unavailable: regex values are never substituted and no placeholder
+is invented. The thresholds behind the counts are heuristic and not validated.
+"""
 
 import re
 
 from edusync_c2.difficulty.features._common import assemble, built_features_of
+from edusync_c2.difficulty.features.semantic import SemanticScorer, split_sentences
 from edusync_c2.difficulty.schemas import (
     ConceptRecord,
     FeatureGroup,
@@ -33,6 +40,12 @@ _COUNT_RES = {
     "expl.step_count": STEP_RE,
 }
 _STRUCT = "materials:pptx_structure"
+SEMANTIC_NAMES = (
+    "expl.semantic_definition_count",
+    "expl.semantic_example_count",
+    "expl.semantic_support_score",
+)
+_SEMANTIC_SOURCE = "semantic:minilm"
 
 
 def _fv(
@@ -48,10 +61,44 @@ def _fv(
     )
 
 
+def _slide_text(slides: list[SlideRecord]) -> str:
+    """Slide text plus notes (SlideRecord.text already holds the title, so it is not added)."""
+    return "\n".join(f"{s.text}\n{s.notes}" for s in slides)
+
+
+def _semantic_features(
+    slides: list[SlideRecord], semantic: SemanticScorer | None, semantic_status: str
+) -> dict[str, FeatureValue]:
+    """The three semantic features; all unavailable (with the reason) when there is no scorer."""
+    if semantic is None:
+        off = semantic_status == "off"
+        source = "semantic:off" if off else _SEMANTIC_SOURCE
+        note = "semantic scorer is off" if off else "semantic scorer unavailable"
+        return {n: _fv(n, None, FeatureStatus.UNAVAILABLE, source, note) for n in SEMANTIC_NAMES}
+    report = semantic.score_report(split_sentences(_slide_text(slides)))
+    definitions, examples = semantic.count_semantic(report.scores)
+    note = "sentence budget reached: later sentences were not scored" if report.truncated else ""
+    support = (min(definitions, 1) + min(examples, 1)) / 2
+    values = {
+        "expl.semantic_definition_count": float(definitions),
+        "expl.semantic_example_count": float(examples),
+        "expl.semantic_support_score": support,
+    }
+    return {n: _fv(n, v, FeatureStatus.COMPUTED, _SEMANTIC_SOURCE, note) for n, v in values.items()}
+
+
 def explanation_features(
-    concept: ConceptRecord, slides: list[SlideRecord], structure_available: bool
+    concept: ConceptRecord,
+    slides: list[SlideRecord],
+    structure_available: bool,
+    semantic: SemanticScorer | None = None,
+    semantic_status: str = "off",
 ) -> list[FeatureValue]:
-    """Group C features in registry order."""
+    """Group C features in registry order.
+
+    `semantic` is the per-request scorer (None = off or unavailable, see `semantic_status`:
+    "off" or an "minilm:..." status string).
+    """
     if not slides:
         return assemble(
             FeatureGroup.EXPLANATION,
@@ -66,8 +113,7 @@ def explanation_features(
                 for n in built_features_of(FeatureGroup.EXPLANATION)
             },
         )
-    # SlideRecord.text already contains the title, so the title is not added again.
-    text = "\n".join(f"{s.text}\n{s.notes}" for s in slides)
+    text = _slide_text(slides)
     out = {
         n: _fv(n, float(len(rx.findall(text))), FeatureStatus.COMPUTED, "materials:regex")
         for n, rx in _COUNT_RES.items()
@@ -85,11 +131,5 @@ def explanation_features(
             _STRUCT,
             "PDF: structure not available",
         )
-    out["expl.semantic_support_score"] = _fv(
-        "expl.semantic_support_score",
-        0.0,
-        FeatureStatus.MOCKED,
-        "mock:todo_semantic_detection",
-        "TODO: placeholder 0.0, no semantic detection yet",
-    )
+    out.update(_semantic_features(slides, semantic, semantic_status))
     return assemble(FeatureGroup.EXPLANATION, out)

@@ -60,6 +60,8 @@ _NORMALISATION: dict[str, tuple[float, float]] = {
     "prereq.direct_count": (0.0, 4.0),
     "prereq.chain_depth": (0.0, 4.0),
 }
+# Regex features only. The expl.semantic_* features are deliberately NOT read here: they exist only
+# when the opt-in semantic scorer is on, and the baseline must give the same answer either way.
 SUPPORT_FEATURES: tuple[str, ...] = (
     "expl.definition_count",
     "expl.example_count",

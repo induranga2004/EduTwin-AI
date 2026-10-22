@@ -16,10 +16,13 @@ from edusync_c2.difficulty.errors import (
     GraphProviderError,
     ModelArtifactError,
     ModelNotAvailableError,
+    SemanticScoringError,
 )
+from edusync_c2.difficulty.features.semantic import SemanticScorer
+from edusync_c2.difficulty.features.semantic_loader import get_default_encoder
 from edusync_c2.difficulty.materials import MaterialsError
 from edusync_c2.difficulty.models import create_model
-from edusync_c2.difficulty.pipeline import DifficultyPipeline
+from edusync_c2.difficulty.pipeline import SEMANTIC_UNAVAILABLE, DifficultyPipeline
 from edusync_c2.difficulty.providers import C1ApiGraphProvider, FileGraphProvider, GraphProvider
 from edusync_c2.difficulty.schemas import C1GraphResponse, DifficultyInfo, DifficultyResponse
 from edusync_c2.logger import (
@@ -52,6 +55,26 @@ def _graph_provider_factory(settings: C2Settings) -> Callable[[bytes, str], Grap
     return None
 
 
+def _semantic_scorer(settings: C2Settings) -> tuple[SemanticScorer | None, str]:
+    """The semantic scorer and its status string ("off", "minilm:<sha8>", "minilm:unavailable")."""
+    if settings.semantic == "off":
+        return None, "off"
+    encoder = get_default_encoder(settings.semantic_model_dir)
+    if encoder is None:
+        return None, SEMANTIC_UNAVAILABLE
+    try:
+        scorer = SemanticScorer(
+            encoder,
+            settings.semantic_def_threshold,
+            settings.semantic_ex_threshold,
+            settings.semantic_max_sentences,
+        )
+    except SemanticScoringError:
+        logger.warning("semantic_unavailable reason=prototype_encoding")
+        return None, SEMANTIC_UNAVAILABLE
+    return scorer, f"minilm:{encoder.sha}"
+
+
 @lru_cache
 def get_pipeline() -> DifficultyPipeline:
     """FastAPI dependency: the pipeline for the configured model and graph provider.
@@ -72,6 +95,7 @@ def get_pipeline() -> DifficultyPipeline:
     except NotImplementedError as exc:
         logger.warning("concept_filter_unavailable name=%s", settings.concept_filter)
         raise HTTPException(501, str(exc)) from exc
+    semantic, semantic_status = _semantic_scorer(settings)
     logger.info("pipeline_ready model=%s", settings.model)
     return DifficultyPipeline(
         model=model,
@@ -79,6 +103,8 @@ def get_pipeline() -> DifficultyPipeline:
         selected_model=settings.model,
         graph_provider_factory=_graph_provider_factory(settings),
         graph_provider_name=None if settings.graph_provider == "mock" else settings.graph_provider,
+        semantic=semantic,
+        semantic_status=semantic_status,
     )
 
 
@@ -134,6 +160,9 @@ async def difficulty(
             raise HTTPException(exc.status_code, exc.message) from exc
         except GraphProviderError as exc:
             logger.warning("rejected status=%d reason=graph_provider", exc.status_code)
+            raise HTTPException(exc.status_code, exc.message) from exc
+        except SemanticScoringError as exc:
+            logger.warning("rejected status=%d reason=semantic_scorer", exc.status_code)
             raise HTTPException(exc.status_code, exc.message) from exc
         except NotImplementedError as exc:
             logger.warning("rejected status=501 reason=model_not_implemented")

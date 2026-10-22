@@ -30,6 +30,9 @@ LEGACY_PHASE1 = {
             "expl.definition_count",
             "expl.example_count",
             "expl.step_count",
+            "expl.semantic_definition_count",
+            "expl.semantic_example_count",
+            "expl.semantic_support_score",
             "dens.words_per_slide",
             "dens.concepts_per_slide",
             "dens.formula_presence",
@@ -63,15 +66,6 @@ LEGACY_PHASE1 = {
             "dens.concept_frequency",
         ),
         "graph",
-    ),
-    "expl.semantic_support_score": "mock",
-    # pre-registered in schema 0.3, still planned
-    **dict.fromkeys(
-        (
-            "expl.semantic_definition_count",
-            "expl.semantic_example_count",
-        ),
-        "todo",
     ),
 }
 

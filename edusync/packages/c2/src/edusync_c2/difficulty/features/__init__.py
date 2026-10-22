@@ -4,6 +4,7 @@ from edusync_c2.difficulty.features.density import density_features
 from edusync_c2.difficulty.features.explanation import explanation_features
 from edusync_c2.difficulty.features.language import language_features, lexical_difficulty
 from edusync_c2.difficulty.features.prerequisites import prerequisite_features
+from edusync_c2.difficulty.features.semantic import SemanticScorer
 from edusync_c2.difficulty.features.vocab import VocabularyAnalyzer
 from edusync_c2.difficulty.schemas import (
     ConceptRecord,
@@ -34,18 +35,21 @@ def compute_all_features(
     graph_source: InputSource,
     vocab: VocabularyAnalyzer | None = None,
     slide_size: tuple[int, int] | None = None,
+    semantic: SemanticScorer | None = None,
+    semantic_status: str = "off",
 ) -> list[FeatureValue]:
-    """All 26 features in registry order (A, B, C, D).
+    """All 35 features in registry order (A, B, C, D).
 
     `vocab` overrides the shared default vocabulary analyzer (group A); `slide_size` is the deck's
-    (width, height) in EMU, `None` when unknown (group D).
+    (width, height) in EMU, `None` when unknown (group D); `semantic` is the semantic scorer for
+    this request (group C), None when it is off or unavailable (`semantic_status` says which).
     """
     indexes = sorted(set(concept.slide_indexes))
     slides = [slides_by_index[i] for i in indexes if i in slides_by_index]
     return [
         *language_features(concept, slides, vocab),
         *prerequisite_features(concept, metrics, graph_has_prerequisite_edges, graph_source),
-        *explanation_features(concept, slides, structure_available),
+        *explanation_features(concept, slides, structure_available, semantic, semantic_status),
         *density_features(
             concept, slides, all_concepts, structure_available, graph_source, slide_size
         ),

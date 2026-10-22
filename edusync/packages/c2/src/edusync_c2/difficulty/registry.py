@@ -169,23 +169,23 @@ FEATURE_SPECS: tuple[FeatureSpec, ...] = (
     _f(
         "expl.semantic_support_score",
         G.EXPLANATION,
-        "mock",
+        "implemented",
         "text",
-        "TODO: semantic definition/example detection.",
+        "(min(definitions, 1) + min(examples, 1)) / 2 of the semantic counts; off = unavailable.",
     ),
     _f(
         "expl.semantic_definition_count",
         G.EXPLANATION,
-        "planned",
+        "implemented",
         "text",
-        "Semantic (embedding-based) definition detections on the concept's slides.",
+        "Slide sentences closest to the definition prototypes (embedding based; opt-in).",
     ),
     _f(
         "expl.semantic_example_count",
         G.EXPLANATION,
-        "planned",
+        "implemented",
         "text",
-        "Semantic worked-example detections on the concept's slides.",
+        "Slide sentences closest to the worked-example prototypes (embedding based; opt-in).",
     ),
     # D: information density and structure
     _f("dens.words_per_slide", G.DENSITY, "implemented", "text", "Mean words per concept slide."),
@@ -280,8 +280,6 @@ FEATURE_NAMES: tuple[str, ...] = tuple(s.name for s in FEATURE_SPECS)
 PHASE1_TODO: tuple[str, ...] = (
     "Real C1 connection (C1ApiGraphProvider); the graph is a mock unless supplied by the caller.",
     "Concept filter: alias merging (TDE = Transparent Data Encryption) and generic phrases.",
-    "Feature C: semantic definition/example detection (expl.semantic_support_score is a mock; "
-    "expl.semantic_definition_count and expl.semantic_example_count are planned).",
     "MiniLMFusionModel and learned feature fusion (Phase 3, trained on lecturer labels).",
     "Calibrated confidence and probabilities (never invented before a trained, evaluated model).",
     "Prediction persistence for Phase 5 comparison with live comprehension.",

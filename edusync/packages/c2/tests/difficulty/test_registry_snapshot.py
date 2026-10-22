@@ -22,7 +22,6 @@ from edusync_c2.difficulty.schemas import (
     AlignmentStatus,
     ConceptRecord,
     FeatureGroup,
-    FeatureStatus,
     InputSource,
     PrerequisiteMetrics,
 )
@@ -131,24 +130,13 @@ def test_each_group_is_complete(computed, group):
     assert [f.name for f in computed if f.group is group] == list(features_of(group))
 
 
-@pytest.mark.parametrize("scenario", list(SCENARIOS))
-def test_planned_features_are_always_todo(deck, scenario):
-    fs = _compute(deck, **SCENARIOS[scenario])
-    assert [f.name for f in fs] == list(FEATURE_NAMES)
-    planned = [s.name for s in FEATURE_SPECS if s.maturity == "planned"]
-    assert planned
-    assert all(not n.startswith("prereq.") for n in planned)  # group B is fully built
-    by_name = {f.name: f for f in fs}
-    for name in planned:
-        f = by_name[name]
-        assert f.status is FeatureStatus.UNAVAILABLE
-        assert f.value is None
-        assert f.source.startswith("todo:")
+def test_every_registered_feature_is_implemented():
+    # Phase 2 built all 35 features: nothing is planned or a mock any more.
+    assert {s.maturity for s in FEATURE_SPECS} == {"implemented"}
 
 
 @pytest.mark.parametrize("scenario", list(SCENARIOS))
 def test_built_features_are_never_todo(deck, scenario):
     by_name = {f.name: f for f in _compute(deck, **SCENARIOS[scenario])}
     for s in FEATURE_SPECS:
-        if s.maturity != "planned":
-            assert not by_name[s.name].source.startswith("todo:")
+        assert not by_name[s.name].source.startswith("todo:")

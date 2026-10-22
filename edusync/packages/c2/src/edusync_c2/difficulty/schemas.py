@@ -337,6 +337,7 @@ class DifficultyInfo(BaseModel):
     selected_model: str = "baseline"  # EDUSYNC_C2_MODEL
     feature_schema_hash: str = ""  # sha256 of the version and the ordered feature registry
     feature_schema_version: str = ""  # registry.FEATURE_SCHEMA_VERSION
+    semantic_scorer: str = "off"  # "off", "minilm:<sha8>" or "minilm:unavailable"
     graph_provider: str
     concept_filter: str
     features: list[FeatureSpec]

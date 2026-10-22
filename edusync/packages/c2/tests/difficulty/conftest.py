@@ -245,3 +245,54 @@ def graph_v1() -> C1GraphResponse:
             "graph": {"node_count": 4, "edge_count": 4, "nodes": _nodes(True), "edges": edges},
         }
     )
+
+
+class KeywordEncoder:
+    """Fake sentence encoder: prototypes sit on one axis each; DEFN / EXMP mark test sentences.
+
+    A text containing DEFN has cosine 0.9 to the definition prototypes (and 0.1 to the example
+    ones); EXMP is the mirror image; any other text is orthogonal to all prototypes.
+    """
+
+    dims = 4
+    sha = "abcd1234"
+
+    def __init__(self) -> None:
+        from edusync_c2.difficulty.features.semantic import CLASSES, load_prototypes
+
+        protos = load_prototypes()
+        self.axis = {t: i for i, name in enumerate(CLASSES) for t in protos[name]}
+        self.calls = 0
+
+    def encode(self, texts):
+        import numpy as np
+
+        self.calls += 1
+        out = np.zeros((len(texts), 4), dtype=np.float32)
+        for row, text in enumerate(texts):
+            if text in self.axis:
+                out[row, self.axis[text]] = 1.0
+            elif "DEFN" in text:
+                out[row] = (0.9, 0.1, 0.0, 0.18**0.5)
+            elif "EXMP" in text:
+                out[row] = (0.1, 0.9, 0.0, 0.18**0.5)
+            else:
+                out[row, 3] = 1.0
+        return out
+
+
+@pytest.fixture
+def keyword_encoder() -> KeywordEncoder:
+    return KeywordEncoder()
+
+
+@pytest.fixture
+def make_scorer(keyword_encoder: KeywordEncoder):
+    """Factory of a SemanticScorer over the keyword encoder (thresholds as given)."""
+
+    def build(**kwargs: Any):
+        from edusync_c2.difficulty.features.semantic import SemanticScorer
+
+        return SemanticScorer(keyword_encoder, **kwargs)
+
+    return build

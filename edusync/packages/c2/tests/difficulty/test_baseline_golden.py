@@ -3,9 +3,11 @@
 ``golden/baseline_synthetic.json`` holds the labels, scores and feature values of the seeded
 synthetic decks (PPTX and PDF, v1 graphs) as produced before Feature A became real. Features
 added later are ignored here. Features that intentionally went from mock or planned to real are
-excluded explicitly: ``lang.unfamiliar_vocab_ratio`` (never stored) and, per file kind,
-``EXCLUDED_BY_KIND`` (``dens.visual_complexity`` is stored as unavailable but is now computed for
-PPTX decks; PDF decks still report it unavailable and stay checked). Scores and labels never
+excluded explicitly: ``lang.unfamiliar_vocab_ratio`` (never stored), ``EXCLUDED`` (all file
+kinds: ``expl.semantic_support_score`` is stored as ``[0.0, "mocked"]`` but is now computed by the
+opt-in semantic scorer and unavailable when it is off, which is the default here) and, per file
+kind, ``EXCLUDED_BY_KIND`` (``dens.visual_complexity`` is stored as unavailable but is now computed
+for PPTX decks; PDF decks still report it unavailable and stay checked). Scores and labels never
 change. Regenerate only when a milestone intentionally changes them.
 """
 
@@ -23,7 +25,9 @@ from edusync_c2.difficulty.synthetic import (
     make_deck_spec,
 )
 
-# Stored golden values that changed on purpose, per file kind (documented in the docstring).
+# Stored golden values that changed on purpose, for every file kind (see the docstring).
+EXCLUDED: frozenset[str] = frozenset({"expl.semantic_support_score"})
+# The same, per file kind.
 EXCLUDED_BY_KIND: dict[str, set[str]] = {"pptx": {"dens.visual_complexity"}}
 
 GOLDEN = json.loads(
@@ -42,7 +46,7 @@ def _run(key: str) -> DifficultyResponse:
 
 @pytest.mark.parametrize("key", sorted(GOLDEN))
 def test_baseline_and_established_features_unchanged(key: str) -> None:
-    excluded = EXCLUDED_BY_KIND.get(key.rsplit(".", 1)[1], set())
+    excluded = EXCLUDED | EXCLUDED_BY_KIND.get(key.rsplit(".", 1)[1], set())
     response = _run(key)
     expected = GOLDEN[key]
     assert [p.concept_id for p in response.predictions] == [e["concept_id"] for e in expected]

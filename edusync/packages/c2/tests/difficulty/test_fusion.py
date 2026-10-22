@@ -2,7 +2,7 @@
 
 from edusync_c2.difficulty.features import compute_all_features
 from edusync_c2.difficulty.fusion import build_fusion_input, summarize_features, to_vector
-from edusync_c2.difficulty.registry import FEATURE_NAMES, FEATURE_SPECS, features_of
+from edusync_c2.difficulty.registry import FEATURE_NAMES, features_of
 from edusync_c2.difficulty.schemas import (
     AlignmentStatus,
     ConceptRecord,
@@ -12,7 +12,11 @@ from edusync_c2.difficulty.schemas import (
     PrerequisiteMetrics,
 )
 
-PLANNED = {s.name for s in FEATURE_SPECS if s.maturity == "planned"}
+SEMANTIC_OFF = {
+    "expl.semantic_definition_count",
+    "expl.semantic_example_count",
+    "expl.semantic_support_score",
+}
 NO_GEOMETRY = {
     "dens.text_area_ratio",
     "dens.picture_area_ratio",
@@ -74,8 +78,8 @@ def test_use_mocked(deck):
     c, sl, fs = setup(deck)
     fi = build_fusion_input(c, fs, sl, use_mocked=True)
     miss = {f.name for f in fi.features if f.missing}
-    # the deck fixture has no geometry, so the implemented structure features are unavailable too
-    assert miss == PLANNED | NO_GEOMETRY
+    # the deck fixture has no geometry (structure features unavailable) and the scorer is off
+    assert miss == SEMANTIC_OFF | NO_GEOMETRY
 
 
 def test_missing_feature_filled(deck):

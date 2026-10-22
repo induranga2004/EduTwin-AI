@@ -13,6 +13,7 @@ from edusync_c2.difficulty.concepts import (
     build_concepts,
 )
 from edusync_c2.difficulty.features import compute_all_features
+from edusync_c2.difficulty.features.semantic import SemanticScorer
 from edusync_c2.difficulty.features.vocab import VocabularyAnalyzer
 from edusync_c2.difficulty.fusion import build_fusion_input, summarize_features
 from edusync_c2.difficulty.graph import GraphView
@@ -47,6 +48,12 @@ logger = get_logger(__name__)
 CONCEPT_CYCLE_WARNING = "prerequisite cycle found below this concept; the back edge was ignored"
 NO_PREDICTION_WARNING = "not enough computed features for the baseline"
 NO_PREREQ_WARNING = "C1 graph has no prerequisite edges: group B features unavailable"
+SEMANTIC_UNAVAILABLE = "minilm:unavailable"
+SEMANTIC_UNAVAILABLE_WARNING = "semantic scorer unavailable: semantic features are unavailable"
+SEMANTIC_TRUNCATED_WARNING = (
+    "semantic scorer sentence budget reached: later sentences were not scored, "
+    "so semantic counts are lower bounds"
+)
 MOCK_GRAPH_WARNING = (
     "C1 graph is a mock, not C1 output for this lecture (see inputs): "
     "group B and frequency features are mocked"
@@ -66,7 +73,11 @@ class DifficultyPipeline:
         vocab: VocabularyAnalyzer | None = None,
         graph_provider_factory: Callable[[bytes, str], GraphProvider] | None = None,
         graph_provider_name: str | None = None,
+        semantic: SemanticScorer | None = None,
+        semantic_status: str = "off",
     ) -> None:
+        self.semantic = semantic
+        self.semantic_status = semantic_status
         self.graph_provider_factory = graph_provider_factory
         self.graph_provider_name = graph_provider_name
         self.selected_model = selected_model
@@ -89,6 +100,7 @@ class DifficultyPipeline:
             selected_model=self.selected_model,
             feature_schema_hash=feature_schema_hash(),
             feature_schema_version=FEATURE_SCHEMA_VERSION,
+            semantic_scorer=self.semantic_status,
         )
 
     def run(
@@ -155,6 +167,8 @@ class DifficultyPipeline:
         )
         logger.debug("concepts_detail ids=%s", [c.id for c in concepts])
         slides_by_index = {s.index: s for s in materials.slides}
+        # A per-request view: shared embeddings, own sentence budget (see SemanticScorer).
+        request_scorer = self.semantic.for_request() if self.semantic is not None else None
         slide_size = (
             (materials.slide_width_emu, materials.slide_height_emu)
             if materials.slide_width_emu is not None and materials.slide_height_emu is not None
@@ -178,6 +192,8 @@ class DifficultyPipeline:
                 graph_source=ctx.source,
                 vocab=self.vocab,
                 slide_size=slide_size,
+                semantic=request_scorer,
+                semantic_status=self.semantic_status,
             )
             all_features.append(features)
             fusion_inputs.append(
@@ -258,6 +274,11 @@ class DifficultyPipeline:
             warnings.append(
                 f"{len(cyclic_ids)} concept(s) have a prerequisite cycle in the C1 graph"
             )
+        if self.semantic_status == SEMANTIC_UNAVAILABLE:
+            warnings.append(SEMANTIC_UNAVAILABLE_WARNING)
+        if request_scorer is not None and request_scorer.truncated:
+            logger.warning("semantic_truncated limit=%d", request_scorer.max_sentences)
+            warnings.append(SEMANTIC_TRUNCATED_WARNING)
         logger.info(
             "done concepts=%d duration_ms=%d",
             len(predictions),

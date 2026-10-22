@@ -23,8 +23,13 @@ class C2Settings(BaseSettings):
     graph_file: Path | None = None
     c1_base_url: str = "http://127.0.0.1:8100/api/c1"
     c1_timeout_s: float = Field(default=60, gt=0)
+    semantic: Literal["off", "minilm"] = "off"
+    semantic_model_dir: Path | None = None
+    semantic_def_threshold: float = Field(default=0.23, ge=0, le=1)
+    semantic_ex_threshold: float = Field(default=0.23, ge=0, le=1)
+    semantic_max_sentences: int = Field(default=400, ge=1)
 
-    @field_validator("model_dir", "graph_file", mode="before")
+    @field_validator("model_dir", "graph_file", "semantic_model_dir", mode="before")
     @classmethod
     def _empty_dir_is_none(cls, value: object) -> object:
         return None if value == "" else value
