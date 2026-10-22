@@ -1,7 +1,7 @@
 """Request/response and domain models for C4."""
 
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -71,20 +71,36 @@ class NormalizedAnnotation(BaseModel):
     raw_payload: dict[str, Any] = Field(default_factory=dict)
 
 
+MAX_IMPORT_EVENTS = 5000
+
+
 class EventImportRequest(BaseModel):
-    """Batch ingestion request for annotation events."""
+    """Batch ingestion request for annotation events.
+
+    `lecture_id` / `slide_id` are defaults for events that carry no ids of their own.
+    `time_unit` applies to the ambiguous `timestamp` field only; `updatedAt` and friends are
+    always epoch milliseconds, made lecture-relative by `lecture_start_ms` when given.
+    """
 
     lecture_id: str
     slide_id: str
-    events: list[dict[str, Any]] = Field(default_factory=list)
+    events: list[dict[str, Any]] = Field(default_factory=list, max_length=MAX_IMPORT_EVENTS)
+    time_unit: Literal["s", "ms"] = "s"
+    lecture_start_ms: float | None = None
 
 
 class EventImportResponse(BaseModel):
-    """Batch ingestion response."""
+    """Batch ingestion response. `imported_count` is the number of newly stored events."""
 
     imported_count: int
     event_ids: list[str] = Field(default_factory=list)
     deleted_count: int = 0
+    clear_count: int = 0
+    duplicate_count: int = 0
+    conflict_count: int = 0
+    conflict_event_ids: list[str] = Field(default_factory=list)
+    unplaced_count: int = 0
+    unsupported_count: int = 0
 
 
 class SlideSnapshot(BaseModel):
@@ -283,3 +299,43 @@ class GroupAnalysis(BaseModel):
     context: AnnotationContext
     recognized: RecognizedContent
     interpretation: AnnotationInterpretation
+
+
+# --- Phase 5: analyze / catch-up API models ---
+
+
+class AnalyzeRequest(BaseModel):
+    """Inputs for the analysis pipeline. Anything omitted falls back to MOCK data."""
+
+    speech: list[SpeechSegment] | None = None
+    slide_text: str | None = None
+    concepts: list[ConceptRef] | None = None
+    speech_pad_seconds: float = Field(default=90.0, ge=0.0)
+    speech_offset_seconds: float = 0.0
+    use_mock_c2: bool = True
+
+
+class AnalyzeResponse(BaseModel):
+    lecture_id: str
+    slide_id: str
+    inputs_are_mock: dict[str, bool]
+    analyses: list[GroupAnalysis]
+
+
+class CatchUpItem(BaseModel):
+    slide_id: str
+    group_id: str
+    start_seconds: float
+    end_seconds: float
+    category: str
+    summary: str
+    needs_attention: bool
+    cited_evidence_ids: list[str]
+    limitations: list[str]
+
+
+class CatchUpResponse(BaseModel):
+    lecture_id: str
+    since_seconds: float
+    items: list[CatchUpItem]
+    note: str

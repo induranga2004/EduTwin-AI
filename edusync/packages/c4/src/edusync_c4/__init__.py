@@ -29,13 +29,18 @@ from edusync_c4.normalizer import (
     normalize_events,
 )
 from edusync_c4.recognizer import ContentRecognizer, HeuristicRecognizer
+from edusync_c4.repository import AnnotationRepository
 from edusync_c4.router import router
 from edusync_c4.schemas import (
+    AnalyzeRequest,
+    AnalyzeResponse,
     AnnotationContext,
     AnnotationGroup,
     AnnotationInterpretation,
     AnnotationTimeline,
     BoundingBox,
+    CatchUpItem,
+    CatchUpResponse,
     ComprehensionSignal,
     ConceptCandidate,
     ConceptHit,
@@ -72,11 +77,16 @@ COMPONENT = Component(
 
 __all__ = [
     "COMPONENT",
+    "AnalyzeRequest",
+    "AnalyzeResponse",
     "AnnotationContext",
     "AnnotationGroup",
     "AnnotationInterpretation",
+    "AnnotationRepository",
     "AnnotationTimeline",
     "BoundingBox",
+    "CatchUpItem",
+    "CatchUpResponse",
     "Clusterer",
     "ComprehensionEvaluator",
     "ComprehensionSignal",
