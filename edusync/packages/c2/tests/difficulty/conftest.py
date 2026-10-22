@@ -1,5 +1,6 @@
 """Shared fixtures for the difficulty tests: a hand-built deck and C1 graphs (v0 and v1)."""
 
+import random
 from collections.abc import Callable
 
 import pytest
@@ -13,6 +14,9 @@ from edusync_c2.difficulty.schemas import (
 )
 
 SlideFactory = Callable[..., SlideRecord]
+VariantFactory = Callable[..., dict[str, list[SlideRecord]]]
+
+UNRELATED_SLIDE_TEXT = "Cryptography encryption decryption malleability nonce ciphertext."
 
 
 @pytest.fixture
@@ -55,6 +59,57 @@ def make_slide() -> SlideFactory:
             formula_hint=formula,
             code_hint=code,
         )
+
+    return build
+
+
+@pytest.fixture
+def slide_variants(make_slide: SlideFactory) -> VariantFactory:
+    """Metamorphic variants of a slide list, for invariants a feature must keep.
+
+    Keys: ``uppercase`` (all text upper-cased), ``duplicated_slides`` (the whole list twice),
+    ``doubled_text`` (each slide's text repeated inside the same slide), ``unrelated_extra`` (one
+    more slide about something else, appended last) and ``shuffled_1`` .. ``shuffled_<n>`` (the
+    same slides in a seeded random order, indexes unchanged).
+    """
+
+    def build(
+        slides: list[SlideRecord], *, shuffles: int = 5, seed: int = 7
+    ) -> dict[str, list[SlideRecord]]:
+        last = max(s.index for s in slides)
+        variants = {
+            "uppercase": [
+                s.model_copy(
+                    update={
+                        "text": s.text.upper(),
+                        "paragraphs": [
+                            p.model_copy(update={"text": p.text.upper()}) for p in s.paragraphs
+                        ],
+                    }
+                )
+                for s in slides
+            ],
+            "duplicated_slides": [
+                *slides,
+                *(s.model_copy(update={"index": last + s.index}) for s in slides),
+            ],
+            "doubled_text": [
+                s.model_copy(
+                    update={
+                        "text": s.text + "\n" + s.text,
+                        "paragraphs": [*s.paragraphs, *s.paragraphs],
+                    }
+                )
+                for s in slides
+            ],
+            "unrelated_extra": [*slides, make_slide(last + 1, UNRELATED_SLIDE_TEXT)],
+        }
+        rng = random.Random(seed)
+        for n in range(1, shuffles + 1):
+            shuffled = slides[:]
+            rng.shuffle(shuffled)
+            variants[f"shuffled_{n}"] = shuffled
+        return variants
 
     return build
 

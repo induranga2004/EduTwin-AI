@@ -1,6 +1,5 @@
 """Group A: language features."""
 
-import random
 from typing import ClassVar
 
 import pytest
@@ -183,21 +182,25 @@ def test_empty_label_and_determinism(make_slide):
 
 
 # ------------------------------------------------------------------ metamorphic properties
-def test_uppercase_text_keeps_vocab_features(make_slide):
-    lower = language_features(concept(), [make_slide(1, TECH)])
-    upper = language_features(concept(), [make_slide(1, TECH.upper())])
+def test_uppercase_text_keeps_vocab_features(make_slide, slide_variants):
+    slides = [make_slide(1, TECH)]
+    lower = language_features(concept(), slides)
+    upper = language_features(concept(), slide_variants(slides)["uppercase"])
     assert vocab_values(lower) == vocab_values(upper)
 
 
-def test_duplicated_slide_text_keeps_ratios(make_slide):
-    once = language_features(concept(), [make_slide(1, TECH)])
-    twice = language_features(concept(), [make_slide(1, TECH), make_slide(2, TECH)])
+def test_duplicated_slide_text_keeps_ratios(make_slide, slide_variants):
+    slides = [make_slide(1, TECH)]
+    variants = slide_variants(slides)
+    once = language_features(concept(), slides)
+    twice = language_features(concept(), variants["duplicated_slides"])
+    assert len(variants["duplicated_slides"]) == 2
     assert vocab_values(once) == vocab_values(twice)
-    doubled = language_features(concept(), [make_slide(1, TECH + "\n" + TECH)])
+    doubled = language_features(concept(), variants["doubled_text"])
     assert vocab_values(once) == vocab_values(doubled)
 
 
-def test_slide_order_does_not_matter(make_slide):
+def test_slide_order_does_not_matter(make_slide, slide_variants):
     texts = [
         "Backpropagation computes the gradient.",
         "The kernel schedules the process on the cpu.",
@@ -206,11 +209,11 @@ def test_slide_order_does_not_matter(make_slide):
     ]
     slides = [make_slide(i + 1, t) for i, t in enumerate(texts)]
     reference = vocab_values(language_features(concept(), slides))
-    rng = random.Random(7)
-    for _ in range(5):
-        shuffled = slides[:]
-        rng.shuffle(shuffled)
-        assert vocab_values(language_features(concept(), shuffled)) == reference
+    shuffled = {k: v for k, v in slide_variants(slides).items() if k.startswith("shuffled_")}
+    assert len(shuffled) == 5
+    assert any([s.index for s in v] != [1, 2, 3, 4] for v in shuffled.values())
+    for variant in shuffled.values():
+        assert vocab_values(language_features(concept(), variant)) == reference
 
 
 def compute(concept_record, slides, **kw):
@@ -232,7 +235,7 @@ def compute(concept_record, slides, **kw):
     )
 
 
-def test_unrelated_slide_changes_nothing(make_slide):
+def test_unrelated_slide_changes_nothing(make_slide, slide_variants):
     rec = ConceptRecord(
         id="gd",
         label="Gradient Descent",
@@ -240,9 +243,10 @@ def test_unrelated_slide_changes_nothing(make_slide):
         slide_indexes=[2, 1],
     )
     own = [make_slide(1, TECH), make_slide(2, "Gradient descent is great.")]
-    extra = make_slide(3, "Cryptography encryption decryption malleability nonce ciphertext.")
+    extra = slide_variants(own)["unrelated_extra"]
+    assert [s.index for s in extra] == [1, 2, 3]
     before = compute(rec, own)[:8]
-    after = compute(rec, [*own, extra])[:8]
+    after = compute(rec, extra)[:8]
     assert before == after
     assert [f.name for f in before] == NAMES
 
