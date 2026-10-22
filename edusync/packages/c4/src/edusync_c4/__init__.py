@@ -14,6 +14,7 @@ from edusync_c4.context import (
     build_group_context,
     members_of,
 )
+from edusync_c4.diagram import build_diagrams, structural_links
 from edusync_c4.evidence import merge_evidence, reconcile
 from edusync_c4.grouping import Clusterer, SpatioTemporalClusterer, group_timeline
 from edusync_c4.interpreter import (
@@ -44,6 +45,9 @@ from edusync_c4.schemas import (
     ComprehensionSignal,
     ConceptCandidate,
     ConceptHit,
+    Diagram,
+    DiagramEdge,
+    DiagramNode,
     DifficultyEstimate,
     EventImportRequest,
     EventImportResponse,
@@ -99,6 +103,9 @@ __all__ = [
     "ContextConfig",
     "ContextualInterpreter",
     "DeterministicDifficultyPredictor",
+    "Diagram",
+    "DiagramEdge",
+    "DiagramNode",
     "DifficultyEstimate",
     "DifficultyPredictor",
     "EventImportRequest",
@@ -124,6 +131,7 @@ __all__ = [
     "TemplateContextualInterpreter",
     "analyze_groups",
     "apply_delta",
+    "build_diagrams",
     "build_group_context",
     "build_timeline",
     "build_timelines",
@@ -139,4 +147,5 @@ __all__ = [
     "reconstruct_snapshot",
     "replay_timeline",
     "router",
+    "structural_links",
 ]

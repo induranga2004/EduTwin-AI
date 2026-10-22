@@ -7,11 +7,12 @@ from fastapi.responses import HTMLResponse
 
 from edusync_c4.c2_mock import DeterministicDifficultyPredictor, StaticComprehensionEvaluator
 from edusync_c4.context import ContextConfig
+from edusync_c4.diagram import build_diagrams
 from edusync_c4.evidence import reconcile
 from edusync_c4.grouping import group_timeline
 from edusync_c4.interpreter import TemplateContextualInterpreter, analyze_groups
 from edusync_c4.mock_data import MOCK_COMPREHENSION, MOCK_CONCEPTS, MOCK_SLIDE_TEXT, MOCK_TRANSCRIPT
-from edusync_c4.report import SlideView, build_report_html
+from edusync_c4.report import SlideView, build_report_html, fullest_time
 from edusync_c4.repository import AnnotationRepository
 from edusync_c4.schemas import (
     AnalyzeRequest,
@@ -20,6 +21,7 @@ from edusync_c4.schemas import (
     AnnotationTimeline,
     CatchUpItem,
     CatchUpResponse,
+    Diagram,
     EventImportRequest,
     EventImportResponse,
     GroupingConfig,
@@ -278,3 +280,16 @@ def report(
         build_report_html(lecture_id, views, at),
         headers={"Content-Security-Policy": REPORT_CSP},
     )
+
+
+@router.get("/lectures/{lecture_id}/slides/{slide_id:path}/diagrams")
+def slide_diagrams(
+    lecture_id: str,
+    slide_id: str,
+    repo: RepoDep,
+    timestamp: Annotated[float | None, Query(ge=0)] = None,
+) -> list[Diagram]:
+    """Boxes joined by arrows on a slide, at `timestamp` (default: when the board was fullest)."""
+    timeline = _timeline_or_404(repo, lecture_id, slide_id)
+    when = timestamp if timestamp is not None else fullest_time(timeline)
+    return build_diagrams(timeline.get_active_annotations(when))

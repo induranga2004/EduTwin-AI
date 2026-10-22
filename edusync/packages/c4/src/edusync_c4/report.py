@@ -20,9 +20,11 @@ from datetime import UTC, datetime
 from html import escape
 from typing import Any
 
+from edusync_c4.diagram import build_diagrams
 from edusync_c4.schemas import (
     AnnotationGroup,
     AnnotationTimeline,
+    Diagram,
     NormalizedAnnotation,
     ShapeType,
     SlideInfo,
@@ -453,6 +455,16 @@ def _groups_rows(view: SlideView) -> str:
     return '<ul class="groups">' + "".join(items) + "</ul>"
 
 
+def _diagram_rows(diagrams: list[Diagram]) -> str:
+    items = []
+    for d in diagrams:
+        lines = "".join(f"<div>{escape(s)}</div>" for s in d.sentences)
+        items.append(
+            f'<li><span class="t">{clock(d.first_seconds)}</span><span>{lines}</span></li>'
+        )
+    return '<ul class="groups">' + "".join(items) + "</ul>" if items else ""
+
+
 def _slide_title(view: SlideView) -> str:
     number = view.info.number if view.info and view.info.number is not None else None
     heading = f"Slide {number}" if number is not None else "Slide"
@@ -516,9 +528,12 @@ def build_report_html(
                 moments.append((f"Board at the end ({clock(end_t)})", end_t))
         figures = []
         visible_ids: set[str] = set()
+        diagrams: dict[str, Diagram] = {}
         for caption, moment in moments:
             svg_board, visible = render_board(view, moment, size)
             visible_ids |= {a.shape_id for a in visible}
+            for d in build_diagrams(visible):
+                diagrams.setdefault(d.diagram_id, d)
             figures.append(
                 f"<figure><figcaption>{escape(caption)} &middot; {len(visible)} items"
                 f"</figcaption>{svg_board}</figure>"
@@ -531,6 +546,7 @@ def build_report_html(
             )
         sections.append(
             f'<section class="slide"><h2>{_slide_title(view)}</h2>{"".join(figures)}'
+            f"{'<h3>Diagrams</h3>' + _diagram_rows(list(diagrams.values())) if diagrams else ''}"
             f"<h3>What was written and drawn</h3>{_timeline_rows(view, visible_ids)}"
             f"{'<h3>Grouped items</h3>' + _groups_rows(view) if view.groups else ''}"
             f"{slide_text}</section>"

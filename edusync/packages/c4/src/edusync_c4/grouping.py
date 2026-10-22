@@ -27,6 +27,7 @@ import math
 from collections import Counter
 from typing import Protocol
 
+from edusync_c4.diagram import structural_links
 from edusync_c4.schemas import (
     AnnotationGroup,
     AnnotationTimeline,
@@ -36,7 +37,7 @@ from edusync_c4.schemas import (
     ShapeType,
 )
 
-METHOD = "spatiotemporal-single-linkage-v2"
+METHOD = "spatiotemporal-structural-v3"
 
 
 class Clusterer(Protocol):
@@ -155,6 +156,13 @@ class SpatioTemporalClusterer:
                     and closest_gap(a.edit_times, b.edit_times) <= cfg.max_gap_seconds
                 ):
                     parent[find(j)] = find(i)
+
+        if cfg.structural_links:
+            index = {s.shape_id: i for i, s in enumerate(shapes)}
+            latest = [s.versions[-1] for s in shapes]
+            for left, right in structural_links(latest):
+                if left in index and right in index:
+                    parent[find(index[left])] = find(index[right])
 
         components: dict[int, list[_Shape]] = {}
         for i, s in enumerate(shapes):

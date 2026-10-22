@@ -159,6 +159,8 @@ class GroupingConfig(BaseModel):
     max_distance: float = Field(default=50.0, ge=0.0)
     max_gap_seconds: float = Field(default=15.0, ge=0.0)
     include_retracted: bool = True
+    # Labels inside a box and arrows attached to shapes always group together, whatever the time.
+    structural_links: bool = True
 
 
 class AnnotationGroup(BaseModel):
@@ -385,3 +387,39 @@ class SlideInfo(BaseModel):
     scaled_height: float | None = None
     text: str | None = None
     has_svg: bool = False
+
+
+# --- Demo Step 3: diagrams (boxes joined by arrows) ---
+
+
+class DiagramNode(BaseModel):
+    shape_id: str
+    name: str
+    shape_type: ShapeType
+    bounds: BoundingBox
+
+
+class DiagramEdge(BaseModel):
+    arrow_shape_id: str
+    source_id: str
+    target_id: str
+    source_name: str
+    target_name: str
+    relation: str  # "directed" (source -> target) | "both" | "undirected"
+    label: str | None = None
+
+
+class Diagram(BaseModel):
+    """Boxes (nodes) and arrows (edges) found on one slide, written out as plain sentences.
+
+    Built from geometry only: arrows attached to shapes, or ending close to a shape, and text
+    placed inside a shape. No machine learning is involved.
+    """
+
+    diagram_id: str
+    nodes: list[DiagramNode]
+    edges: list[DiagramEdge]
+    sentences: list[str]
+    shape_ids: list[str]
+    dangling_arrow_ids: list[str] = Field(default_factory=list)
+    first_seconds: float
