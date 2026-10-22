@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import re
 from collections import defaultdict
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -67,17 +68,27 @@ def resolve_classifier_path(candidate: str | Path | None = None) -> Path | None:
     if candidate and Path(candidate).is_file():
         return Path(candidate)
 
-    pkg_models = Path(__file__).resolve().parents[2] / "models"
-    for name in ("coverage_classifier.joblib", "coverage_classifier_minilm.joblib"):
-        p = pkg_models / name
-        if p.is_file():
-            return p
+    search_dirs = [
+        Path("/app/models"),
+        Path(__file__).resolve().parent / "models",
+        Path(__file__).resolve().parents[1] / "models",
+        Path(__file__).resolve().parents[2] / "models",
+        Path.cwd() / "data" / "c1" / "models",
+        Path.cwd() / "edusync" / "packages" / "c1" / "models",
+        Path.cwd() / "hiru backend" / "models",
+    ]
+    for d in search_dirs:
+        for name in ("coverage_classifier.joblib", "coverage_classifier_minilm.joblib"):
+            p = d / name
+            if p.is_file():
+                return p
     return None
 
 
-def load_coverage_classifier(path: Path | None = None) -> Any:
+@lru_cache
+def load_coverage_classifier(path: str | Path | None = None) -> Any:
     """Load the joblib serialized Model C classifier pipeline."""
-    target = path or resolve_classifier_path()
+    target = Path(path) if path else resolve_classifier_path()
     if target and target.is_file():
         try:
             import sys
@@ -238,12 +249,14 @@ class CoverageTracker:
                     import pandas as pd
 
                     latest_text = items[-1].text if items else text
+                    sim_val = items[-1].similarity if items else 0.85
                     feat_df = pd.DataFrame(
                         [
                             {
                                 "transcript_text": latest_text,
-                                "prereq_coverage_ratio": prereq_ratio,
-                                "evidence_count": count,
+                                "semantic_similarity": float(sim_val),
+                                "prerequisite_coverage": float(prereq_ratio),
+                                "previous_evidence_count": float(count - 1),
                             }
                         ]
                     )

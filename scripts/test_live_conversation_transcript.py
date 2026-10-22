@@ -62,12 +62,12 @@ async def test_live_conversation():
 
             for speaker, text in utterances:
                 js_utterance = f"""
-                (() => {{
-                    processLiveConversationUtterance({json.dumps(text)}, {json.dumps(speaker)});
+                (async () => {{
+                    await processLiveConversationUtterance({json.dumps(text)}, {json.dumps(speaker)});
                 }})()
                 """
-                await call('Runtime.evaluate', {'expression': js_utterance})
-                await asyncio.sleep(0.5)
+                await call('Runtime.evaluate', {'expression': js_utterance, 'awaitPromise': True})
+                await asyncio.sleep(1.2)
 
             # 3. Check Live Transcript Feed DOM state
             js_inspect = """
@@ -77,7 +77,8 @@ async def test_live_conversation():
                     time: item.querySelector('.transcript-meta span:last-child') ? item.querySelector('.transcript-meta span:last-child').textContent : '',
                     hasHighlight: item.querySelectorAll('.concept-hl').length > 0,
                     hasConceptTag: item.querySelectorAll('.concept-tag').length > 0,
-                    conceptTagText: item.querySelector('.concept-tag') ? item.querySelector('.concept-tag').textContent.replace(/\\s+/g, ' ').trim() : ''
+                    conceptTagText: item.querySelector('.concept-tag') ? item.querySelector('.concept-tag').textContent.replace(/\\s+/g, ' ').trim() : '',
+                    modelBadgeText: item.querySelector('div[style*="background: rgba(15, 23, 42, 0.7)"]') ? item.querySelector('div[style*="background: rgba(15, 23, 42, 0.7)"]').textContent.replace(/\\s+/g, ' ').trim() : ''
                 }));
                 const skippedCount = Array.from(document.querySelectorAll('.concept-node rect')).filter(r => r.getAttribute('stroke') === '#ef4444').length;
                 const coveredCount = Array.from(document.querySelectorAll('.concept-node rect')).filter(r => r.getAttribute('stroke') === '#22c55e').length;

@@ -164,3 +164,37 @@ class TranscribeResponse(BaseModel):
     graph: KnowledgeGraph
     graph_timeline: GraphTimeline
     message: str
+
+
+class LiveEvalConceptInput(BaseModel):
+    id: str
+    title: str
+    slideNum: int = 1
+    index: int = 0
+    points: list[str] = Field(default_factory=list)
+    description: str = ""
+
+
+class LiveEvalRequest(BaseModel):
+    utterance_text: str
+    timestamp_seconds: float = 0.0
+    delivered_concept_ids: list[str] = Field(default_factory=list)
+    concepts: list[LiveEvalConceptInput] = Field(default_factory=list)
+    main_concept_id: str | None = None
+
+
+class LiveEvalResponse(BaseModel):
+    matched_concept_id: str | None = None
+    matched_concept_title: str | None = None
+    matched_slide_num: int | None = None
+    semantic_similarity: float = 0.0
+    matching_method: str = "minilm_semantic_model"
+    model_status: str = "not_yet_observed"
+    model_confidence: float = 1.0
+    class_probabilities: dict[str, float] = Field(default_factory=dict)
+    prereq_satisfied: bool = True
+    skipped_prerequisites: list[str] = Field(default_factory=list)
+    main_concept_synthesized: bool = False
+    newly_delivered_ids: list[str] = Field(default_factory=list)
+    explanation: str = ""
+

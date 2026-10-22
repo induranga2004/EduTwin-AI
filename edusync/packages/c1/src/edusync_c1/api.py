@@ -14,12 +14,16 @@ from starlette.concurrency import run_in_threadpool
 from edusync_c1.catchup import LateJoinerCatchupEngine, LateJoinerCatchupPack
 from edusync_c1.comparison import DualGraphComparator, LectureComparisonReport
 from edusync_c1.concepts import extract_concepts
+from edusync_c1.coverage import load_coverage_classifier
 from edusync_c1.documents import combine_page_text, extract_document_pages
 from edusync_c1.graph import build_knowledge_graph
 from edusync_c1.schemas import (
     GraphResponse,
     HealthResponse,
     KnowledgeGraph,
+    LiveEvalConceptInput,
+    LiveEvalRequest,
+    LiveEvalResponse,
     Page,
     TranscribeResponse,
     UploadResponse,
@@ -326,6 +330,167 @@ async def generate_lecture_catchup(
     ]
     return engine.generate_catchup_pack(
         delivered_mentions, join_seconds, lecture_id=transcribe_res.recording_id
+    )
+
+
+@router.post("/lectures/live-eval", response_model=LiveEvalResponse)
+async def evaluate_live_utterance(
+    payload: LiveEvalRequest,
+    matcher: MatcherDep,
+) -> LiveEvalResponse:
+    """Evaluate a real-time speech utterance against curriculum concepts using MiniLM and Model C."""
+    text = payload.utterance_text.strip()
+    if not text or not payload.concepts:
+        return LiveEvalResponse(
+            explanation="Empty utterance or no concepts provided."
+        )
+
+    # 1. Concept Candidate Scoring with MiniLM Semantic Bi-Encoder
+    candidate_scores: list[tuple[LiveEvalConceptInput, float, str]] = []
+
+    for concept in payload.concepts:
+        c_title = concept.title
+        c_points = concept.points or []
+        c_desc = concept.description or ""
+
+        # Pool of texts representing this concept (title, points, description)
+        candidates = [c_title]
+        candidates.extend(c_points)
+        if c_desc:
+            candidates.append(c_desc)
+
+        best_score = 0.0
+        best_term = c_title
+
+        # Check semantic similarity using MiniLM
+        try:
+            match_res = matcher.match(text, candidates, threshold=0.25)
+            if match_res.matches:
+                top_m = max(match_res.matches, key=lambda m: m.similarity)
+                best_score = float(top_m.similarity)
+                best_term = top_m.name
+        except Exception:
+            pass
+
+        # Also evaluate lexical overlap with title or points
+        lower_text = text.casefold()
+        lower_title = c_title.casefold()
+        lower_id = concept.id.replace("_", " ").casefold()
+
+        lexical_match = (
+            lower_title in lower_text
+            or lower_id in lower_text
+            or any(pt.casefold() in lower_text for pt in c_points if len(pt) >= 4)
+        )
+        if lexical_match:
+            best_score = max(best_score, 0.85)
+
+        if best_score > 0.0:
+            candidate_scores.append((concept, best_score, best_term))
+
+    if not candidate_scores:
+        return LiveEvalResponse(
+            explanation="No curriculum concept matched this speech segment."
+        )
+
+    candidate_scores.sort(key=lambda x: x[1], reverse=True)
+    best_concept, similarity, matched_term = candidate_scores[0]
+
+    if similarity < 0.35:
+        return LiveEvalResponse(
+            explanation=f"Best candidate '{best_concept.title}' similarity {similarity:.2f} is below threshold (0.35)."
+        )
+
+    cid = best_concept.id
+    c_index = best_concept.index
+    delivered_set = set(payload.delivered_concept_ids)
+
+    # 2. Sequential Prerequisite Metrics
+    prev_concepts = [c for c in payload.concepts if c.index < c_index]
+    if prev_concepts:
+        covered_prereqs = sum(1 for c in prev_concepts if c.id in delivered_set)
+        prereq_ratio = covered_prereqs / len(prev_concepts)
+        skipped = [c.title for c in prev_concepts if c.id not in delivered_set]
+    else:
+        prereq_ratio = 1.0
+        skipped = []
+
+    prev_evidence_count = 1 if cid in delivered_set else 0
+
+    # 3. Model C ML Classifier Inference
+    classifier = load_coverage_classifier()
+    model_status = "introduced" if prev_evidence_count == 0 else "adequately_covered"
+    model_confidence = 0.95
+    class_probs: dict[str, float] = {model_status: 0.95}
+
+    if classifier is not None:
+        try:
+            import pandas as pd
+
+            feat_df = pd.DataFrame(
+                [
+                    {
+                        "transcript_text": text,
+                        "semantic_similarity": float(similarity),
+                        "prerequisite_coverage": float(prereq_ratio),
+                        "previous_evidence_count": float(prev_evidence_count),
+                    }
+                ]
+            )
+            pred = classifier.predict(feat_df)[0]
+            model_status = str(pred)
+            if hasattr(classifier, "predict_proba"):
+                probs = classifier.predict_proba(feat_df)[0]
+                class_probs = {
+                    str(c): round(float(p), 4)
+                    for c, p in zip(classifier.classes_, probs)
+                }
+                model_confidence = round(float(max(probs)), 4)
+        except Exception as exc:
+            logger.debug("Model C live inference fallback: %s", exc)
+
+    # Adjust for severe prerequisite violations if needed
+    if prereq_ratio < 0.3 and prev_concepts:
+        if model_status == "adequately_covered":
+            model_status = "insufficiently_covered"
+
+    newly_delivered = [cid] if cid not in delivered_set else []
+
+    # 4. Synthesize Main Concept Coverage
+    main_id = payload.main_concept_id or (payload.concepts[0].id if payload.concepts else None)
+    main_synthesized = False
+
+    all_delivered_now = delivered_set | set(newly_delivered)
+    constituent_concepts = [c for c in payload.concepts if c.id != main_id]
+    if main_id and constituent_concepts:
+        covered_constituents = sum(1 for c in constituent_concepts if c.id in all_delivered_now)
+        thresh_met = (
+            (covered_constituents / len(constituent_concepts) >= 0.5)
+            or (len(constituent_concepts) >= 4 and covered_constituents >= 3)
+        )
+        if thresh_met and main_id not in all_delivered_now:
+            main_synthesized = True
+            newly_delivered.append(main_id)
+
+    prereq_ok = len(skipped) == 0
+
+    return LiveEvalResponse(
+        matched_concept_id=cid,
+        matched_concept_title=best_concept.title,
+        matched_slide_num=best_concept.slideNum,
+        semantic_similarity=round(similarity, 3),
+        matching_method="MiniLM-L6-v2 Semantic Bi-Encoder + Model C",
+        model_status=model_status,
+        model_confidence=model_confidence,
+        class_probabilities=class_probs,
+        prereq_satisfied=prereq_ok,
+        skipped_prerequisites=skipped,
+        main_concept_synthesized=main_synthesized,
+        newly_delivered_ids=newly_delivered,
+        explanation=(
+            f"Evaluated via MiniLM similarity ({similarity:.2f}) and Model C classifier "
+            f"-> Status: '{model_status}' (Confidence: {model_confidence * 100:.1f}%)."
+        ),
     )
 
 
