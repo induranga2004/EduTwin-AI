@@ -1,0 +1,738 @@
+{
+ "lists": [
+  {
+   "name": "db-tde",
+   "labels": [
+    "Transparent Data Encryption",
+    "TDE",
+    "Data Encryption",
+    "AES-256",
+    "Encryption Key",
+    "Key Management",
+    "Backup",
+    "Best Practices",
+    "Overview"
+   ],
+   "slides": "Transparent Data Encryption (TDE) encrypts files at rest. Data encryption protects data.",
+   "merge_groups": [
+    [
+     "TDE",
+     "Transparent Data Encryption"
+    ]
+   ],
+   "junk": [
+    "Best Practices",
+    "Overview"
+   ],
+   "separate": [
+    [
+     "Data Encryption",
+     "Transparent Data Encryption"
+    ]
+   ]
+  },
+  {
+   "name": "db-sql",
+   "labels": [
+    "Structured Query Language",
+    "SQL",
+    "The SQL",
+    "Relational Database",
+    "Relational Databases",
+    "Join",
+    "Inner Join",
+    "Index",
+    "Indexes",
+    "Primary Key",
+    "Foreign Key",
+    "Key"
+   ],
+   "slides": "",
+   "merge_groups": [
+    [
+     "Structured Query Language",
+     "SQL",
+     "The SQL"
+    ],
+    [
+     "Relational Database",
+     "Relational Databases"
+    ],
+    [
+     "Index",
+     "Indexes"
+    ]
+   ],
+   "junk": [],
+   "separate": [
+    [
+     "Primary Key",
+     "Key"
+    ]
+   ]
+  },
+  {
+   "name": "db-acid-nodes",
+   "labels": [
+    "ACID",
+    "Atomicity Consistency Isolation Durability",
+    "Transaction",
+    "Transactions",
+    "Isolation Level",
+    "Rollback"
+   ],
+   "slides": "",
+   "merge_groups": [
+    [
+     "ACID",
+     "Atomicity Consistency Isolation Durability"
+    ],
+    [
+     "Transaction",
+     "Transactions"
+    ]
+   ],
+   "junk": [],
+   "separate": []
+  },
+  {
+   "name": "db-txn",
+   "labels": [
+    "Transaction",
+    "Transactions",
+    "Isolation Level",
+    "Isolation Levels",
+    "Deadlock",
+    "Deadlocks",
+    "Two-Phase Locking",
+    "Two Phase Locking",
+    "2PL",
+    "Lock",
+    "Questions"
+   ],
+   "slides": "",
+   "merge_groups": [
+    [
+     "Transaction",
+     "Transactions"
+    ],
+    [
+     "Isolation Level",
+     "Isolation Levels"
+    ],
+    [
+     "Deadlock",
+     "Deadlocks"
+    ],
+    [
+     "Two-Phase Locking",
+     "Two Phase Locking",
+     "2PL"
+    ]
+   ],
+   "junk": [
+    "Questions"
+   ],
+   "separate": []
+  },
+  {
+   "name": "db-nosql",
+   "labels": [
+    "NoSQL",
+    "Not Only SQL",
+    "CAP Theorem",
+    "Consistency",
+    "Availability",
+    "Partition Tolerance",
+    "Eventual Consistency",
+    "Sharding",
+    "Replication",
+    "Key-Value Store",
+    "Key Value Store",
+    "Document Store"
+   ],
+   "slides": "NoSQL (Not Only SQL) systems scale out.",
+   "merge_groups": [
+    [
+     "NoSQL",
+     "Not Only SQL"
+    ],
+    [
+     "Key-Value Store",
+     "Key Value Store"
+    ]
+   ],
+   "junk": [],
+   "separate": []
+  },
+  {
+   "name": "sec-pki",
+   "labels": [
+    "Public Key Cryptography",
+    "Public Key",
+    "Private Key",
+    "Key",
+    "Symmetric Key",
+    "Symmetric Encryption",
+    "PKI",
+    "Public Key Infrastructure",
+    "RSA",
+    "Digital Signature",
+    "Digital Signatures",
+    "Certificate Authority",
+    "CA",
+    "Best Practices"
+   ],
+   "slides": "",
+   "merge_groups": [
+    [
+     "PKI",
+     "Public Key Infrastructure"
+    ],
+    [
+     "Digital Signature",
+     "Digital Signatures"
+    ],
+    [
+     "Certificate Authority",
+     "CA"
+    ]
+   ],
+   "junk": [
+    "Best Practices"
+   ],
+   "separate": []
+  },
+  {
+   "name": "sec-aes",
+   "labels": [
+    "AES",
+    "Advanced Encryption Standard",
+    "Advanced Data Encryption",
+    "DES",
+    "Data Encryption Standard",
+    "Triple DES",
+    "3DES",
+    "Block Cipher",
+    "Block Ciphers",
+    "Stream Cipher",
+    "ECB Mode",
+    "CBC Mode",
+    "Initialization Vector",
+    "IV"
+   ],
+   "slides": "",
+   "merge_groups": [
+    [
+     "AES",
+     "Advanced Encryption Standard"
+    ],
+    [
+     "DES",
+     "Data Encryption Standard"
+    ],
+    [
+     "Triple DES",
+     "3DES"
+    ],
+    [
+     "Block Cipher",
+     "Block Ciphers"
+    ],
+    [
+     "Initialization Vector",
+     "IV"
+    ]
+   ],
+   "junk": [],
+   "separate": [
+    [
+     "AES",
+     "Advanced Data Encryption"
+    ]
+   ]
+  },
+  {
+   "name": "sec-web",
+   "labels": [
+    "Cross-Site Scripting",
+    "XSS",
+    "SQL Injection",
+    "Cross-Site Request Forgery",
+    "CSRF",
+    "Input Validation",
+    "Same-Origin Policy",
+    "Content Security Policy",
+    "CSP",
+    "Cookie",
+    "Cookies",
+    "Overview",
+    "Summary"
+   ],
+   "slides": "Cross-Site Scripting (XSS) lets attackers inject script.",
+   "merge_groups": [
+    [
+     "Cross-Site Scripting",
+     "XSS"
+    ],
+    [
+     "CSRF",
+     "Cross-Site Request Forgery"
+    ],
+    [
+     "CSP",
+     "Content Security Policy"
+    ],
+    [
+     "Cookie",
+     "Cookies"
+    ]
+   ],
+   "junk": [
+    "Overview",
+    "Summary"
+   ],
+   "separate": []
+  },
+  {
+   "name": "ml-gd",
+   "labels": [
+    "Gradient Descent",
+    "Stochastic Gradient Descent",
+    "SGD",
+    "Mini-Batch Gradient Descent",
+    "Batch Gradient Descent",
+    "Learning Rate",
+    "Loss Function",
+    "Loss Functions",
+    "Cost Function",
+    "Backpropagation",
+    "Backprop",
+    "Optimization"
+   ],
+   "slides": "Stochastic Gradient Descent (SGD) uses one sample. Gradient Descent (Optimization) is iterative. Backpropagation (backprop) computes gradients.",
+   "merge_groups": [
+    [
+     "SGD",
+     "Stochastic Gradient Descent"
+    ],
+    [
+     "Loss Function",
+     "Loss Functions"
+    ],
+    [
+     "Backpropagation",
+     "Backprop"
+    ]
+   ],
+   "junk": [],
+   "separate": [
+    [
+     "Gradient Descent",
+     "Stochastic Gradient Descent"
+    ]
+   ]
+  },
+  {
+   "name": "ml-nn",
+   "labels": [
+    "Neural Network",
+    "Neural Networks",
+    "Convolutional Neural Network",
+    "Convolutional Neural Networks",
+    "CNN",
+    "Recurrent Neural Network",
+    "RNN",
+    "LSTM",
+    "Long Short-Term Memory",
+    "Activation Function",
+    "ReLU",
+    "Rectified Linear Unit",
+    "Sigmoid",
+    "Softmax"
+   ],
+   "slides": "Rectified Linear Unit (ReLU) is an activation.",
+   "merge_groups": [
+    [
+     "Neural Network",
+     "Neural Networks"
+    ],
+    [
+     "Convolutional Neural Network",
+     "Convolutional Neural Networks",
+     "CNN"
+    ],
+    [
+     "RNN",
+     "Recurrent Neural Network"
+    ],
+    [
+     "LSTM",
+     "Long Short-Term Memory"
+    ],
+    [
+     "ReLU",
+     "Rectified Linear Unit"
+    ]
+   ],
+   "junk": [],
+   "separate": []
+  },
+  {
+   "name": "ml-reg",
+   "labels": [
+    "Linear Regression",
+    "Logistic Regression",
+    "LR",
+    "Regression",
+    "Ordinary Least Squares",
+    "OLS",
+    "Mean Squared Error",
+    "MSE",
+    "Mean Absolute Error",
+    "MAE",
+    "R-Squared",
+    "R Squared",
+    "Overfitting",
+    "Regularization",
+    "L1 Regularization",
+    "L2 Regularization",
+    "Ridge Regression",
+    "Lasso"
+   ],
+   "slides": "",
+   "merge_groups": [
+    [
+     "OLS",
+     "Ordinary Least Squares"
+    ],
+    [
+     "MSE",
+     "Mean Squared Error"
+    ],
+    [
+     "MAE",
+     "Mean Absolute Error"
+    ],
+    [
+     "R-Squared",
+     "R Squared"
+    ]
+   ],
+   "junk": [],
+   "separate": [
+    [
+     "Linear Regression",
+     "Logistic Regression"
+    ],
+    [
+     "LR",
+     "L1 Regularization"
+    ]
+   ]
+  },
+  {
+   "name": "net-tcp",
+   "labels": [
+    "Transmission Control Protocol",
+    "TCP",
+    "User Datagram Protocol",
+    "UDP",
+    "Internet Protocol",
+    "IP",
+    "IP Address",
+    "IP Addresses",
+    "Three-Way Handshake",
+    "3-Way Handshake",
+    "Port",
+    "Ports",
+    "Socket",
+    "Sockets",
+    "Routing",
+    "Router",
+    "Routers",
+    "Packet",
+    "Packets",
+    "DNS",
+    "Domain Name System"
+   ],
+   "slides": "",
+   "merge_groups": [
+    [
+     "TCP",
+     "Transmission Control Protocol"
+    ],
+    [
+     "UDP",
+     "User Datagram Protocol"
+    ],
+    [
+     "IP",
+     "Internet Protocol"
+    ],
+    [
+     "IP Address",
+     "IP Addresses"
+    ],
+    [
+     "Three-Way Handshake",
+     "3-Way Handshake"
+    ],
+    [
+     "Port",
+     "Ports"
+    ],
+    [
+     "Socket",
+     "Sockets"
+    ],
+    [
+     "Router",
+     "Routers"
+    ],
+    [
+     "Packet",
+     "Packets"
+    ],
+    [
+     "DNS",
+     "Domain Name System"
+    ]
+   ],
+   "junk": [],
+   "separate": []
+  },
+  {
+   "name": "os-core",
+   "labels": [
+    "Operating System",
+    "OS",
+    "Process",
+    "Processes",
+    "Thread",
+    "Threads",
+    "Context Switch",
+    "Context Switching",
+    "Scheduler",
+    "Scheduling",
+    "Round Robin",
+    "Round-Robin",
+    "First Come First Served",
+    "FCFS",
+    "Shortest Job First",
+    "SJF",
+    "Deadlock",
+    "Semaphore",
+    "Semaphores",
+    "Mutex",
+    "Mutual Exclusion",
+    "Critical Section",
+    "Virtual Memory",
+    "Page Table",
+    "Page Tables",
+    "Paging",
+    "TLB",
+    "Translation Lookaside Buffer"
+   ],
+   "slides": "",
+   "merge_groups": [
+    [
+     "Operating System",
+     "OS"
+    ],
+    [
+     "Process",
+     "Processes"
+    ],
+    [
+     "Thread",
+     "Threads"
+    ],
+    [
+     "Round Robin",
+     "Round-Robin"
+    ],
+    [
+     "First Come First Served",
+     "FCFS"
+    ],
+    [
+     "Shortest Job First",
+     "SJF"
+    ],
+    [
+     "Semaphore",
+     "Semaphores"
+    ],
+    [
+     "Mutex",
+     "Mutual Exclusion"
+    ],
+    [
+     "Page Table",
+     "Page Tables"
+    ],
+    [
+     "TLB",
+     "Translation Lookaside Buffer"
+    ]
+   ],
+   "junk": [],
+   "separate": []
+  },
+  {
+   "name": "amb-tde",
+   "labels": [
+    "TDE",
+    "Transparent Data Encryption",
+    "Triple Data Encryption",
+    "Encryption"
+   ],
+   "slides": "Transparent Data Encryption (TDE) is built into the engine.",
+   "merge_groups": [
+    [
+     "TDE",
+     "Transparent Data Encryption"
+    ]
+   ],
+   "junk": [],
+   "separate": [
+    [
+     "TDE",
+     "Triple Data Encryption"
+    ]
+   ]
+  },
+  {
+   "name": "amb-ml",
+   "labels": [
+    "ML",
+    "Machine Learning",
+    "Maximum Likelihood",
+    "DL",
+    "Deep Learning",
+    "AI",
+    "Artificial Intelligence",
+    "Supervised Learning",
+    "Unsupervised Learning"
+   ],
+   "slides": "",
+   "merge_groups": [
+    [
+     "DL",
+     "Deep Learning"
+    ],
+    [
+     "AI",
+     "Artificial Intelligence"
+    ]
+   ],
+   "junk": [],
+   "separate": [
+    [
+     "ML",
+     "Machine Learning"
+    ],
+    [
+     "ML",
+     "Maximum Likelihood"
+    ]
+   ]
+  },
+  {
+   "name": "legit-generic2",
+   "labels": [
+    "Summary Statistics",
+    "Introduction to Algorithms",
+    "Example-Based Learning",
+    "Background Subtraction",
+    "Case-Based Reasoning",
+    "Overview Plus Detail",
+    "Question Answering",
+    "Review Mining",
+    "Discussion Forum",
+    "Demo Effect",
+    "Learning Outcomes",
+    "Thank You"
+   ],
+   "slides": "",
+   "merge_groups": [],
+   "junk": [
+    "Learning Outcomes",
+    "Thank You"
+   ],
+   "separate": []
+  },
+  {
+   "name": "se-oop",
+   "labels": [
+    "Object-Oriented Programming",
+    "OOP",
+    "Class",
+    "Classes",
+    "Object",
+    "Objects",
+    "Inheritance",
+    "Polymorphism",
+    "Encapsulation",
+    "Abstraction",
+    "Abstract Class",
+    "Abstract Classes",
+    "Interface",
+    "Interfaces",
+    "Design Pattern",
+    "Design Patterns",
+    "Singleton",
+    "Factory Pattern",
+    "Observer Pattern",
+    "SOLID",
+    "Single Responsibility Principle",
+    "SRP",
+    "Dependency Injection",
+    "DI",
+    "Best Practice",
+    "Conclusion"
+   ],
+   "slides": "",
+   "merge_groups": [
+    [
+     "OOP",
+     "Object-Oriented Programming"
+    ],
+    [
+     "Class",
+     "Classes"
+    ],
+    [
+     "Object",
+     "Objects"
+    ],
+    [
+     "Abstract Class",
+     "Abstract Classes"
+    ],
+    [
+     "Interface",
+     "Interfaces"
+    ],
+    [
+     "Design Pattern",
+     "Design Patterns"
+    ],
+    [
+     "SRP",
+     "Single Responsibility Principle"
+    ],
+    [
+     "DI",
+     "Dependency Injection"
+    ]
+   ],
+   "junk": [
+    "Best Practice",
+    "Conclusion"
+   ],
+   "separate": []
+  }
+ ]
+}

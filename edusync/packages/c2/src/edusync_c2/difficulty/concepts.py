@@ -90,7 +90,9 @@ def create_concept_filter(
     if name == "mock_keep_all":
         return MockConceptFilter()
     if name == "heuristic":
-        raise NotImplementedError("heuristic concept filter is added later in M2")
+        from edusync_c2.difficulty.concept_filter import HeuristicConceptFilter
+
+        return HeuristicConceptFilter(extras)
     raise ValueError(f"unknown concept filter: {name!r}")
 
 

@@ -117,8 +117,14 @@ def test_mock_flag_and_factory() -> None:
     assert MockConceptFilter.is_mock is True
     assert isinstance(create_concept_filter("mock_keep_all"), MockConceptFilter)
     assert isinstance(create_concept_filter("mock_keep_all", True), MockConceptFilter)
-    with pytest.raises(NotImplementedError, match="heuristic"):
-        create_concept_filter("heuristic")
+    flt = create_concept_filter("heuristic", True)
+    assert (type(flt).__name__, flt.name, flt.is_mock, flt.extras) == (
+        "HeuristicConceptFilter",
+        "heuristic",
+        False,
+        True,
+    )
+    assert create_concept_filter("heuristic").extras is False
     with pytest.raises(ValueError, match="unknown concept filter"):
         create_concept_filter("nope")
 

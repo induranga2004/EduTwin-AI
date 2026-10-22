@@ -238,14 +238,20 @@ def test_request_id_in_log_records_and_rejections_logged(app, client):
     assert re.fullmatch(r"-", __import__("edusync_c2.logger", fromlist=["x"]).request_id.get())
 
 
-def test_heuristic_filter_not_built_yet_is_501_and_not_cached(real_app, monkeypatch):
+def test_unavailable_filter_is_501_and_not_cached(real_app, monkeypatch):
+    def unavailable(name, extras=False):
+        raise NotImplementedError(f"{name} concept filter is not available")
+
     monkeypatch.setenv("EDUSYNC_C2_CONCEPT_FILTER", "heuristic")
     monkeypatch.setattr(RT, "configure_logging", lambda level: None)
+    real_factory = RT.create_concept_filter
+    monkeypatch.setattr(RT, "create_concept_filter", unavailable)
     c = TestClient(real_app)
     r = c.get("/difficulty/info")
     assert (r.status_code, "heuristic" in r.json()["detail"]) == (501, True)
     assert post(c).status_code == 501
     monkeypatch.setenv("EDUSYNC_C2_CONCEPT_FILTER", "mock_keep_all")
+    monkeypatch.setattr(RT, "create_concept_filter", real_factory)
     from edusync_c2.settings import get_c2_settings
 
     get_c2_settings.cache_clear()
