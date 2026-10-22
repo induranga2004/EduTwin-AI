@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C3 Sentence Filter</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --ink: #1b1f24; --muted: #5b6570; --line: #d9dee4;
+    --keep: #17703f; --keep-bg: #e7f6ed; --drop: #b3261e; --drop-bg: #fdecea;
+    --accent: #2457d6; --accent-ink: #ffffff; --warn: #7a4e00; --warn-bg: #fff1cc;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171a; --card: #1d2227; --ink: #e8ebee; --muted: #9aa5b1; --line: #323a42;
+      --keep: #6fdc9b; --keep-bg: #16301f; --drop: #ff9a92; --drop-bg: #3a1c1a;
+      --accent: #7ea2ff; --accent-ink: #0d1117; --warn: #ffd37a; --warn-bg: #3a2f12;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 40px; }
+  h1 { font-size: 1.4rem; margin: 0 0 2px; }
+  .sub { color: var(--muted); margin: 0 0 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .drop { border: 2px dashed var(--line); border-radius: 10px; padding: 18px; text-align: center;
+          color: var(--muted); cursor: pointer; }
+  .drop.over { border-color: var(--accent); color: var(--ink); }
+  .drop strong { color: var(--ink); }
+  details { margin-top: 10px; }
+  summary { cursor: pointer; color: var(--muted); }
+  textarea { width: 100%; min-height: 110px; margin-top: 8px; padding: 8px; border-radius: 8px;
+             border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit; }
+  input[type=text] { padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line);
+                     background: var(--bg); color: var(--ink); font: inherit; width: 260px; max-width: 100%; }
+  .row-controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; margin-top: 14px; }
+  button { font: inherit; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--line);
+           background: var(--card); color: var(--ink); cursor: pointer; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible, .drop:focus-visible
+    { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .slider { display: flex; align-items: center; gap: 10px; }
+  .slider input { width: 200px; }
+  .status { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: var(--warn-bg); color: var(--warn); }
+  .status.err { background: var(--drop-bg); color: var(--drop); }
+  .summary { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 16px 0 12px; }
+  .stat b { font-size: 1.25rem; }
+  .stat span { color: var(--muted); font-size: .9rem; display: block; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 800px) { .cols { grid-template-columns: 1fr; } }
+  .col h2 { margin: 0 0 2px; font-size: 1.05rem; }
+  .col .hint { margin: 0 0 8px; color: var(--muted); font-size: .88rem; }
+  .col.kept h2 { color: var(--keep); } .col.dropped h2 { color: var(--drop); }
+  .list { max-height: 62vh; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
+  .item { display: flex; gap: 10px; padding: 7px 9px; border-radius: 8px; border-left: 5px solid; }
+  .kept .item { background: var(--keep-bg); border-color: var(--keep); }
+  .dropped .item { background: var(--drop-bg); border-color: var(--drop); }
+  .p { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 2.9em; }
+  .kept .p { color: var(--keep); } .dropped .p { color: var(--drop); }
+  .edge { align-self: flex-start; font-size: .72rem; padding: 1px 6px; border-radius: 999px;
+          background: var(--warn-bg); color: var(--warn); white-space: nowrap; }
+  .empty { color: var(--muted); padding: 8px; }
+  .actions { display: flex; gap: 8px; margin-top: 8px; }
+  footer { margin-top: 24px; color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>C3 lecture sentence filter</h1>
+  <p class="sub">Upload a lecture transcript. Each sentence is scored by the model and kept (teaching content) or removed (greetings, praise, admin, off-topic).</p>
+
+  <section class="card" aria-label="Input">
+    <div id="drop" class="drop" tabindex="0" role="button" aria-label="Choose a transcript file">
+      <strong>Drop a .txt transcript here</strong>, or click to choose a file
+      <div id="fileinfo">No file chosen</div>
+      <input id="file" type="file" accept=".txt,text/plain" hidden>
+    </div>
+
+    <details>
+      <summary>Or paste the transcript</summary>
+      <textarea id="text" aria-label="Transcript text" placeholder="Paste a lecture transcript here..."></textarea>
+      <div class="actions"><button type="button" id="sample">Load a small example</button></div>
+    </details>
+
+    <div class="row-controls">
+      <button type="button" id="go" class="primary">Filter</button>
+      <label class="slider">Threshold
+        <input id="th" type="range" min="0.05" max="0.95" step="0.05" value="0.4" aria-describedby="thhelp">
+        <output id="thv">0.40</output>
+      </label>
+      <span id="thhelp" class="sub" style="margin:0">A sentence is kept when P(KEEP) is at least this value.</span>
+    </div>
+    <details>
+      <summary>API address</summary>
+      <p><input id="api" type="text" value="http://localhost:8100" aria-label="API address"></p>
+    </details>
+    <div id="status" class="status" role="status" aria-live="polite" hidden></div>
+  </section>
+
+  <section id="results" hidden aria-label="Results">
+    <div class="summary">
+      <div class="stat"><b id="n-total">0</b><span>sentences</span></div>
+      <div class="stat"><b id="n-kept">0</b><span>kept</span></div>
+      <div class="stat"><b id="n-drop">0</b><span>removed</span></div>
+      <div class="stat"><b id="n-ms">0</b><span>seconds</span></div>
+    </div>
+    <div class="cols">
+      <div class="col kept card">
+        <h2>Kept</h2>
+        <p class="hint">Teaching content, in lecture order. This is what goes on to the next component.</p>
+        <div id="kept" class="list"></div>
+        <div class="actions">
+          <button type="button" id="dl">Download kept as .txt</button>
+          <button type="button" id="copy">Copy kept text</button>
+        </div>
+      </div>
+      <div class="col dropped card">
+        <h2>Removed</h2>
+        <p class="hint">Highest score first, so the sentences most likely to be mistakes are at the top.</p>
+        <div id="dropped" class="list"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>Scores come from the fine-tuned MiniLM (INT8) through <code>POST /api/c3/filter-text</code>. Moving the slider only moves the cut-off; the scores do not change.</footer>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const SAMPLE = [
+  "Good morning everyone, please take your seats.",
+  "A stack is a data structure that follows the last-in first-out rule.",
+  "Think of a stack like a pile of plates: you can only take the top one.",
+  "My neighbour bought new plates yesterday, they were so cheap.",
+  "Pushing adds an element to the top of the stack.",
+  "Excellent answer, well done, that was a great question.",
+  "The queue works the other way, because the first element added is the first one removed.",
+  "Please be quiet at the back, I can hear you talking.",
+  "The assignment submission deadline is next Friday at midnight.",
+  "Imagine a coffee shop line where the first customer is served first, which is exactly how a queue behaves.",
+  "I had a really nice coffee on the way here this morning.",
+  "The time complexity of a binary search is logarithmic because each step halves the search space.",
+  "Does anyone know where my marker pen went?",
+  "Thank you all, see you next week."
+].join(" ");
+
+let items = [];       // [{ text, p }] in lecture order
+let fileName = "transcript";
+let seconds = 0;
+
+function setStatus(message, kind) {
+  const el = $("status");
+  el.textContent = message || "";
+  el.className = "status" + (kind ? " " + kind : "");
+  el.hidden = !message;
+}
+
+function describeError(detail) {
+  if (typeof detail === "string") return detail;
+  try { return JSON.stringify(detail); } catch { return String(detail); }
+}
+
+async function run() {
+  const text = $("text").value;
+  if (!text.trim()) { setStatus("Choose a .txt file or paste a transcript first.", "err"); return; }
+  const base = $("api").value.trim().replace(/\/+$/, "");
+  $("go").disabled = true;
+  setStatus("Scoring sentences...");
+  const started = performance.now();
+  try {
+    const res = await fetch(base + "/api/c3/filter-text?include_dropped=true", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: text
+    });
+    if (!res.ok) {
+      let detail = "";
+      try { detail = describeError((await res.json()).detail); } catch { /* not JSON */ }
+      if (res.status === 503) throw new Error("The API is running, but the C3 model files are missing. " + detail);
+      if (res.status === 404) throw new Error("The API has no /api/c3/filter-text route. Restart the server so it loads the latest code.");
+      throw new Error("The API answered " + res.status + ". " + detail);
+    }
+    const data = await res.json();
+    items = (data.items || []).map((i) => ({ text: i.text, p: i.p_keep }));
+    seconds = (performance.now() - started) / 1000;
+    setStatus("");
+    render();
+  } catch (err) {
+    const unreachable = err instanceof TypeError;
+    setStatus(unreachable
+      ? "Cannot reach the API at " + base + ". Is the server running? (python -m edusync_api)"
+      : err.message, "err");
+  } finally {
+    $("go").disabled = false;
+  }
+}
+
+function row(item, threshold) {
+  const div = document.createElement("div");
+  div.className = "item";
+  const p = document.createElement("span");
+  p.className = "p";
+  p.textContent = item.p.toFixed(2);
+  const t = document.createElement("span");
+  t.textContent = item.text;
+  div.append(p, t);
+  if (Math.abs(item.p - threshold) <= 0.1) {
+    const edge = document.createElement("span");
+    edge.className = "edge";
+    edge.textContent = "borderline";
+    div.append(edge);
+  }
+  return div;
+}
+
+function fill(el, rows, threshold, emptyText) {
+  el.replaceChildren();
+  if (!rows.length) {
+    const e = document.createElement("div");
+    e.className = "empty";
+    e.textContent = emptyText;
+    el.append(e);
+    return;
+  }
+  el.append(...rows.map((r) => row(r, threshold)));
+}
+
+function split() {
+  const threshold = parseFloat($("th").value);
+  const kept = items.filter((i) => i.p >= threshold);
+  const dropped = items.filter((i) => i.p < threshold).sort((a, b) => b.p - a.p);
+  return { threshold, kept, dropped };
+}
+
+function render() {
+  if (!items.length) return;
+  const { threshold, kept, dropped } = split();
+  $("results").hidden = false;
+  $("n-total").textContent = items.length;
+  $("n-kept").textContent = kept.length;
+  $("n-drop").textContent = dropped.length;
+  $("n-ms").textContent = seconds.toFixed(2);
+  fill($("kept"), kept, threshold, "Nothing kept at this threshold.");
+  fill($("dropped"), dropped, threshold, "Nothing removed at this threshold.");
+}
+
+async function loadFile(file) {
+  if (!file) return;
+  if (!/\.txt$/i.test(file.name) && file.type !== "text/plain") {
+    setStatus("Please choose a plain .txt file.", "err");
+    return;
+  }
+  const text = await file.text();
+  $("text").value = text;
+  fileName = file.name.replace(/\.txt$/i, "");
+  $("fileinfo").textContent = file.name + " (" + Math.max(1, Math.round(file.size / 1024)) + " KB)";
+  run();
+}
+
+const drop = $("drop");
+drop.addEventListener("click", () => $("file").click());
+drop.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("file").click(); } });
+drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); loadFile(e.dataTransfer.files[0]); });
+$("file").addEventListener("change", (e) => loadFile(e.target.files[0]));
+$("go").addEventListener("click", run);
+$("sample").addEventListener("click", () => {
+  $("text").value = SAMPLE;
+  fileName = "example";
+  $("fileinfo").textContent = "Example text loaded";
+  run();
+});
+$("th").addEventListener("input", () => {
+  $("thv").textContent = parseFloat($("th").value).toFixed(2);
+  render();
+});
+$("dl").addEventListener("click", () => {
+  const { kept } = split();
+  const blob = new Blob([kept.map((i) => i.text).join("\n") + "\n"], { type: "text/plain" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = fileName + "_kept.txt";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+$("copy").addEventListener("click", async () => {
+  const { kept } = split();
+  try {
+    await navigator.clipboard.writeText(kept.map((i) => i.text).join("\n"));
+    setStatus("Kept sentences copied to the clipboard.");
+  } catch {
+    setStatus("Copy was blocked by the browser. Use the download button instead.", "err");
+  }
+});
+</script>
+</body>
+</html>
