@@ -1,0 +1,97 @@
+{
+  "model_name": "MiniLM-L6-v2 (local: C:\\Users\\Hiru\\Desktop\\Research\\c1\\EduTwin-AI\\edusync\\packages\\c1\\blueprint_model\\artifacts\\base\\sentence-transformers--all-MiniLM-L6-v2) + Multimodal Logistic Regression",
+  "is_minilm": true,
+  "total_examples": 72,
+  "training_examples": 39,
+  "test_examples": 33,
+  "training_lectures": [
+    "LEC_01_IISA_INFOSEC_FOUNDATIONS",
+    "LEC_03_IISA_SYMMETRIC_HASHES",
+    "LEC_04_IISA_USER_AUTHENTICATION"
+  ],
+  "test_lectures": [
+    "LEC_02_IISA_CRYPTO_BASICS",
+    "LEC_05_IISA_ACCESS_CONTROL"
+  ],
+  "labels_in_dataset": [
+    "adequately_covered",
+    "insufficiently_covered",
+    "introduced",
+    "not_yet_observed"
+  ],
+  "accuracy": 1.0,
+  "macro_f1": 1.0,
+  "classification_report": {
+    "adequately_covered": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 16.0
+    },
+    "insufficiently_covered": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 7.0
+    },
+    "introduced": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 5.0
+    },
+    "not_yet_observed": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 5.0
+    },
+    "accuracy": 1.0,
+    "macro avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 33.0
+    },
+    "weighted avg": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 33.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      16,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      7,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      5,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      5
+    ]
+  ],
+  "confusion_matrix_labels": [
+    "adequately_covered",
+    "insufficiently_covered",
+    "introduced",
+    "not_yet_observed"
+  ],
+  "random_state": 42,
+  "evaluation_note": "Held-out lecture split evaluation (GroupShuffleSplit). Zero lecture data leakage between training and testing."
+}
