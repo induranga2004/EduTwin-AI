@@ -14,6 +14,7 @@ members = [
     "edusync-blueprint-model",
     "edusync-c1",
     "edusync-c2",
+    "edusync-c2-model",
     "edusync-c3",
     "edusync-c4",
     "edusync-core",
@@ -300,6 +301,21 @@ requires-dist = [
 ]
 
 [[package]]
+name = "edusync-c2-model"
+version = "0.1.0"
+source = { editable = "packages/c2_difficulty_model" }
+dependencies = [
+    { name = "edusync-c2" },
+    { name = "numpy" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "edusync-c2", editable = "packages/c2" },
+    { name = "numpy", specifier = ">=2.0" },
+]
+
+[[package]]
 name = "edusync-c3"
 version = "0.1.0"
 source = { editable = "packages/c3" }
@@ -353,6 +369,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "edusync-blueprint-model" },
+    { name = "edusync-c2-model" },
     { name = "httpx" },
     { name = "pre-commit" },
     { name = "pytest" },
@@ -367,6 +384,7 @@ requires-dist = [{ name = "edusync-api", editable = "apps/api" }]
 [package.metadata.requires-dev]
 dev = [
     { name = "edusync-blueprint-model", editable = "packages/blueprint_model" },
+    { name = "edusync-c2-model", editable = "packages/c2_difficulty_model" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "pre-commit", specifier = ">=4.0" },
     { name = "pytest", specifier = ">=8.3" },
