@@ -181,3 +181,75 @@ must pass.
 - `ModelKind.TODO` is reported by `OnnxFusionModel` because it cannot predict yet; Phase 3 should switch it to
   `ModelKind.TRAINED`.
 - The blueprint line numbers will drift as that package changes.
+
+## 7. Proposed target architecture (design proposal, not implemented)
+
+Everything in this section is a proposal for Phases 3 to 5 unless marked "exists". Nothing here is trained, and no
+accuracy is claimed. Synthetic data (`synthetic.py`, `scripts/make_synthetic_data.py`) derives its labels from a rule over
+the same properties the decks expose, so it only tests plumbing and must never be used to report model quality.
+
+### 7.1 Layers
+
+| # | Layer | Content | Status |
+|---|---|---|---|
+| 1 | Input | lecture file (PPTX/PDF) to slide records (`materials.py`); C1 graph, real or labelled mock (`graph.py`, `providers.py`); concept alignment (`concepts.py`) | exists |
+| 2 | Feature | the 24 registry features in groups A to D with provenance (computed, mocked, unavailable) | exists |
+| 2b | Learned feature models (optional) | replace the placeholders `lang.unfamiliar_vocab_ratio` (mock), `expl.semantic_support_score` (mock) and `dens.visual_complexity` (todo); each outputs one number into the registry slot, so feature order and schema hash do not change | proposed |
+| 3 | Group experts | four models, each predicting overall difficulty from one group's inputs only | proposed |
+| 4 | Combiner | small stacking model over the four group outputs, tolerant of a missing group | proposed |
+| 5 | Calibration | calibrates the combiner probabilities; until evaluated, `probabilities` and `confidence` stay `None` | proposed |
+| 6 | Model serving | `DifficultyModel` interface, `create_model`, artifact validator, rule baseline as fallback and comparison point | exists (single-model form) |
+| 7 | API | `POST /api/c2/difficulty` and `/info`; responses always label real, mocked and unavailable inputs | exists |
+| 8 | Persistence | store predictions per lecture and concept for Phase 5 | proposed |
+| 9 | Live comprehension | compare predicted difficulty with poll or quiz evidence (`comprehension.py` is a rule placeholder, not validated) | placeholder exists |
+
+Flow: lecture file and C1 graph -> concepts and features -> group experts -> combiner -> calibration -> API response
+and storage; the live layer reads the stored predictions.
+
+### 7.2 Group experts
+
+Each expert predicts the same target, the concept's overall difficulty (Low < Medium < High), from its own inputs.
+Lecturers label one difficulty per concept, so a per-group target would need extra per-aspect ratings.
+
+| Group | Features | Inputs | Model type |
+|---|---|---|---|
+| A language | 6 `lang.*` | text plus features | MiniLM plus numeric head |
+| B prerequisites | 5 `prereq.*` | features only (from the C1 graph) | small tabular model |
+| C explanation | 5 `expl.*` | text plus features | MiniLM plus numeric head, or tabular |
+| D density | 8 `dens.*` | features only | small tabular model |
+
+6 + 5 + 5 + 8 = 24, matching `registry.FEATURE_SPECS`.
+
+Requirements and cautions:
+- The combiner must be trained on out-of-fold expert predictions, split by lecture, otherwise it overfits.
+- Groups A and C would each carry a MiniLM copy (about 90 MB each); a shared encoder avoids that.
+- Group B is `unavailable`/`mocked` without a real C1 graph, so the combiner must handle a missing expert output.
+- The expert models double as the per-group ablation for the report.
+- Recommendation: start with the single fusion model (sections 4 and 5) and add experts and combiner only if the label
+  count and the ablations justify the extra complexity.
+
+### 7.3 Changes the artifact spec would need
+
+The Phase 1 validator (`OnnxFusionModel.from_artifacts`) requires all 24 names and one hash. For group experts:
+- `feature_schema.json` `names` equal to `registry.features_of(group)` and a per-group hash (the current
+  `feature_schema_hash()` covers all 24 features and would need a per-group variant);
+- one artifact folder per expert plus one for the combiner;
+- a factory that builds the experts and the combiner. The contract suite applies to each model unchanged.
+
+### 7.4 All models C2 still needs
+
+1. Fusion difficulty model (Phase 3), or group experts plus combiner.
+2. Unfamiliar-vocabulary score (word-list rule or small learned model).
+3. Semantic definition and example detection (text classifier).
+4. Visual and diagram complexity (needs slide images and labels).
+5. Calibration of probabilities (a calibration step, not a separate network).
+6. Live comprehension validation (Phase 5; needs real poll data).
+
+Not models but open: the real C1 connection (`C1ApiGraphProvider`), alias merging in the concept filter and prediction
+persistence. Every trained model is blocked on real lecturer labels, so a label-collection tool is a prerequisite.
+
+### 7.5 Where artifacts live
+
+No fixed path is decided. C2 loads the folder named by `EDUSYNC_C2_MODEL_DIR` and needs only the runtime files of
+section 4 (no `.pt` files). Training outputs, including `.pt` files, stay in the training package's own artifacts folder,
+as in the blueprint (Git LFS); only the exported runtime files are copied to the folder C2 loads.
