@@ -1,0 +1,45 @@
+# Prototype sentences for the semantic explanation scorer (original wording, ASCII).
+# Sections: [definition], [example], [step]. One sentence per line; '#' starts a comment.
+# Each section is embedded once and averaged into a centroid (see features/semantic.py).
+
+[definition]
+A binary search tree is a tree in which every left descendant is smaller than its parent.
+Overfitting occurs when a model memorises the training data and fails on unseen data.
+A firewall is a network security system that filters traffic according to rules.
+The derivative of a function measures how fast its output changes with its input.
+Symmetric encryption uses one shared secret key for both encryption and decryption.
+A process is a running instance of a program with its own address space.
+Entropy is a measure of the uncertainty in a random variable.
+Gradient descent is an optimisation method that repeatedly moves against the gradient.
+A relational database stores data in tables made of rows and columns.
+Recursion is a technique in which a function solves a problem by calling itself.
+A prime number is an integer greater than one with no divisors other than one and itself.
+Phishing refers to fraudulent messages that trick people into revealing credentials.
+
+[example]
+For example, consider a stack where we push the values 3, 5 and 9 in that order.
+For instance, a spam filter can label an email by counting suspicious words.
+Example: searching for the number 23 in the sorted array [2, 8, 15, 23, 42].
+Let us look at a concrete case: encrypting the word HELLO with a shift of three.
+Suppose we have a graph with four nodes and want to find the shortest path from A to D.
+Consider a worked example where a classifier predicts whether a customer will cancel.
+Imagine a web server that receives one thousand requests in a single second.
+As an illustration, take the matrix with rows (1, 2) and (3, 4) and compute its determinant.
+A typical use case is a login form that is attacked with a list of common passwords.
+Here is a small example: the query SELECT name FROM students WHERE year = 2.
+Take the sequence 1, 1, 2, 3, 5, 8 as an instance of the Fibonacci numbers.
+To see this in practice, run the program on an input of ten random integers.
+
+[step]
+Step 1: split the data into a training set and a test set; Step 2: fit the model on the training set.
+First, pick a pivot element; then partition the array around it; finally sort each part.
+Step 1: generate a key pair; Step 2: publish the public key; Step 3: keep the private key secret.
+1. Read the input file. 2. Remove duplicate rows. 3. Write the cleaned file to disk.
+Step 1: initialise the queue with the start node; Step 2: visit its neighbours one by one.
+To compute the mean, first add all the values, then divide the sum by their number.
+Step 1: capture the packet; Step 2: inspect its header; Step 3: forward or drop it.
+Begin by creating an empty table, next insert the rows, and last add an index.
+Step 1: choose a learning rate; Step 2: compute the gradient; Step 3: update the parameters.
+First compile the source code, then link the object files, and finally run the executable.
+Step 1: isolate the unknown variable; Step 2: apply the inverse operation to both sides.
+Procedure: authenticate the user, check their role, and then grant access to the resource.

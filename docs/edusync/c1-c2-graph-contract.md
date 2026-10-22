@@ -13,7 +13,38 @@ reaches C2 as JSON.
   HTTP 422 with the failing field.
 - The file posted to C2 must be the same lecture file C1 processed, because C2 locates each node on the slides by label.
 - Without `c1_graph`, C2 builds a clearly labelled **mock** graph from slide titles and marks every value derived from it
-  as `mocked`. The planned `C1ApiGraphProvider` (C2 calling C1 directly) is not implemented.
+  as `mocked`. C2 can also call C1 itself or read a graph file, both opt-in; see section 1a.
+
+## 1a. C2 calling C1 itself (`c1_api` provider)
+
+Optional and off by default (`EDUSYNC_C2_GRAPH_PROVIDER=c1_api`; settings in [c2-difficulty.md](c2-difficulty.md), section
+"Graph providers"). When no `c1_graph` is posted, C2 sends the uploaded file to C1 instead of building a mock:
+
+- **Request.** `POST {EDUSYNC_C2_C1_BASE_URL}/lectures/graph` (default base `http://127.0.0.1:8100/api/c1`), multipart
+  form with one field `file` holding the upload unchanged (content type derived from `.pdf` / `.pptx`). Plain stdlib HTTP;
+  C2 imports no C1 code.
+- **Response.** The JSON object C1 returns, validated as `C1GraphResponse` (same rules as a posted graph; extra fields kept).
+  Anything else is an error: C1 4xx gives HTTP 422 with C1's `detail` (cut to 200 characters), C1 5xx, unreachable, a
+  non-JSON body or a shape mismatch gives 502, a timeout gives 504 (`EDUSYNC_C2_C1_TIMEOUT_S`, default 60).
+- **`lecture_id`.** C1 returns a fresh uuid on every call. C2 drops it and reports `c1-<first 12 hex digits of
+  sha256(upload)>`, so the same file always gives the same C2 response. C1's uuid is not visible in C2's output.
+- **v0 from C1.** C1 emits v0 today (19 nodes and 20 `co_mentioned` edges were seen in a Docker check). C2 accepts it, marks
+  the graph `real`, and group B is `unavailable` with the warning "C1 graph has no prerequisite edges: group B features
+  unavailable". Nothing breaks; the prerequisite features simply wait for v1.
+- **Privacy.** C2 logs only the status and a reason code of a failed call, never the file or its name.
+
+### Swapping the sample graph (`file` provider)
+
+`EDUSYNC_C2_GRAPH_PROVIDER=file` serves a graph from disk with no C1 running: by default the bundled synthetic v1 sample
+`edusync/packages/c2/src/edusync_c2/difficulty/resources/sample_c1_graph_v1.json` (made by
+`packages/c2/scripts/make_sample_graph.py`; not C1 data). To use another graph, for example C1's real v1 sample once it is
+published, set `EDUSYNC_C2_GRAPH_FILE=<path>`. The file must be a `C1GraphResponse` (check it first with
+`scripts/validate_c1_graph.py`, section 9). It is always labelled `mock` in `inputs[]`, because it is not C1 output for the
+uploaded deck; concepts that are not in the deck come back as `not_found_in_materials`. Use a posted `c1_graph` (precedence:
+posted graph, then configured provider, then slide-title mock) when the graph really belongs to the file.
+
+Still pending: C1's real v1 sample. Until it exists, the v1 side of the `c1_api` path has been tested only with C2's own
+synthetic graphs behind a fake server.
 
 ## 2. Top-level shape (both versions)
 
@@ -108,7 +139,11 @@ Metrics per concept (the concept's id is the node id; "prerequisites of X" = val
 
 Cycles: the chain-depth search does not follow an edge back into a node already on the current path, so cycles cannot
 loop forever; the metric then reflects the acyclic part. `PrerequisiteMetrics.has_cycle` records that a cycle was met,
-but C2 does not currently turn it into a warning. Transitive count is a reachability set and is unaffected.
+and the pipeline turns it into a warning: a `graph_cycle` WARNING log line (count only), and for each concept whose
+prerequisite chain meets a cycle the prediction warning `prerequisite cycle found below this concept; the back edge was ignored`
+(`CONCEPT_CYCLE_WARNING` in `pipeline.py`; test `tests/difficulty/test_cycle_warning.py`). Transitive count is a reachability set and is unaffected.
+
+Id convention (`difficulty/ids.py`): v0 graphs, the mock provider and the fallback concept list use **casefold ids** (`casefold_id`: casefolded label, whitespace collapsed, so `Loss  Function` becomes `loss function`). v1 graphs use **hyphen slugs** (`slug_id`: lowercase letters and digits joined by single hyphens, so `TCP/IP` becomes `tcp-ip`; rule C1-018). `providers.slugify` is a historical alias of `casefold_id`, despite its name. The two conventions never mix inside one graph (C1-021).
 
 Other fields used: `dens.concept_frequency` = node `frequency`; the node `description` is added to the model text.
 
@@ -130,9 +165,14 @@ Status rules in the response: a graph supplied by the caller is `real` (C2 does 
 1. **Stable ids across lectures.** v0 ids are casefolded labels per lecture; a stable id (and lecture id) is needed to
    compare a concept across lectures and to join predictions with later live data.
 2. **Aliases.** Abbreviations such as TDE = Transparent Data Encryption should be one node (or carry an `aliases` list).
-   C2's concept filter is a mock that keeps everything until this exists.
+   *C2's current answer:* C2 does not require an alias field. It merges aliases itself in its optional heuristic concept
+   filter (`EDUSYNC_C2_CONCEPT_FILTER=heuristic`, see "Concept filter" in [c2-difficulty.md](c2-difficulty.md); the default is
+   still a mock that keeps everything). If C1 later emits `aliases`, a `description` or merge decisions, C2 can use them and
+   shrink its own rules; C1-side merging would be more reliable than C2's string rules.
 3. **Generic concepts.** Phrases such as "Best Practices" are not teachable concepts. Should C1 filter them, flag them, or
    leave it to C2?
+   *C2's current answer:* no generic flag is required. C2's heuristic filter drops whole-label generic slide phrases
+   (Overview, Best Practices, Thank You ...) itself. A `generic` flag from C1 would be used if present.
 4. **Pages per node.** Which pages mention each node (`pages: [int]`)? C2 currently re-derives this by text search, which
    can disagree with C1.
 5. **Curriculum-level graph.** Is there a graph over the whole curriculum (not per lecture) from which
@@ -142,6 +182,8 @@ Status rules in the response: a graph supplied by the caller is `real` (C2 does 
    exist? C2 ignores them today.
 
 ## 8. Contract-test plan (Phase 2)
+
+Status after Phase 2: items 1 to 3 below are still open because C1's real v1 sample is not on GitHub; items 4 and 5 are done on synthetic data and fake servers; item 6 is open. The schema of C2's own features is frozen as `1.0` and does not depend on this contract's open fields; a change to what C2 reads from C1 that changes a feature's meaning would need a schema bump (see "Schema versioning policy" in [c2-difficulty.md](c2-difficulty.md)).
 
 Goal: fail loudly if C1's real output drifts from what C2 reads.
 
@@ -154,8 +196,9 @@ Goal: fail loudly if C1's real output drifts from what C2 reads.
    `computed`.
 4. Keep the v0 synthetic graph (`lecture_<k>_graph_v0.json`) as a regression check that a graph without prerequisite
    edges yields `unavailable` group B features and the matching warning.
-5. When `C1ApiGraphProvider` is built, add a test with a fake C1 response and, in an integration environment, one
-   against the running C1.
+5. `C1ApiGraphProvider` is built: tests with a fake C1 server exist (`test_c1_client.py`, `test_c1_providers.py`,
+   `test_graph_provider_selection.py`), and a Docker run against the running C1 returned a v0 graph. Still to add: a test
+   against C1's real v1 output once it exists.
 6. Version the contract: record the C1 version or a `schema_version` field in the fixture so a change is visible.
 
 ## 9. Self-check: validate a C1 graph file
@@ -272,10 +315,42 @@ Paste-ready:
 >
 > **Open questions** (details in `docs/edusync/c1-c2-graph-contract.md`)
 > 1. Stable ids across lectures: can the same concept keep the same id (and can lectures have stable ids)?
-> 2. Aliases such as TDE = Transparent Data Encryption: one node, or an `aliases` list?
-> 3. Generic concepts such as "Best Practices": will C1 filter or flag them, or should C2?
+> 2. Aliases such as TDE = Transparent Data Encryption: one node, or an `aliases` list? (C2 does not need either: its
+>    heuristic filter merges them. An `aliases` list would still help.)
+> 3. Generic concepts such as "Best Practices": will C1 filter or flag them, or should C2? (C2 drops them itself; a flag
+>    would help.)
 > 4. Pages per node: can each node carry `pages: [int]`?
 > 5. Curriculum-level graph: do `curriculum_defined` edges come from a graph over the whole curriculum?
 > 6. Will any `direction` value other than `source_is_prerequisite_of_target` exist?
 >
 > Thanks!
+
+### Addendum: C1-side extraction problems found while building C2's concept filter
+
+Paste-ready. Separate from the message above; it is about the concept labels C1 produces, not the graph shape.
+
+> Hi again! While building C2's concept filter I ran C1's own extractor on 7 realistic slide texts (69 labels in total) to see
+> what C2 will receive. Most labels are good (`SQL`, `ACID`, `TDE`, `Structured Query Language`, `Transparent Data
+> Encryption`, `Convolutional Neural Network`). These problems come from the extraction itself, and C2 does not repair them:
+>
+> 1. **Newline collapse fuses a slide title with the first body line.** Newlines become spaces before phrase extraction, so a
+>    title and the first line below it become one phrase: `Best Practices The Transparent`, `Overview Today`.
+> 2. **Phrases that start or end with a stop word.** About 21 of the 69 labels do. Some are fragments of a longer phrase,
+>    such as `controls step size`.
+> 3. **Acronym frequencies are counted about twice.** In one test `SQL` appeared 3 times on the slides and got `frequency` 5.
+>    C2 uses `frequency` as a feature (`dens.concept_frequency`) and takes the maximum when it merges aliases, so inflated
+>    counts feed the model.
+> 4. **No alias or description information.** `TDE` and `Transparent Data Encryption` come out as two unrelated nodes.
+>
+> **The ask**
+> - Strip boundary stop words from phrases (or drop phrases that become empty or a single stop word).
+> - Keep slide titles separate from body text (do not join them with the first body line before extraction).
+> - Count each mention once (an acronym and the phrase it sits in should not both add to the same count).
+> - Optional: provide `aliases` (for example `["TDE"]` on `Transparent Data Encryption`) and a short `description` per node.
+>   C2 works without them.
+>
+> Thanks!
+
+What C2 does with what it receives today: a whole-label generic phrase is dropped and obvious aliases are merged in the optional
+heuristic filter; a fused title (`Best Practices The Transparent`) or a label with boundary stop words stays a concept, because
+C2 cannot tell it from a real multi-word term (see "Known limits" in [c2-difficulty.md](c2-difficulty.md)).

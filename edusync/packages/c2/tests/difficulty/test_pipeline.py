@@ -3,6 +3,7 @@ import pytest
 from edusync_c2.difficulty import DifficultyPipeline
 from edusync_c2.difficulty.materials import MaterialsError
 from edusync_c2.difficulty.models import RuleBaselineModel
+from edusync_c2.difficulty.registry import FEATURE_NAMES
 from edusync_c2.difficulty.schemas import (
     AlignmentStatus,
     C1GraphResponse,
@@ -186,5 +187,72 @@ def test_info():
     assert info.model.name == "rule_baseline"
     assert info.graph_provider == "mock_from_slide_titles"
     assert info.concept_filter == "mock_keep_all"
-    assert len(info.features) == 24
+    assert len(info.features) == len(FEATURE_NAMES)
     assert info.todo
+
+
+def test_contextual_filter_merged_from_reaches_prediction_and_json(pptx):
+    from edusync_c2.difficulty.concepts import FilterContext
+
+    seen = []
+
+    class Merger:
+        name = "fake_contextual"
+        is_mock = False
+
+        def resolve(self, concepts, ctx):
+            seen.append(ctx)
+            a, b, *rest = concepts
+            return [a.model_copy(update={"merged_from": [b.id]}), *rest]
+
+    resp = DifficultyPipeline(concept_filter=Merger()).run(pptx, "deck.pptx", graph("v1"))
+    assert isinstance(seen[0], FilterContext)
+    assert seen[0].graph_source.kind == "real"
+    assert len(resp.predictions) == 5
+    assert resp.predictions[0].merged_from != []
+    assert all(p.merged_from == [] for p in resp.predictions[1:])
+    assert stages(resp)["concepts"].status == "ok"
+    body = resp.model_dump(mode="json")
+    assert body["predictions"][0]["merged_from"] == resp.predictions[0].merged_from
+    assert DifficultyResponse.model_validate_json(resp.model_dump_json()) == resp
+
+
+def test_default_pipeline_output_has_empty_merged_from(pptx):
+    resp = DifficultyPipeline().run(pptx, "deck.pptx", graph("v1"))
+    assert all(p.merged_from == [] for p in resp.predictions)
+    assert all(p["merged_from"] == [] for p in resp.model_dump(mode="json")["predictions"])
+
+
+GRAPH_B = ("prereq.weighted_depth", "prereq.dependents_count")
+
+
+def test_v1_graph_metrics_computed_including_roots(pptx):
+    resp = DifficultyPipeline().run(pptx, "deck.pptx", graph("v1"))
+    for p in resp.predictions:
+        for name in GRAPH_B:
+            f = feat(p, name)
+            assert f.status is FeatureStatus.COMPUTED
+            assert f.value is not None
+            assert f.value >= 0.0
+            assert f.source == "c1_graph:prerequisite_edges"
+    roots = [p for p in resp.predictions if feat(p, "prereq.direct_count").value == 0.0]
+    assert roots
+    assert all(feat(p, "prereq.weighted_depth").value == 0.0 for p in roots)  # honest: no chain
+    assert any(feat(p, "prereq.dependents_count").value for p in resp.predictions)
+
+
+def test_v0_graph_metrics_unavailable_with_honest_note(pptx):
+    resp = DifficultyPipeline().run(pptx, "deck.pptx", graph("v0"))
+    for p in resp.predictions:
+        for name in GRAPH_B:
+            f = feat(p, name)
+            assert f.status is FeatureStatus.UNAVAILABLE
+            assert f.value is None
+            assert "no prerequisite edges" in f.note
+
+
+def test_mock_graph_metrics_are_mocked_not_computed(pptx):
+    resp = DifficultyPipeline().run(pptx, "deck.pptx")
+    for p in resp.predictions:
+        for name in GRAPH_B:
+            assert feat(p, name).status is FeatureStatus.MOCKED

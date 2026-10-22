@@ -1,0 +1,4766 @@
+{
+ "synthetic-lecture-0.pdf": [
+  {
+   "concept_id": "sparse-matrix",
+   "difficulty": "Medium",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     1.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     30.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     0.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     5.6,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.25,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     7.142857142857143,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.16685714285714284,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.07142857142857142,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     0.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     null,
+     "unavailable"
+    ],
+    "prereq.direct_count": [
+     0.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     null,
+     "unavailable"
+    ],
+    "prereq.transitive_count": [
+     0.0,
+     "computed"
+    ]
+   },
+   "score": 0.1275
+  },
+  {
+   "concept_id": "linear-tensor",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     8.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     93.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     3.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     4.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     5.1875,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.662650602409639,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     10.843373493975903,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.16408526413345692,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.024096385542168676,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     1.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     1.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.61,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     1.0,
+     "computed"
+    ]
+   },
+   "score": 0.0527
+  },
+  {
+   "concept_id": "dynamic-scheduler",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     3.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     37.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     2.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     0.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     5.5,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     5.515151515151516,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     12.121212121212121,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.32950303030303035,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.18181818181818182,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     1.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.52,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     1.0,
+     "computed"
+    ]
+   },
+   "score": 0.0435
+  },
+  {
+   "concept_id": "dynamic-buffer",
+   "difficulty": "High",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     4.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     90.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     3.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     0.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     7.0,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.642857142857143,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     5.9523809523809526,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.17735064935064937,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.023809523809523808,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     2.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.5,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     2.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.7649999999999999,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     2.0,
+     "computed"
+    ]
+   },
+   "score": 0.2531
+  },
+  {
+   "concept_id": "static-encoder",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     4.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     51.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     2.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     5.625,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.822222222222222,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     11.11111111111111,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.18958730158730158,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.044444444444444446,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     0.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     null,
+     "unavailable"
+    ],
+    "prereq.direct_count": [
+     0.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     null,
+     "unavailable"
+    ],
+    "prereq.transitive_count": [
+     0.0,
+     "computed"
+    ]
+   },
+   "score": 0.0
+  },
+  {
+   "concept_id": "sparse-index",
+   "difficulty": "Medium",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     3.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     104.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     2.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     0.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     7.6923076923076925,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.64,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     4.0,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.1832,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.02,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     1.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.53,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     1.0,
+     "computed"
+    ]
+   },
+   "score": 0.2166
+  },
+  {
+   "concept_id": "sparse-buffer",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     6.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     93.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     3.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     2.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     8.0,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.693181818181818,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     7.954545454545454,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.1946909090909091,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.022727272727272728,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     2.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     1.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.99,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     2.0,
+     "computed"
+    ]
+   },
+   "score": 0.0323
+  },
+  {
+   "concept_id": "ordered-router",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     6.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     60.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     3.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     2.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     5.777777777777778,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.346153846153846,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     11.538461538461538,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.12569230769230766,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.0,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     0.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     null,
+     "unavailable"
+    ],
+    "prereq.direct_count": [
+     0.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     null,
+     "unavailable"
+    ],
+    "prereq.transitive_count": [
+     0.0,
+     "computed"
+    ]
+   },
+   "score": 0.0762
+  }
+ ],
+ "synthetic-lecture-0.pptx": [
+  {
+   "concept_id": "sparse-matrix",
+   "difficulty": "Medium",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     1.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     1.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     3.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     30.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     1.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     0.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     5.6,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.25,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     7.142857142857143,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.16685714285714284,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.07142857142857142,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     0.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     null,
+     "unavailable"
+    ],
+    "prereq.direct_count": [
+     0.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     null,
+     "unavailable"
+    ],
+    "prereq.transitive_count": [
+     0.0,
+     "computed"
+    ]
+   },
+   "score": 0.1275
+  },
+  {
+   "concept_id": "linear-tensor",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     8.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     3.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     2.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     93.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     0.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     3.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     4.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     5.1875,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.662650602409639,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     10.843373493975903,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.16408526413345692,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.024096385542168676,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     1.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     1.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.61,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     1.0,
+     "computed"
+    ]
+   },
+   "score": 0.0527
+  },
+  {
+   "concept_id": "dynamic-scheduler",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     3.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     2.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     3.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     37.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     1.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     2.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     0.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     5.5,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     5.515151515151516,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     12.121212121212121,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.32950303030303035,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.18181818181818182,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     1.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.52,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     1.0,
+     "computed"
+    ]
+   },
+   "score": 0.0435
+  },
+  {
+   "concept_id": "dynamic-buffer",
+   "difficulty": "High",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     4.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     2.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     2.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     90.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     0.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     3.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     0.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     7.0,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.642857142857143,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     5.9523809523809526,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.17735064935064937,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.023809523809523808,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     2.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.5,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     2.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.7649999999999999,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     2.0,
+     "computed"
+    ]
+   },
+   "score": 0.2531
+  },
+  {
+   "concept_id": "static-encoder",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     4.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     3.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     3.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     51.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     1.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     2.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     5.625,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.822222222222222,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     11.11111111111111,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.18958730158730158,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.044444444444444446,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     0.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     null,
+     "unavailable"
+    ],
+    "prereq.direct_count": [
+     0.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     null,
+     "unavailable"
+    ],
+    "prereq.transitive_count": [
+     0.0,
+     "computed"
+    ]
+   },
+   "score": 0.0
+  },
+  {
+   "concept_id": "sparse-index",
+   "difficulty": "Medium",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     3.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     1.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     2.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     104.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     0.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     2.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     0.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     7.6923076923076925,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.64,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     4.0,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.1832,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.02,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     1.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.53,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     1.0,
+     "computed"
+    ]
+   },
+   "score": 0.2166
+  },
+  {
+   "concept_id": "sparse-buffer",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     6.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     0.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     3.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     93.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     1.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     3.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     2.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     8.0,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.693181818181818,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     7.954545454545454,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.1946909090909091,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.022727272727272728,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     2.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     1.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.99,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     2.0,
+     "computed"
+    ]
+   },
+   "score": 0.0323
+  },
+  {
+   "concept_id": "ordered-router",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     6.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     2.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     2.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     60.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     0.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     3.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     2.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     5.777777777777778,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.346153846153846,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     11.538461538461538,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.12569230769230766,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.0,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     0.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     null,
+     "unavailable"
+    ],
+    "prereq.direct_count": [
+     0.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     null,
+     "unavailable"
+    ],
+    "prereq.transitive_count": [
+     0.0,
+     "computed"
+    ]
+   },
+   "score": 0.0762
+  }
+ ],
+ "synthetic-lecture-1.pdf": [
+  {
+   "concept_id": "linear-encoder",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     8.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     85.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     3.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     4.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     6.25,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.786666666666667,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     12.0,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.1807515151515152,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.02666666666666667,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     0.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     null,
+     "unavailable"
+    ],
+    "prereq.direct_count": [
+     0.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     null,
+     "unavailable"
+    ],
+    "prereq.transitive_count": [
+     0.0,
+     "computed"
+    ]
+   },
+   "score": 0.0
+  },
+  {
+   "concept_id": "modular-filter",
+   "difficulty": "High",
+   "features": {
+    "dens.code_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     1.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     76.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     0.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     5.6923076923076925,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.54054054054054,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     2.7027027027027026,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.1781261261261261,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.02702702702702703,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     1.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     1.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.88,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     1.0,
+     "computed"
+    ]
+   },
+   "score": 0.3161
+  },
+  {
+   "concept_id": "dense-signal",
+   "difficulty": "Medium",
+   "features": {
+    "dens.code_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     7.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     62.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     2.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     4.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     5.090909090909091,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.428571428571429,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     12.5,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.13828571428571432,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.0,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     2.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.5,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     2.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.8899999999999999,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     2.0,
+     "computed"
+    ]
+   },
+   "score": 0.1417
+  },
+  {
+   "concept_id": "layered-scheduler",
+   "difficulty": "Medium",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     5.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     95.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     4.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     6.769230769230769,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.784090909090909,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     5.681818181818182,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.20481818181818182,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.056818181818181816,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     3.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.68,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     3.0,
+     "computed"
+    ]
+   },
+   "score": 0.2343
+  },
+  {
+   "concept_id": "nested-scheduler",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     4.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     45.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     3.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     0.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     5.714285714285714,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     5.4,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     12.5,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.31700000000000006,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.175,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     3.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.55,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     3.0,
+     "computed"
+    ]
+   },
+   "score": 0.1104
+  },
+  {
+   "concept_id": "sparse-signal",
+   "difficulty": "High",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     5.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     102.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     4.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     7.3076923076923075,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.410526315789474,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     5.2631578947368425,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.1478421052631579,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.0,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     4.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.92,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     4.0,
+     "computed"
+    ]
+   },
+   "score": 0.3749
+  },
+  {
+   "concept_id": "layered-sampler",
+   "difficulty": "Medium",
+   "features": {
+    "dens.code_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     8.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     125.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     3.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     4.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     6.105263157894737,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.75,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     7.758620689655173,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.18314482758620687,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.017241379310344827,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     0.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     null,
+     "unavailable"
+    ],
+    "prereq.direct_count": [
+     0.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     null,
+     "unavailable"
+    ],
+    "prereq.transitive_count": [
+     0.0,
+     "computed"
+    ]
+   },
+   "score": 0.1568
+  },
+  {
+   "concept_id": "bounded-router",
+   "difficulty": "High",
+   "features": {
+    "dens.code_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     5.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     74.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     4.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     5.833333333333333,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.685714285714286,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     7.142857142857143,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.1681904761904762,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.0,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     5.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.6666666666666666,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     3.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.7000000000000001,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     5.0,
+     "computed"
+    ]
+   },
+   "score": 0.3397
+  }
+ ],
+ "synthetic-lecture-1.pptx": [
+  {
+   "concept_id": "linear-encoder",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     8.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     3.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     2.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     85.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     0.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     3.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     4.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     6.25,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.786666666666667,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     12.0,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.1807515151515152,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.02666666666666667,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     0.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     null,
+     "unavailable"
+    ],
+    "prereq.direct_count": [
+     0.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     null,
+     "unavailable"
+    ],
+    "prereq.transitive_count": [
+     0.0,
+     "computed"
+    ]
+   },
+   "score": 0.0
+  },
+  {
+   "concept_id": "modular-filter",
+   "difficulty": "High",
+   "features": {
+    "dens.code_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     1.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     1.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     2.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     76.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     0.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     0.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     5.6923076923076925,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.54054054054054,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     2.7027027027027026,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.1781261261261261,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.02702702702702703,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     1.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     1.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.88,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     1.0,
+     "computed"
+    ]
+   },
+   "score": 0.3161
+  },
+  {
+   "concept_id": "dense-signal",
+   "difficulty": "Medium",
+   "features": {
+    "dens.code_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     7.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     0.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     3.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     62.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     1.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     2.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     4.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     5.090909090909091,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.428571428571429,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     12.5,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.13828571428571432,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.0,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     2.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.5,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     2.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.8899999999999999,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     2.0,
+     "computed"
+    ]
+   },
+   "score": 0.1417
+  },
+  {
+   "concept_id": "layered-scheduler",
+   "difficulty": "Medium",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     5.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     3.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     3.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     95.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     1.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     4.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     6.769230769230769,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.784090909090909,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     5.681818181818182,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.20481818181818182,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.056818181818181816,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     3.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.68,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     3.0,
+     "computed"
+    ]
+   },
+   "score": 0.2343
+  },
+  {
+   "concept_id": "nested-scheduler",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     4.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     2.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     3.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     45.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     1.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     3.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     0.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     5.714285714285714,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     5.4,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     12.5,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.31700000000000006,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.175,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     3.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.55,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     3.0,
+     "computed"
+    ]
+   },
+   "score": 0.1104
+  },
+  {
+   "concept_id": "sparse-signal",
+   "difficulty": "High",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     5.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     2.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     2.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     102.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     0.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     4.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     7.3076923076923075,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.410526315789474,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     5.2631578947368425,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.1478421052631579,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.0,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     4.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.92,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     4.0,
+     "computed"
+    ]
+   },
+   "score": 0.3749
+  },
+  {
+   "concept_id": "layered-sampler",
+   "difficulty": "Medium",
+   "features": {
+    "dens.code_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     8.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     1.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     3.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     125.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     1.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     3.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     4.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     6.105263157894737,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.75,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     7.758620689655173,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.18314482758620687,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.017241379310344827,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     0.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     null,
+     "unavailable"
+    ],
+    "prereq.direct_count": [
+     0.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     null,
+     "unavailable"
+    ],
+    "prereq.transitive_count": [
+     0.0,
+     "computed"
+    ]
+   },
+   "score": 0.1568
+  },
+  {
+   "concept_id": "bounded-router",
+   "difficulty": "High",
+   "features": {
+    "dens.code_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     5.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     0.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     3.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     74.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     1.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     4.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     5.833333333333333,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.685714285714286,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     7.142857142857143,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.1681904761904762,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.0,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     5.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.6666666666666666,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     3.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.7000000000000001,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     5.0,
+     "computed"
+    ]
+   },
+   "score": 0.3397
+  }
+ ],
+ "synthetic-lecture-2.pdf": [
+  {
+   "concept_id": "stable-sampler",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     1.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     32.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     0.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     4.833333333333333,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     5.0,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     6.896551724137931,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.21097931034482761,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.06896551724137931,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     0.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     null,
+     "unavailable"
+    ],
+    "prereq.direct_count": [
+     0.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     null,
+     "unavailable"
+    ],
+    "prereq.transitive_count": [
+     0.0,
+     "computed"
+    ]
+   },
+   "score": 0.0258
+  },
+  {
+   "concept_id": "ordered-filter",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     5.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     47.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     2.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     2.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     7.166666666666667,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.976744186046512,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     13.953488372093023,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.22924651162790696,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.046511627906976744,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     1.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.5,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     1.0,
+     "computed"
+    ]
+   },
+   "score": 0.0
+  },
+  {
+   "concept_id": "ordered-tensor",
+   "difficulty": "Medium",
+   "features": {
+    "dens.code_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     3.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     32.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     2.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     3.625,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.586206896551724,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     10.344827586206897,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.13649655172413794,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.0,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     1.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.74,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     1.0,
+     "computed"
+    ]
+   },
+   "score": 0.1215
+  },
+  {
+   "concept_id": "sparse-queue",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     2.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     21.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     0.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     6.666666666666667,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     5.1,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     15.0,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.288,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.1,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     2.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     1.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.75,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     2.0,
+     "computed"
+    ]
+   },
+   "score": 0.0372
+  },
+  {
+   "concept_id": "dense-encoder",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     7.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     95.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     3.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     3.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     5.4375,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.7701149425287355,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     9.195402298850574,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.17570999115826702,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.022988505747126436,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     1.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.67,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     1.0,
+     "computed"
+    ]
+   },
+   "score": 0.059
+  },
+  {
+   "concept_id": "stable-filter",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     2.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     86.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     0.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     7.545454545454546,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.951807228915663,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     3.6144578313253013,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.21020240963855424,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.024096385542168676,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     2.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.81,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     2.0,
+     "computed"
+    ]
+   },
+   "score": 0.1099
+  },
+  {
+   "concept_id": "static-encoder",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     5.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     59.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     2.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     2.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     5.777777777777778,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.865384615384615,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     11.538461538461538,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.19030769230769226,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.038461538461538464,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     1.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     1.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.69,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     1.0,
+     "computed"
+    ]
+   },
+   "score": 0.0
+  },
+  {
+   "concept_id": "modular-buffer",
+   "difficulty": "High",
+   "features": {
+    "dens.code_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     2.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     null,
+     "unavailable"
+    ],
+    "dens.shape_count_mean": [
+     null,
+     "unavailable"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     102.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     null,
+     "unavailable"
+    ],
+    "expl.example_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     0.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     6.733333333333333,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.97029702970297,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     2.9702970297029703,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.21050495049504953,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.019801980198019802,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     3.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     3.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.8166666666666668,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     4.0,
+     "computed"
+    ]
+   },
+   "score": 0.2805
+  }
+ ],
+ "synthetic-lecture-2.pptx": [
+  {
+   "concept_id": "stable-sampler",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     1.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     3.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     3.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     32.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     1.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     0.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     4.833333333333333,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     5.0,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     6.896551724137931,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.21097931034482761,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.06896551724137931,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     0.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     null,
+     "unavailable"
+    ],
+    "prereq.direct_count": [
+     0.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     null,
+     "unavailable"
+    ],
+    "prereq.transitive_count": [
+     0.0,
+     "computed"
+    ]
+   },
+   "score": 0.0258
+  },
+  {
+   "concept_id": "ordered-filter",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     5.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     0.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     3.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     47.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     1.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     2.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     2.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     7.166666666666667,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.976744186046512,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     13.953488372093023,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.22924651162790696,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.046511627906976744,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     1.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.5,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     1.0,
+     "computed"
+    ]
+   },
+   "score": 0.0
+  },
+  {
+   "concept_id": "ordered-tensor",
+   "difficulty": "Medium",
+   "features": {
+    "dens.code_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     3.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     1.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     2.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     32.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     0.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     0.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     2.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     3.625,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.586206896551724,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     10.344827586206897,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.13649655172413794,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.0,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     1.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.74,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     1.0,
+     "computed"
+    ]
+   },
+   "score": 0.1215
+  },
+  {
+   "concept_id": "sparse-queue",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     2.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     0.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     2.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     21.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     0.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     0.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     6.666666666666667,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     5.1,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     15.0,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.288,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.1,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     2.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     1.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.75,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     2.0,
+     "computed"
+    ]
+   },
+   "score": 0.0372
+  },
+  {
+   "concept_id": "dense-encoder",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     7.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     2.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     2.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     95.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     0.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     3.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     3.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     5.4375,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.7701149425287355,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     9.195402298850574,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.17570999115826702,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.022988505747126436,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     1.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.67,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     1.0,
+     "computed"
+    ]
+   },
+   "score": 0.059
+  },
+  {
+   "concept_id": "stable-filter",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     2.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     2.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     2.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     86.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     0.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     0.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     7.545454545454546,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.951807228915663,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     3.6144578313253013,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.21020240963855424,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.024096385542168676,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     2.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.81,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     2.0,
+     "computed"
+    ]
+   },
+   "score": 0.1099
+  },
+  {
+   "concept_id": "static-encoder",
+   "difficulty": "Low",
+   "features": {
+    "dens.code_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     5.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     3.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     3.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     59.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     1.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     2.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     2.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     5.777777777777778,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.865384615384615,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     11.538461538461538,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.19030769230769226,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.038461538461538464,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     1.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     1.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     1.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.69,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     1.0,
+     "computed"
+    ]
+   },
+   "score": 0.0
+  },
+  {
+   "concept_id": "modular-buffer",
+   "difficulty": "High",
+   "features": {
+    "dens.code_presence": [
+     1.0,
+     "computed"
+    ],
+    "dens.concept_frequency": [
+     2.0,
+     "computed"
+    ],
+    "dens.concepts_per_slide": [
+     1.0,
+     "computed"
+    ],
+    "dens.formula_presence": [
+     0.0,
+     "computed"
+    ],
+    "dens.max_bullet_depth": [
+     0.0,
+     "computed"
+    ],
+    "dens.shape_count_mean": [
+     2.0,
+     "computed"
+    ],
+    "dens.visual_complexity": [
+     null,
+     "unavailable"
+    ],
+    "dens.words_per_slide": [
+     102.0,
+     "computed"
+    ],
+    "expl.definition_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.diagram_support": [
+     0.0,
+     "computed"
+    ],
+    "expl.example_count": [
+     1.0,
+     "computed"
+    ],
+    "expl.semantic_support_score": [
+     0.0,
+     "mocked"
+    ],
+    "expl.step_count": [
+     0.0,
+     "computed"
+    ],
+    "lang.avg_sentence_length": [
+     6.733333333333333,
+     "computed"
+    ],
+    "lang.avg_word_length": [
+     4.97029702970297,
+     "computed"
+    ],
+    "lang.concept_term_density": [
+     2.9702970297029703,
+     "computed"
+    ],
+    "lang.lexical_score": [
+     0.21050495049504953,
+     "computed"
+    ],
+    "lang.long_word_ratio": [
+     0.019801980198019802,
+     "computed"
+    ],
+    "prereq.chain_depth": [
+     3.0,
+     "computed"
+    ],
+    "prereq.curriculum_defined_share": [
+     0.0,
+     "computed"
+    ],
+    "prereq.direct_count": [
+     3.0,
+     "computed"
+    ],
+    "prereq.mean_confidence": [
+     0.8166666666666668,
+     "computed"
+    ],
+    "prereq.transitive_count": [
+     4.0,
+     "computed"
+    ]
+   },
+   "score": 0.2805
+  }
+ ]
+}

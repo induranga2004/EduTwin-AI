@@ -12,7 +12,11 @@ from edusync_c2.difficulty.models import (
     RuleBaselineModel,
     create_model,
 )
-from edusync_c2.difficulty.registry import FEATURE_NAMES, feature_schema_hash
+from edusync_c2.difficulty.registry import (
+    FEATURE_NAMES,
+    FEATURE_SCHEMA_VERSION,
+    feature_schema_hash,
+)
 from edusync_c2.difficulty.schemas import ModelKind
 
 
@@ -32,7 +36,7 @@ def make_artifacts(
     write_json(
         root / "feature_schema.json",
         {
-            "schema_version": "v1",
+            "schema_version": FEATURE_SCHEMA_VERSION,
             "names": list(FEATURE_NAMES),
             "hash": feature_schema_hash(),
         },
@@ -61,7 +65,7 @@ def test_valid_int8_only(model_dir):
     model = OnnxFusionModel.from_artifacts(model_dir)
     assert model.onnx_file.name == "model_int8.onnx"
     assert model.info.name == "onnx_fusion"
-    assert model.info.version == "v1"
+    assert model.info.version == FEATURE_SCHEMA_VERSION
     assert model.info.kind is ModelKind.TODO
     assert model.info.trained_on is None
     assert "inference is not implemented" in model.info.description
@@ -157,7 +161,8 @@ def test_schema_names_order_mismatch(model_dir):
 
 def test_schema_missing_names(model_dir):
     write_json(
-        model_dir / "feature_schema.json", {"schema_version": "v1", "hash": feature_schema_hash()}
+        model_dir / "feature_schema.json",
+        {"schema_version": FEATURE_SCHEMA_VERSION, "hash": feature_schema_hash()},
     )
     with pytest.raises(ModelArtifactError, match="names do not match"):
         OnnxFusionModel.from_artifacts(model_dir)
@@ -243,3 +248,11 @@ def test_create_minilm_with_invalid_dir(tmp_path):
 def test_create_unknown_name():
     with pytest.raises(ModelNotAvailableError, match="baseline, minilm"):
         create_model("gpt")
+
+
+def test_schema_version_mismatch_is_checked_first(model_dir):
+    patch_json(model_dir, "feature_schema.json", schema_version="0.0", names=["x"], hash="bad")
+    with pytest.raises(ModelArtifactError, match="registry changed since training") as info:
+        OnnxFusionModel.from_artifacts(model_dir)
+    assert "schema_version '0.0'" in str(info.value)
+    assert repr(FEATURE_SCHEMA_VERSION) in str(info.value)

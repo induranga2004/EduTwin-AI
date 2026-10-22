@@ -49,7 +49,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--lectures", type=int, default=3)
     parser.add_argument("--concepts", type=int, default=8)
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    parser.add_argument(
+        "--vary-layout",
+        action="store_true",
+        help="Vary slide geometry, fonts and diagram elements (needs an explicit --out)",
+    )
     args = parser.parse_args(argv)
+    if args.vary_layout and args.out.resolve() == DEFAULT_OUT.resolve():
+        print(
+            "--vary-layout would overwrite the committed data/synthetic files; "
+            "pass an explicit --out directory elsewhere",
+            file=sys.stderr,
+        )
+        return 2
     if args.lectures < 1:
         print("--lectures must be at least 1", file=sys.stderr)
         return 2
@@ -63,7 +75,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     args.out.mkdir(parents=True, exist_ok=True)
     for k, spec in enumerate(specs, start=1):
-        (args.out / f"lecture_{k}.pptx").write_bytes(build_pptx(spec))
+        (args.out / f"lecture_{k}.pptx").write_bytes(build_pptx(spec, vary_layout=args.vary_layout))
         (args.out / f"lecture_{k}.pdf").write_bytes(build_pdf(spec))
         for version in ("v0", "v1"):
             _write_json(

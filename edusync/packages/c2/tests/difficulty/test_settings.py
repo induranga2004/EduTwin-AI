@@ -7,10 +7,21 @@ from edusync_c2.settings import C2Settings, get_c2_settings
 
 
 def test_defaults(monkeypatch):
-    for k in ("LOG_LEVEL", "MODEL", "MODEL_DIR"):
+    for k in ("LOG_LEVEL", "MODEL", "MODEL_DIR", "CONCEPT_FILTER", "CONCEPT_FILTER_EXTRAS"):
         monkeypatch.delenv(f"EDUSYNC_C2_{k}", raising=False)
     s = C2Settings(_env_file=None)
     assert (s.log_level, s.model, s.model_dir) == ("INFO", "baseline", None)
+    assert (s.concept_filter, s.concept_filter_extras) == ("mock_keep_all", False)
+
+
+def test_concept_filter_env(monkeypatch):
+    monkeypatch.setenv("EDUSYNC_C2_CONCEPT_FILTER", "heuristic")
+    monkeypatch.setenv("EDUSYNC_C2_CONCEPT_FILTER_EXTRAS", "true")
+    s = C2Settings(_env_file=None)
+    assert (s.concept_filter, s.concept_filter_extras) == ("heuristic", True)
+    monkeypatch.setenv("EDUSYNC_C2_CONCEPT_FILTER", "magic")
+    with pytest.raises(ValidationError, match="concept_filter"):
+        C2Settings(_env_file=None)
 
 
 def test_env_parsing(monkeypatch):

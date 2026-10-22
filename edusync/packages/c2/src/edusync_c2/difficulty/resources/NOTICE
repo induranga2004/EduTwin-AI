@@ -1,0 +1,10 @@
+bert_uncased_vocab.txt
+
+Source model:  sentence-transformers/all-MiniLM-L6-v2
+HF revision:   1110a243fdf4706b3f48f1d95db1a4f5529b4d41
+Licence:       Apache License 2.0 (see LICENSE-APACHE-2.0.txt)
+SHA-256:       07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3
+
+This file is an unmodified copy of the vocab.txt shipped with the model above.
+It is the original uncased WordPiece vocabulary from Google BERT (30,522
+entries), used here only to count word pieces; no model weights are included.

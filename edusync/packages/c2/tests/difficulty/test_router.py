@@ -11,6 +11,7 @@ from pptx import Presentation
 
 from edusync_c2 import COMPONENT
 from edusync_c2.difficulty import DifficultyPipeline
+from edusync_c2.difficulty.registry import FEATURE_NAMES, FEATURE_SCHEMA_VERSION
 from edusync_c2.difficulty.synthetic import build_c1_graph, build_pdf, build_pptx, make_deck_spec
 from edusync_c2.router import get_pipeline
 from edusync_core.settings import CoreSettings, get_settings
@@ -98,7 +99,7 @@ def test_old_text_body_rejected(client):
 def test_info(client):
     r = client.get("/difficulty/info")
     assert r.status_code == 200
-    assert len(r.json()["features"]) == 24
+    assert len(r.json()["features"]) == len(FEATURE_NAMES)
     assert r.json()["model"]["kind"] == "baseline"
 
 
@@ -140,6 +141,8 @@ def test_info_shows_model_fields(client):
     body = client.get("/difficulty/info").json()
     assert body["selected_model"] == "baseline"
     assert len(body["feature_schema_hash"]) == 64
+    assert body["feature_schema_version"] == FEATURE_SCHEMA_VERSION
+    assert {"maturity", "requires", "phase1"} <= set(body["features"][0])
 
 
 def test_real_dependency_baseline(real_app, monkeypatch):
@@ -233,3 +236,34 @@ def test_request_id_in_log_records_and_rejections_logged(app, client):
         log.removeHandler(grab)
         log.setLevel(old)
     assert re.fullmatch(r"-", __import__("edusync_c2.logger", fromlist=["x"]).request_id.get())
+
+
+def test_unavailable_filter_is_501_and_not_cached(real_app, monkeypatch):
+    def unavailable(name, extras=False):
+        raise NotImplementedError(f"{name} concept filter is not available")
+
+    monkeypatch.setenv("EDUSYNC_C2_CONCEPT_FILTER", "heuristic")
+    monkeypatch.setattr(RT, "configure_logging", lambda level: None)
+    real_factory = RT.create_concept_filter
+    monkeypatch.setattr(RT, "create_concept_filter", unavailable)
+    c = TestClient(real_app)
+    r = c.get("/difficulty/info")
+    assert (r.status_code, "heuristic" in r.json()["detail"]) == (501, True)
+    assert post(c).status_code == 501
+    monkeypatch.setenv("EDUSYNC_C2_CONCEPT_FILTER", "mock_keep_all")
+    monkeypatch.setattr(RT, "create_concept_filter", real_factory)
+    from edusync_c2.settings import get_c2_settings
+
+    get_c2_settings.cache_clear()
+    r = c.get("/difficulty/info")
+    assert (r.status_code, r.json()["concept_filter"]) == (200, "mock_keep_all")
+
+
+def test_heuristic_filter_setting_reaches_the_pipeline(real_app, monkeypatch):
+    monkeypatch.setenv("EDUSYNC_C2_CONCEPT_FILTER", "heuristic")
+    monkeypatch.setattr(RT, "configure_logging", lambda level: None)
+    c = TestClient(real_app)
+    assert c.get("/difficulty/info").json()["concept_filter"] == "heuristic"
+    r = post(c, graph=json.dumps(build_c1_graph(SPEC, "v1")))
+    assert r.status_code == 200
+    assert len(r.json()["predictions"]) == 5

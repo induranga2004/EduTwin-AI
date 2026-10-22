@@ -11,6 +11,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from edusync_c2.difficulty.ids import casefold_id, slug_id
+
 Severity = Literal["error", "warning"]
 Version = Literal["v0", "v1", "mixed", "unknown"]
 
@@ -201,8 +203,7 @@ def check_c1_graph(
         node_id = node.get("id")
         label = node.get("label")
         if isinstance(node_id, str) and isinstance(label, str):
-            folded = label.casefold()
-            slugged = slugged or (node_id != folded and node_id == "-".join(folded.split()))
+            slugged = slugged or (node_id != casefold_id(label) and node_id == slug_id(label))
         if not isinstance(node_id, str) or not isinstance(node.get("label"), str):
             add("C1-003", "Node needs a string id and a string label.", where)
         if isinstance(node_id, str):

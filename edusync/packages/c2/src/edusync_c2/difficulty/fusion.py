@@ -40,7 +40,10 @@ def build_fusion_input(
                 name=f.name, value=None if missing else f.value, status=f.status, missing=missing
             )
         )
-    head = f"{concept.label}. {concept.description or ''}\n"
+    head = f"{concept.label}. {concept.description or ''}"
+    if concept.alias_labels:
+        head += f" Also known as: {', '.join(concept.alias_labels)}."
+    head += "\n"
     body = "\n".join(s.text for s in concept_slides)
     text = head + body[: max(0, max_text_chars - len(head))]
     return FusionInput(concept_id=concept.id, text=text, features=out)

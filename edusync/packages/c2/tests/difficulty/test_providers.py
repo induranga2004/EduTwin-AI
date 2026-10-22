@@ -1,10 +1,10 @@
-"""Graph providers: payload passthrough, deterministic mock graph, C1 API stub."""
+"""Graph providers: payload passthrough and the deterministic mock graph.
 
-import pytest
+The C1 API and file providers are tested in test_c1_providers.
+"""
 
 from edusync_c2.difficulty.graph import GraphView
 from edusync_c2.difficulty.providers import (
-    C1ApiGraphProvider,
     MockC1GraphProvider,
     PayloadGraphProvider,
     slugify,
@@ -117,8 +117,3 @@ def test_mock_empty_deck(make_slide) -> None:
     resp = MockC1GraphProvider().build(doc).response
     assert resp.graph.nodes == []
     assert resp.graph.edges == []
-
-
-def test_c1_api_provider_not_implemented(deck: MaterialsDoc) -> None:
-    with pytest.raises(NotImplementedError):
-        C1ApiGraphProvider().build(deck)

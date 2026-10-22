@@ -91,3 +91,39 @@ Instead, instruct the user to:
 3. Wait for maintainers to set up a private fork for collaboration
 
 Public PRs for security issues put users at risk.
+
+# EduSync AI (`edusync/`) — working notes for agents
+
+Read this first; it replaces re-exploring the repo. Detailed design lives in `docs/edusync/` (start with `c2-difficulty.md`).
+
+## Layout and commands
+- `edusync/` is a uv workspace (Python 3.12): `packages/{core,c1,c2,c3,c4,blueprint_model}`, `apps/api` (one FastAPI app, port 8100, `/api/c1..c4`). Docker: `edusync/Dockerfile`; build context is `edusync/`.
+- Lint: `uv run --no-sync ruff check .` and `ruff format .` (from `edusync/`). Tests: `pytest packages/c2 -q --cov=edusync_c2` (gate 90% workspace; C2 is held at 100% line+branch, no `# pragma`). `ml`-marked tests are deselected by default.
+- **Windows Smart App Control** blocks the venv `python.exe`/`pytest.exe` and `_ctypes`: run pytest with the base interpreter plus a launcher that adds `.venv/Lib/site-packages` (`runpy.run_module`), and test real HTTP servers in a throwaway Docker container, never uvicorn on Windows. `apps/api/tests/test_app.py::test_main_entry` fails only locally for this reason.
+- Commits: authored only as the user, no AI attribution or Co-Authored-By trailers. Never push or open PRs; the user does.
+
+## C2 (difficulty prediction) — state after Phase 2
+Package `edusync/packages/c2/src/edusync_c2/` (+ `difficulty/`). Pipeline: PPTX/PDF -> `materials.py` -> graph provider -> `GraphView` -> concept filter -> 35 features (registry order) -> `fusion.py` -> `RuleBaselineModel` (untrained, no probabilities) -> `DifficultyResponse`.
+- **Schema is frozen at `FEATURE_SCHEMA_VERSION = "1.0"`** (`difficulty/registry.py`); hash covers version + `name|group` only. Any change to a feature name, group, order or meaning needs a version bump, regenerated `tests/difficulty/golden/registry_snapshot.json` (`scripts/feature_report.py --write-snapshot`) and retraining. All 35 features are `implemented` (A 8, B 7, C 7, D 13). `pipeline_version` is `0.2.0-phase2`.
+- Never edit `tests/difficulty/golden/baseline_synthetic.json` or loosen `test_baseline_golden.py` (it proves scores/labels did not drift; documented exclusions only).
+- Rules: unavailable features carry a reason, never fake values; semantic and regex values are never mixed; deterministic output (no timings or random ids in responses); logs never contain slide text (concept ids only at DEBUG); geometry/parser code must never raise on odd decks.
+
+### Settings (`EDUSYNC_C2_*`, see `.env.example`; all defaults keep old behaviour)
+`LOG_LEVEL`, `MODEL` (baseline|minilm), `MODEL_DIR`; `CONCEPT_FILTER` (mock_keep_all|heuristic) and `CONCEPT_FILTER_EXTRAS`; `GRAPH_PROVIDER` (mock|file|c1_api), `GRAPH_FILE`, `C1_BASE_URL`, `C1_TIMEOUT_S`; `SEMANTIC` (off|minilm), `SEMANTIC_MODEL_DIR`, `SEMANTIC_DEF_THRESHOLD`/`EX_THRESHOLD`, `SEMANTIC_MAX_SENTENCES`. Set `OPENBLAS_NUM_THREADS=4` when semantic scoring is on.
+
+### Where things are (C2 `difficulty/`)
+`registry.py` (specs, version, hash, PHASE1_TODO), `schemas.py`, `materials.py` + `geometry.py` (PPTX parsing, integer-EMU areas), `graph.py` (prerequisite view, aliases/dropped), `concepts.py` + `concept_filter.py` (mock and heuristic filters), `providers.py` + `c1_client.py` (mock/file/C1 API graphs, stdlib urllib), `features/{language,prerequisites,explanation,density}.py` + `_common.assemble` (group assembly by name), `features/{wordpiece,lexicon,vocab}.py` (Feature A), `features/{minilm,semantic_loader,semantic}.py` (numpy MiniLM scorer), `pipeline.py`, `fusion.py`, `models.py`, `synthetic.py`, `contract_check.py`, `ids.py`; resources in `difficulty/resources/` (vocab with NOTICE/licence, domain lexicon, semantic prototypes, sample C1 v1 graph).
+Scripts in `packages/c2/scripts/`: `feature_report.py`, `make_synthetic_data.py` (`--vary-layout`), `make_sample_graph.py`, `validate_c1_graph.py`, `write_feature_schema.py`, `export_label_sheet.py`, `validate_labels.py`, `make_wordpiece_golden.py`. Label protocol: `docs/edusync/c2-label-collection.md`.
+
+### Branch stack (all local/user-pushed; each sits on the previous)
+`feature/c2-vocabulary-feature` (M1) -> `c2-registry-schema` (M0) -> `c2-concept-filter` (M2) -> `c2-graph-metrics` -> `c2-density-structure` (M3) -> `c2-c1-graph-provider` (M5b) -> `c2-semantic-explanation` (M4) -> `c2-schema-freeze` (M6). Use `git rebase --onto origin/main <old-parent> <branch>` when a parent merges.
+
+### Open items
+Real C1 v1 graph sample/fields (C1 still emits v0); heuristic filter stays opt-in until reviewed on real C1 output; thresholds and lexicon unvalidated; no lecturer labels yet (Phase 3 blocker); Phase 3 = copy the blueprint package, train on lecturer labels, split by lecture.
+
+## Keeping token use low
+- Start from these notes; do not re-run broad exploration. Read only the files you will change.
+- Prefer one focused agent per task, medium effort, with explicit file lists; avoid parallel research agents unless the area is truly unknown.
+- Do not re-read large docs (`c2-difficulty.md` is long): grep the section you need. Never paste whole test or agent output; ask for summaries.
+- Run only the affected tests while iterating; run the full suite and Docker check once per milestone.
+- Use `/compact` or a fresh session between milestones.

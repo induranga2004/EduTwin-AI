@@ -4,9 +4,17 @@ Deterministic: no timings, ids or clocks in the response.
 """
 
 import time
+from collections.abc import Callable
 
-from edusync_c2.difficulty.concepts import ConceptFilter, MockConceptFilter, build_concepts
+from edusync_c2.difficulty.concepts import (
+    ConceptFilter,
+    ContextualConceptFilter,
+    MockConceptFilter,
+    build_concepts,
+)
 from edusync_c2.difficulty.features import compute_all_features
+from edusync_c2.difficulty.features.semantic import SemanticScorer
+from edusync_c2.difficulty.features.vocab import VocabularyAnalyzer
 from edusync_c2.difficulty.fusion import build_fusion_input, summarize_features
 from edusync_c2.difficulty.graph import GraphView
 from edusync_c2.difficulty.materials import MaterialsError, parse_materials
@@ -16,7 +24,12 @@ from edusync_c2.difficulty.providers import (
     MockC1GraphProvider,
     PayloadGraphProvider,
 )
-from edusync_c2.difficulty.registry import FEATURE_SPECS, PHASE1_TODO, feature_schema_hash
+from edusync_c2.difficulty.registry import (
+    FEATURE_SCHEMA_VERSION,
+    FEATURE_SPECS,
+    PHASE1_TODO,
+    feature_schema_hash,
+)
 from edusync_c2.difficulty.schemas import (
     AlignmentStatus,
     C1GraphResponse,
@@ -35,8 +48,15 @@ logger = get_logger(__name__)
 CONCEPT_CYCLE_WARNING = "prerequisite cycle found below this concept; the back edge was ignored"
 NO_PREDICTION_WARNING = "not enough computed features for the baseline"
 NO_PREREQ_WARNING = "C1 graph has no prerequisite edges: group B features unavailable"
+SEMANTIC_UNAVAILABLE = "minilm:unavailable"
+SEMANTIC_UNAVAILABLE_WARNING = "semantic scorer unavailable: semantic features are unavailable"
+SEMANTIC_TRUNCATED_WARNING = (
+    "semantic scorer sentence budget reached: later sentences were not scored, "
+    "so semantic counts are lower bounds"
+)
 MOCK_GRAPH_WARNING = (
-    "C1 graph is a mock built from slide titles: group B and frequency features are mocked"
+    "C1 graph is a mock, not C1 output for this lecture (see inputs): "
+    "group B and frequency features are mocked"
 )
 
 
@@ -45,15 +65,27 @@ class DifficultyPipeline:
         self,
         *,
         model: DifficultyModel | None = None,
-        concept_filter: ConceptFilter | None = None,
+        concept_filter: ConceptFilter | ContextualConceptFilter | None = None,
         mock_provider: GraphProvider | None = None,
         max_mb: int = 100,
         use_mocked_features: bool = False,
         selected_model: str = "baseline",
+        vocab: VocabularyAnalyzer | None = None,
+        graph_provider_factory: Callable[[bytes, str], GraphProvider] | None = None,
+        graph_provider_name: str | None = None,
+        semantic: SemanticScorer | None = None,
+        semantic_status: str = "off",
     ) -> None:
+        self.semantic = semantic
+        self.semantic_status = semantic_status
+        self.graph_provider_factory = graph_provider_factory
+        self.graph_provider_name = graph_provider_name
         self.selected_model = selected_model
+        self.vocab = vocab
         self.model: DifficultyModel = model or RuleBaselineModel()
-        self.concept_filter: ConceptFilter = concept_filter or MockConceptFilter()
+        self.concept_filter: ConceptFilter | ContextualConceptFilter = (
+            concept_filter or MockConceptFilter()
+        )
         self.mock_provider: GraphProvider = mock_provider or MockC1GraphProvider()
         self.max_mb = max_mb
         self.use_mocked_features = use_mocked_features
@@ -61,12 +93,14 @@ class DifficultyPipeline:
     def info(self) -> DifficultyInfo:
         return DifficultyInfo(
             model=self.model.info,
-            graph_provider=self.mock_provider.name,
+            graph_provider=self.graph_provider_name or self.mock_provider.name,
             concept_filter=self.concept_filter.name,
             features=list(FEATURE_SPECS),
             todo=list(PHASE1_TODO),
             selected_model=self.selected_model,
             feature_schema_hash=feature_schema_hash(),
+            feature_schema_version=FEATURE_SCHEMA_VERSION,
+            semantic_scorer=self.semantic_status,
         )
 
     def run(
@@ -85,15 +119,20 @@ class DifficultyPipeline:
             materials.slide_count,
             len(materials.warnings),
         )
-        provider: GraphProvider = (
-            PayloadGraphProvider(c1_graph) if c1_graph is not None else self.mock_provider
-        )
+        # A posted graph always wins; then the configured factory; else the slide-title mock.
+        provider: GraphProvider
+        if c1_graph is not None:
+            provider = PayloadGraphProvider(c1_graph)
+        elif self.graph_provider_factory is not None:
+            provider = self.graph_provider_factory(data, filename)
+        else:
+            provider = self.mock_provider
         ctx = provider.build(materials)
-        view = GraphView(ctx.response)
+        raw_view = GraphView(ctx.response)
         graph = ctx.response.graph
         node_ids = {n.id for n in graph.nodes}
         prereq_total = sum(1 for e in graph.edges if e.relation_type == "prerequisite")
-        prereq_valid = sum(len(view.prerequisites_of(i)) for i in node_ids)
+        prereq_valid = sum(len(raw_view.prerequisites_of(i)) for i in node_ids)
         logger.info(
             "graph source=%s nodes=%d edges=%d prerequisite_edges=%d ignored=%d",
             ctx.source.kind,
@@ -102,23 +141,39 @@ class DifficultyPipeline:
             prereq_valid,
             prereq_total - prereq_valid,
         )
-        if view.warnings:  # the texts name concept ids, so they are DEBUG only
-            logger.warning("graph_warning count=%d", len(view.warnings))
-            for w in view.warnings:
+        if raw_view.warnings:  # the texts name concept ids, so they are DEBUG only
+            logger.warning("graph_warning count=%d", len(raw_view.warnings))
+            for w in raw_view.warnings:
                 logger.debug("graph_warning_detail %s", w)
         all_found = build_concepts(ctx, materials, self.concept_filter)
         concepts = [c for c in all_found if c.filter_status == "kept"]
         n_aligned = sum(1 for c in concepts if c.alignment_status is AlignmentStatus.ALIGNED)
+        aliases = {a: c.id for c in all_found for a in c.merged_from}
+        dropped = {c.id for c in all_found if c.filter_status == "dropped"}
+        view = (
+            GraphView(ctx.response, aliases=aliases, dropped=dropped)
+            if aliases or dropped
+            else raw_view
+        )
+        merged_note = f" merged={len(aliases)}" if aliases else ""
         logger.info(
-            "concepts total=%d aligned=%d not_found=%d filter=%s dropped=%d",
+            "concepts total=%d aligned=%d not_found=%d filter=%s dropped=%d%s",
             len(concepts),
             n_aligned,
             len(concepts) - n_aligned,
             self.concept_filter.name,
             len(all_found) - len(concepts),
+            merged_note,
         )
         logger.debug("concepts_detail ids=%s", [c.id for c in concepts])
         slides_by_index = {s.index: s for s in materials.slides}
+        # A per-request view: shared embeddings, own sentence budget (see SemanticScorer).
+        request_scorer = self.semantic.for_request() if self.semantic is not None else None
+        slide_size = (
+            (materials.slide_width_emu, materials.slide_height_emu)
+            if materials.slide_width_emu is not None and materials.slide_height_emu is not None
+            else None
+        )
 
         all_features = []
         fusion_inputs = []
@@ -135,6 +190,10 @@ class DifficultyPipeline:
                 metrics=metrics,
                 graph_has_prerequisite_edges=view.has_prerequisite_edges,
                 graph_source=ctx.source,
+                vocab=self.vocab,
+                slide_size=slide_size,
+                semantic=request_scorer,
+                semantic_status=self.semantic_status,
             )
             all_features.append(features)
             fusion_inputs.append(
@@ -195,6 +254,7 @@ class DifficultyPipeline:
                     confidence=None,
                     alignment_status=c.alignment_status,
                     slide_indexes=list(c.slide_indexes),
+                    merged_from=list(c.merged_from),
                     features=features,
                     feature_summary=summarize_features(features),
                     status=status,
@@ -204,7 +264,8 @@ class DifficultyPipeline:
             )
 
         mock_graph = ctx.source.kind == "mock"
-        warnings = list(materials.warnings) + list(view.warnings)
+        warnings = list(materials.warnings) + list(raw_view.warnings)
+        warnings += [w for w in view.warnings if w not in raw_view.warnings]
         if mock_graph:
             warnings.append(MOCK_GRAPH_WARNING)
         if not view.has_prerequisite_edges:
@@ -213,14 +274,27 @@ class DifficultyPipeline:
             warnings.append(
                 f"{len(cyclic_ids)} concept(s) have a prerequisite cycle in the C1 graph"
             )
+        if self.semantic_status == SEMANTIC_UNAVAILABLE:
+            warnings.append(SEMANTIC_UNAVAILABLE_WARNING)
+        if request_scorer is not None and request_scorer.truncated:
+            logger.warning("semantic_truncated limit=%d", request_scorer.max_sentences)
+            warnings.append(SEMANTIC_TRUNCATED_WARNING)
         logger.info(
             "done concepts=%d duration_ms=%d",
             len(predictions),
             round((time.perf_counter() - started) * 1000),
         )
 
+        # Caller payload: echo its id. Configured file/c1_api provider: the provider's own
+        # (deterministic) id. Default mock: none, as before.
+        if c1_graph is not None:
+            lecture_id = c1_graph.lecture_id
+        elif self.graph_provider_factory is not None:
+            lecture_id = ctx.response.lecture_id
+        else:
+            lecture_id = None
         return DifficultyResponse(
-            lecture_id=c1_graph.lecture_id if c1_graph is not None else None,
+            lecture_id=lecture_id,
             filename=materials.filename,
             file_type=materials.file_type,
             slide_count=materials.slide_count,
@@ -236,7 +310,14 @@ class DifficultyPipeline:
                 ctx.source,
             ],
             stages=self._stages(
-                materials, ctx.source, view, concepts, all_features, predictions, len(cyclic_ids)
+                materials,
+                ctx.source,
+                view,
+                concepts,
+                all_features,
+                predictions,
+                len(cyclic_ids),
+                merged=(view is not raw_view, len(aliases), len(dropped)),
             ),
             model=self.model.info,
             predictions=predictions,
@@ -245,7 +326,15 @@ class DifficultyPipeline:
         )
 
     def _stages(
-        self, materials, source: InputSource, view, concepts, all_features, predictions, n_cycles=0
+        self,
+        materials,
+        source: InputSource,
+        view,
+        concepts,
+        all_features,
+        predictions,
+        n_cycles=0,
+        merged=(False, 0, 0),
     ):
         mock_graph = source.kind == "mock"
         graph_detail = source.detail
@@ -253,10 +342,25 @@ class DifficultyPipeline:
             graph_detail += "; " + "; ".join(view.warnings)
         if n_cycles:
             graph_detail += f"; {n_cycles} concept(s) with a prerequisite cycle"
+        if merged[0]:
+            parts = [
+                f"{n} {word}"
+                for n, word in (
+                    (view.merged_aliases, "aliases merged"),
+                    (view.rewritten_edges, "edges rewritten"),
+                    (view.dropped_edges, "edges dropped"),
+                )
+                if n
+            ]
+            if parts:
+                graph_detail += "; " + ", ".join(parts)
         aligned = sum(1 for c in concepts if c.alignment_status is AlignmentStatus.ALIGNED)
         concept_detail = f"{len(concepts)} concepts, {aligned} aligned, "
         concept_detail += f"{len(concepts) - aligned} not found in materials"
-        mock_filter = isinstance(self.concept_filter, MockConceptFilter)
+        mock_filter = bool(getattr(self.concept_filter, "is_mock", False))
+        if not mock_filter and (merged[1] or merged[2]):
+            concept_detail += f"; filter {self.concept_filter.name}: "
+            concept_detail += f"{merged[1]} merged, {merged[2]} dropped"
         degraded = any(f.status is not FeatureStatus.COMPUTED for fs in all_features for f in fs)
         n_failed = sum(1 for p in predictions if p.status == "failed")
         kind = self.model.info.kind

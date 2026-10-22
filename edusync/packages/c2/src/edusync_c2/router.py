@@ -1,6 +1,7 @@
 """C2 HTTP routes."""
 
 import json
+from collections.abc import Callable
 from functools import lru_cache
 from typing import Annotated
 
@@ -9,10 +10,20 @@ from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
 from edusync_c2.comprehension import flag_for_clarification
-from edusync_c2.difficulty.errors import ModelArtifactError, ModelNotAvailableError
+from edusync_c2.difficulty.c1_client import UrllibTransport
+from edusync_c2.difficulty.concepts import create_concept_filter
+from edusync_c2.difficulty.errors import (
+    GraphProviderError,
+    ModelArtifactError,
+    ModelNotAvailableError,
+    SemanticScoringError,
+)
+from edusync_c2.difficulty.features.semantic import SemanticScorer
+from edusync_c2.difficulty.features.semantic_loader import get_default_encoder
 from edusync_c2.difficulty.materials import MaterialsError
 from edusync_c2.difficulty.models import create_model
-from edusync_c2.difficulty.pipeline import DifficultyPipeline
+from edusync_c2.difficulty.pipeline import SEMANTIC_UNAVAILABLE, DifficultyPipeline
+from edusync_c2.difficulty.providers import C1ApiGraphProvider, FileGraphProvider, GraphProvider
 from edusync_c2.difficulty.schemas import C1GraphResponse, DifficultyInfo, DifficultyResponse
 from edusync_c2.logger import (
     configure_logging,
@@ -22,7 +33,7 @@ from edusync_c2.logger import (
     set_request_id,
 )
 from edusync_c2.schemas import ComprehensionRequest, ComprehensionResponse
-from edusync_c2.settings import get_c2_settings
+from edusync_c2.settings import C2Settings, get_c2_settings
 from edusync_core.settings import CoreSettings, get_settings
 
 logger = get_logger(__name__)
@@ -31,9 +42,42 @@ router = APIRouter()
 MAX_UPLOAD_MB_CAP = 100
 
 
+def _graph_provider_factory(settings: C2Settings) -> Callable[[bytes, str], GraphProvider] | None:
+    """The per-request provider for uploads without a posted graph (None = slide-title mock)."""
+    if settings.graph_provider == "file":
+        file_provider = FileGraphProvider(settings.graph_file)
+        return lambda data, filename: file_provider
+    if settings.graph_provider == "c1_api":
+        base_url, timeout_s = settings.c1_base_url, settings.c1_timeout_s
+        return lambda data, filename: C1ApiGraphProvider(
+            data, filename, UrllibTransport(base_url, timeout_s)
+        )
+    return None
+
+
+def _semantic_scorer(settings: C2Settings) -> tuple[SemanticScorer | None, str]:
+    """The semantic scorer and its status string ("off", "minilm:<sha8>", "minilm:unavailable")."""
+    if settings.semantic == "off":
+        return None, "off"
+    encoder = get_default_encoder(settings.semantic_model_dir)
+    if encoder is None:
+        return None, SEMANTIC_UNAVAILABLE
+    try:
+        scorer = SemanticScorer(
+            encoder,
+            settings.semantic_def_threshold,
+            settings.semantic_ex_threshold,
+            settings.semantic_max_sentences,
+        )
+    except SemanticScoringError:
+        logger.warning("semantic_unavailable reason=prototype_encoding")
+        return None, SEMANTIC_UNAVAILABLE
+    return scorer, f"minilm:{encoder.sha}"
+
+
 @lru_cache
 def get_pipeline() -> DifficultyPipeline:
-    """FastAPI dependency: the pipeline for the configured model (mock graph provider).
+    """FastAPI dependency: the pipeline for the configured model and graph provider.
 
     Failures raise and are therefore not cached by ``lru_cache``.
     """
@@ -44,8 +88,24 @@ def get_pipeline() -> DifficultyPipeline:
     except (ModelNotAvailableError, ModelArtifactError) as exc:
         logger.warning("model_unavailable name=%s", settings.model)
         raise HTTPException(501, str(exc)) from exc
+    try:
+        concept_filter = create_concept_filter(
+            settings.concept_filter, settings.concept_filter_extras
+        )
+    except NotImplementedError as exc:
+        logger.warning("concept_filter_unavailable name=%s", settings.concept_filter)
+        raise HTTPException(501, str(exc)) from exc
+    semantic, semantic_status = _semantic_scorer(settings)
     logger.info("pipeline_ready model=%s", settings.model)
-    return DifficultyPipeline(model=model, selected_model=settings.model)
+    return DifficultyPipeline(
+        model=model,
+        concept_filter=concept_filter,
+        selected_model=settings.model,
+        graph_provider_factory=_graph_provider_factory(settings),
+        graph_provider_name=None if settings.graph_provider == "mock" else settings.graph_provider,
+        semantic=semantic,
+        semantic_status=semantic_status,
+    )
 
 
 PipelineDep = Annotated[DifficultyPipeline, Depends(get_pipeline)]
@@ -97,6 +157,12 @@ async def difficulty(
             return await run_in_threadpool(pipeline.run, data, file.filename or "", graph)
         except MaterialsError as exc:
             logger.warning("rejected status=%d reason=%s", exc.status_code, exc.message)
+            raise HTTPException(exc.status_code, exc.message) from exc
+        except GraphProviderError as exc:
+            logger.warning("rejected status=%d reason=graph_provider", exc.status_code)
+            raise HTTPException(exc.status_code, exc.message) from exc
+        except SemanticScoringError as exc:
+            logger.warning("rejected status=%d reason=semantic_scorer", exc.status_code)
             raise HTTPException(exc.status_code, exc.message) from exc
         except NotImplementedError as exc:
             logger.warning("rejected status=501 reason=model_not_implemented")

@@ -11,22 +11,24 @@ needs no font encoding.
 
 import csv
 import random
-import re
 import struct
 import zlib
+from dataclasses import dataclass
 from io import BytesIO, StringIO
 from typing import Literal
 
 from pptx import Presentation
+from pptx.enum.shapes import MSO_CONNECTOR, MSO_SHAPE
 from pptx.util import Inches, Pt
 from pydantic import BaseModel, Field
 
+from edusync_c2.difficulty.ids import slug_id
 from edusync_c2.difficulty.schemas import DifficultyLabel
 
 
 def slugify(text: str) -> str:
     """C1 v1 id rule: lowercase letters/digits joined by single hyphens (ASCII labels)."""
-    return re.sub(r"[^a-z0-9]+", "-", text.casefold()).strip("-")
+    return slug_id(text)
 
 
 _ADJECTIVES = [
@@ -169,10 +171,79 @@ def _png(size: int = 8, rgb: tuple[int, int, int] = (70, 110, 170)) -> bytes:
 # ------------------------------------------------------------------------------------- files
 
 
-def build_pptx(spec: DeckSpec) -> bytes:
-    """One slide per concept plus a title slide and a final 'Questions?' slide."""
+_FONT_SIZES_PT = (10, 12, 14, 18, 24)
+_Box = tuple[float, float, float, float]  # left, top, width, height in inches
+
+
+@dataclass(frozen=True)
+class _SlideLayout:
+    """Geometry of one concept slide (inches, points); the default is the classic fixed layout."""
+
+    text_box: _Box = (0.5, 1.5, 6.0, 5.0)
+    font_pt: int = 14
+    picture_width: float = 2.0
+    shapes: tuple[_Box, ...] = ()  # autoshapes
+    connectors: tuple[_Box, ...] = ()  # x1, y1, dx, dy in inches
+    table: tuple[int, int, _Box] | None = None  # rows, cols, frame
+
+
+def _draw_box(rng: random.Random) -> _Box:
+    return (
+        rng.uniform(0.3, 8.0),
+        rng.uniform(1.2, 6.5),
+        rng.uniform(0.4, 2.5),
+        rng.uniform(0.3, 1.5),
+    )
+
+
+def _draw_layout(rng: random.Random) -> _SlideLayout:
+    """Draw one slide's geometry from the layout stream, always in the same order."""
+    width = rng.uniform(3.0, 9.0)
+    height = rng.uniform(1.5, 5.5)
+    if rng.random() < 0.05:  # rare overflow: the box runs off the right edge of the slide
+        width += 3.0
+    font_pt = rng.choice(_FONT_SIZES_PT)
+    picture_width = rng.uniform(1.0, 3.5)
+    shapes = tuple(_draw_box(rng) for _ in range(rng.randint(0, 6)))
+    connectors = tuple(_draw_box(rng) for _ in range(rng.randint(0, 3)))
+    has_table = rng.random() < 0.25
+    rows, cols = rng.randint(2, 4), rng.randint(2, 4)
+    frame = (0.5, rng.uniform(4.5, 6.0), rng.uniform(2.0, 6.0), rng.uniform(0.8, 1.5))
+    return _SlideLayout(
+        text_box=(0.5, 1.5, width, height),
+        font_pt=font_pt,
+        picture_width=picture_width,
+        shapes=shapes,
+        connectors=connectors,
+        table=(rows, cols, frame) if has_table else None,
+    )
+
+
+def _add_extras(slide, layout: _SlideLayout) -> None:
+    """Diagram elements and the optional table of a varied slide."""
+    for left, top, width, height in layout.shapes:
+        slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE, Inches(left), Inches(top), Inches(width), Inches(height)
+        )
+    for x1, y1, dx, dy in layout.connectors:
+        slide.shapes.add_connector(
+            MSO_CONNECTOR.STRAIGHT, Inches(x1), Inches(y1), Inches(x1 + dx), Inches(y1 + dy)
+        )
+    if layout.table is not None:
+        rows, cols, (left, top, width, height) = layout.table
+        slide.shapes.add_table(rows, cols, Inches(left), Inches(top), Inches(width), Inches(height))
+
+
+def build_pptx(spec: DeckSpec, *, vary_layout: bool = False) -> bytes:
+    """One slide per concept plus a title slide and a final 'Questions?' slide.
+
+    ``vary_layout`` (opt-in) varies box sizes, font sizes, picture size, diagram elements and
+    tables per concept slide from a separate ``{lecture_id}:geom`` stream, so text, labels and
+    graphs are unaffected. The default reproduces the fixed layout exactly.
+    """
     prs = Presentation()
     concepts = {c.label: c for c in spec.concepts}
+    rng = random.Random(f"{spec.lecture_id}:geom") if vary_layout else None
     for position, (title, lines) in enumerate(_slide_texts(spec)):
         if position == 0:
             slide = prs.slides.add_slide(prs.slide_layouts[0])
@@ -181,18 +252,23 @@ def build_pptx(spec: DeckSpec) -> bytes:
             continue
         slide = prs.slides.add_slide(prs.slide_layouts[5])
         slide.shapes.title.text = title
+        layout = _draw_layout(rng) if rng is not None and title in concepts else _SlideLayout()
         if lines:
+            left, top, width, height = layout.text_box
             frame = slide.shapes.add_textbox(
-                Inches(0.5), Inches(1.5), Inches(6), Inches(5)
+                Inches(left), Inches(top), Inches(width), Inches(height)
             ).text_frame
             frame.word_wrap = True
             for n, (text, level) in enumerate(lines):
                 paragraph = frame.paragraphs[0] if n == 0 else frame.add_paragraph()
                 paragraph.text = text
                 paragraph.level = level
-                paragraph.font.size = Pt(14)
+                paragraph.font.size = Pt(layout.font_pt)
         if title in concepts and concepts[title].picture:
-            slide.shapes.add_picture(BytesIO(_png()), Inches(7), Inches(1.5), Inches(2))
+            slide.shapes.add_picture(
+                BytesIO(_png()), Inches(7), Inches(1.5), Inches(layout.picture_width)
+            )
+        _add_extras(slide, layout)
     buf = BytesIO()
     prs.save(buf)
     return buf.getvalue()

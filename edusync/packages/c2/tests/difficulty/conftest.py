@@ -1,9 +1,12 @@
 """Shared fixtures for the difficulty tests: a hand-built deck and C1 graphs (v0 and v1)."""
 
+import random
 from collections.abc import Callable
+from typing import Any
 
 import pytest
 
+from edusync_c2.difficulty.features.vocab import reset_default_analyzer
 from edusync_c2.difficulty.schemas import (
     C1GraphResponse,
     MaterialsDoc,
@@ -12,6 +15,17 @@ from edusync_c2.difficulty.schemas import (
 )
 
 SlideFactory = Callable[..., SlideRecord]
+VariantFactory = Callable[..., dict[str, list[SlideRecord]]]
+
+UNRELATED_SLIDE_TEXT = "Cryptography encryption decryption malleability nonce ciphertext."
+
+
+@pytest.fixture
+def fresh_default_analyzer():
+    """Forget the cached default vocabulary analyzer (or cached failure) around a test."""
+    reset_default_analyzer()
+    yield
+    reset_default_analyzer()
 
 
 @pytest.fixture
@@ -28,6 +42,7 @@ def make_slide() -> SlideFactory:
         shapes: int | None = 3,
         formula: bool = False,
         code: bool = False,
+        **geometry: Any,
     ) -> SlideRecord:
         lines = [ln for ln in text.splitlines() if ln.strip()]
         levels = levels or [0] * len(lines)
@@ -45,7 +60,59 @@ def make_slide() -> SlideFactory:
             shape_count=shapes,
             formula_hint=formula,
             code_hint=code,
+            **geometry,
         )
+
+    return build
+
+
+@pytest.fixture
+def slide_variants(make_slide: SlideFactory) -> VariantFactory:
+    """Metamorphic variants of a slide list, for invariants a feature must keep.
+
+    Keys: ``uppercase`` (all text upper-cased), ``duplicated_slides`` (the whole list twice),
+    ``doubled_text`` (each slide's text repeated inside the same slide), ``unrelated_extra`` (one
+    more slide about something else, appended last) and ``shuffled_1`` .. ``shuffled_<n>`` (the
+    same slides in a seeded random order, indexes unchanged).
+    """
+
+    def build(
+        slides: list[SlideRecord], *, shuffles: int = 5, seed: int = 7
+    ) -> dict[str, list[SlideRecord]]:
+        last = max(s.index for s in slides)
+        variants = {
+            "uppercase": [
+                s.model_copy(
+                    update={
+                        "text": s.text.upper(),
+                        "paragraphs": [
+                            p.model_copy(update={"text": p.text.upper()}) for p in s.paragraphs
+                        ],
+                    }
+                )
+                for s in slides
+            ],
+            "duplicated_slides": [
+                *slides,
+                *(s.model_copy(update={"index": last + s.index}) for s in slides),
+            ],
+            "doubled_text": [
+                s.model_copy(
+                    update={
+                        "text": s.text + "\n" + s.text,
+                        "paragraphs": [*s.paragraphs, *s.paragraphs],
+                    }
+                )
+                for s in slides
+            ],
+            "unrelated_extra": [*slides, make_slide(last + 1, UNRELATED_SLIDE_TEXT)],
+        }
+        rng = random.Random(seed)
+        for n in range(1, shuffles + 1):
+            shuffled = slides[:]
+            rng.shuffle(shuffled)
+            variants[f"shuffled_{n}"] = shuffled
+        return variants
 
     return build
 
@@ -178,3 +245,54 @@ def graph_v1() -> C1GraphResponse:
             "graph": {"node_count": 4, "edge_count": 4, "nodes": _nodes(True), "edges": edges},
         }
     )
+
+
+class KeywordEncoder:
+    """Fake sentence encoder: prototypes sit on one axis each; DEFN / EXMP mark test sentences.
+
+    A text containing DEFN has cosine 0.9 to the definition prototypes (and 0.1 to the example
+    ones); EXMP is the mirror image; any other text is orthogonal to all prototypes.
+    """
+
+    dims = 4
+    sha = "abcd1234"
+
+    def __init__(self) -> None:
+        from edusync_c2.difficulty.features.semantic import CLASSES, load_prototypes
+
+        protos = load_prototypes()
+        self.axis = {t: i for i, name in enumerate(CLASSES) for t in protos[name]}
+        self.calls = 0
+
+    def encode(self, texts):
+        import numpy as np
+
+        self.calls += 1
+        out = np.zeros((len(texts), 4), dtype=np.float32)
+        for row, text in enumerate(texts):
+            if text in self.axis:
+                out[row, self.axis[text]] = 1.0
+            elif "DEFN" in text:
+                out[row] = (0.9, 0.1, 0.0, 0.18**0.5)
+            elif "EXMP" in text:
+                out[row] = (0.1, 0.9, 0.0, 0.18**0.5)
+            else:
+                out[row, 3] = 1.0
+        return out
+
+
+@pytest.fixture
+def keyword_encoder() -> KeywordEncoder:
+    return KeywordEncoder()
+
+
+@pytest.fixture
+def make_scorer(keyword_encoder: KeywordEncoder):
+    """Factory of a SemanticScorer over the keyword encoder (thresholds as given)."""
+
+    def build(**kwargs: Any):
+        from edusync_c2.difficulty.features.semantic import SemanticScorer
+
+        return SemanticScorer(keyword_encoder, **kwargs)
+
+    return build

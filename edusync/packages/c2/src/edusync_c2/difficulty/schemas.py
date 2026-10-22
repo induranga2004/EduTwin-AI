@@ -11,7 +11,7 @@ Three groups of models:
 from enum import StrEnum
 from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 # --------------------------------------------------------------------------- C1 graph (input)
 
@@ -143,6 +143,15 @@ class SlideRecord(BaseModel):
     chart_count: int | None = None
     table_count: int | None = None
     shape_count: int | None = None
+    # PPTX geometry (integer EMU, points, counts); None = unknown, always None for PDF.
+    text_area_emu: int | None = None  # union of shapes with text (title, tables; no pictures)
+    picture_area_emu: int | None = None  # union of Picture / PlaceholderPicture rects
+    visual_area_emu: int | None = None  # union of picture and diagram rects
+    min_font_pt: float | None = None  # smallest explicit font size; None = none set explicitly
+    diagram_element_count: int | None = None  # autoshapes, connectors, freeforms, SmartArt
+    table_cell_count: int | None = None  # rows x columns over the slide's tables
+    smartart_count: int | None = None
+    geometry_unknown_count: int | None = None  # shapes whose rect or font could not be read
     formula_hint: bool = False  # text looks like it contains a formula or equation
     code_hint: bool = False  # text looks like source code
 
@@ -152,6 +161,8 @@ class MaterialsDoc(BaseModel):
     file_type: Literal["pptx", "pdf"]
     slide_count: int
     structure_available: bool  # False for PDF: only text per page is known
+    slide_width_emu: int | None = None  # None for PDF or when the deck has no slide size
+    slide_height_emu: int | None = None
     slides: list[SlideRecord]
     warnings: list[str] = Field(default_factory=list)
 
@@ -173,6 +184,8 @@ class ConceptRecord(BaseModel):
     alignment_status: AlignmentStatus
     filter_status: Literal["kept", "dropped"] = "kept"
     filter_note: str = ""
+    merged_from: list[str] = Field(default_factory=list)  # sorted ids of absorbed alias records
+    alias_labels: list[str] = Field(default_factory=list)
 
 
 class GraphContext(BaseModel):
@@ -191,6 +204,8 @@ class PrerequisiteMetrics(BaseModel):
     mean_confidence: float | None = None  # over direct prerequisite edges that carry a confidence
     curriculum_defined_share: float | None = None  # share of direct edges with source_type set
     has_cycle: bool = False  # a cycle was found in the prerequisite chain below the concept
+    dependents_count: int = Field(default=0, ge=0)  # distinct concepts directly depending on it
+    weighted_depth: float = 0.0  # heaviest chain below it: sum of edge confidences (None = 1.0)
 
 
 # ------------------------------------------------------------------------------- fusion/model
@@ -256,6 +271,7 @@ class ConceptPrediction(BaseModel):
     confidence: float | None = None  # always None in Phase 1: no calibrated confidence exists
     alignment_status: AlignmentStatus
     slide_indexes: list[int] = Field(default_factory=list)
+    merged_from: list[str] = Field(default_factory=list)  # ids of aliases merged into this concept
     features: list[FeatureValue]
     feature_summary: dict[FeatureGroup, GroupSummary]
     status: Literal["ok", "partial", "failed"]  # partial = some features mocked/unavailable
@@ -264,7 +280,7 @@ class ConceptPrediction(BaseModel):
 
 
 class DifficultyResponse(BaseModel):
-    pipeline_version: str = "0.1.0-phase1"
+    pipeline_version: str = "0.2.0-phase2"
     lecture_id: str | None = None
     filename: str
     file_type: Literal["pptx", "pdf"]
@@ -276,22 +292,54 @@ class DifficultyResponse(BaseModel):
     todo: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     disclaimer: str = (
-        "Phase 1 baseline: rule-based labels from simple features, not a trained model. "
-        "No probabilities or accuracy are claimed; mocked inputs and features are labelled."
+        "Rule-based baseline: the labels come from fixed rules over lecture features, not from a "
+        "trained model. The labels and thresholds have not been validated against lecturer "
+        "judgements. Mocked or unavailable inputs and features are labelled as such. "
+        "No probabilities or accuracy are claimed."
     )
 
 
+Maturity = Literal["implemented", "mock", "planned"]
+Requires = Literal["text", "pptx_structure", "c1_graph"]
+Phase1 = Literal["real", "real_needs_structure", "graph", "mock", "todo"]
+
+_IMPLEMENTED_PHASE1: dict[str, Phase1] = {
+    "text": "real",
+    "pptx_structure": "real_needs_structure",
+    "c1_graph": "graph",
+}
+
+
 class FeatureSpec(BaseModel):
+    """One registered feature. ``maturity`` and ``requires`` are the source of truth.
+
+    ``phase1`` is the legacy single-field view, computed from them and kept in the JSON for one
+    release: implemented+text -> real, implemented+pptx_structure -> real_needs_structure,
+    implemented+c1_graph -> graph, mock -> mock, planned -> todo.
+    """
+
     name: str
     group: FeatureGroup
-    phase1: Literal["real", "real_needs_structure", "graph", "mock", "todo"]
+    maturity: Maturity
+    requires: Requires
     description: str
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def phase1(self) -> Phase1:
+        if self.maturity == "mock":
+            return "mock"
+        if self.maturity == "planned":
+            return "todo"
+        return _IMPLEMENTED_PHASE1[self.requires]
 
 
 class DifficultyInfo(BaseModel):
     model: ModelInfo
     selected_model: str = "baseline"  # EDUSYNC_C2_MODEL
-    feature_schema_hash: str = ""  # sha256 of the ordered feature registry
+    feature_schema_hash: str = ""  # sha256 of the version and the ordered feature registry
+    feature_schema_version: str = ""  # registry.FEATURE_SCHEMA_VERSION
+    semantic_scorer: str = "off"  # "off", "minilm:<sha8>" or "minilm:unavailable"
     graph_provider: str
     concept_filter: str
     features: list[FeatureSpec]
