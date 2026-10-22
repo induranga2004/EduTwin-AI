@@ -46,6 +46,12 @@ $infoJson = Invoke-Native @('docker', 'compose', 'exec', '-T', 'edusync', 'pytho
 $info = ($infoJson | Out-String) | ConvertFrom-Json
 Write-Host ("    meeting {0} ({1}), presentation {2}, {3} slides" -f $info.meetingId, $info.extId, $info.presentationId, $info.pages)
 
+$hostName = 'bbb.test'
+$hostLine = Select-String -Path '.env' -Pattern '^BBB_HOSTNAME=' -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($hostLine) { $hostName = ($hostLine.Line -split '=', 2)[1].Trim() }
+$reportUrl = "https://$hostName/edusync/api/c4/lectures/$($info.meetingId)/report"
+Write-Host "    report (open it any time, it updates as data arrives): $reportUrl"
+
 if (-not $SkipSlides) {
     Write-Host '==> Copy slide images out of BigBlueButton and store them in C4'
     $m = $info.meetingId
@@ -54,9 +60,10 @@ if (-not $SkipSlides) {
     New-Item -ItemType Directory -Path $tmp | Out-Null
     $src = "bbb:/var/bigbluebutton/$m/$m/$($info.presentationId)/svgs"
     Invoke-Native @('docker', 'compose', 'cp', $src, $tmp) -Quiet | Out-Null
-    Invoke-Native @('docker', 'compose', 'exec', '-T', 'edusync', 'rm', '-rf', '/tmp/c4slides') -Quiet | Out-Null
-    Invoke-Native @('docker', 'compose', 'cp', (Join-Path $tmp 'svgs'), 'edusync:/tmp/c4slides') -Quiet | Out-Null
-    Invoke-Native @('docker', 'compose', 'exec', '-T', 'edusync', 'python', '/tmp/c4_capture.py', '--slides', '/tmp/c4slides') | ForEach-Object { Write-Host ("    " + $_) }
+    # A fresh folder per run: files copied in by docker cp belong to root, so an old folder cannot be deleted.
+    $dest = '/tmp/c4slides_' + (Get-Date -Format 'yyyyMMddHHmmss')
+    Invoke-Native @('docker', 'compose', 'cp', (Join-Path $tmp 'svgs'), "edusync:$dest") -Quiet | Out-Null
+    Invoke-Native @('docker', 'compose', 'exec', '-T', 'edusync', 'python', '/tmp/c4_capture.py', '--slides', $dest) | ForEach-Object { Write-Host ("    " + $_) }
     Remove-Item -Recurse -Force $tmp
 }
 
@@ -71,4 +78,5 @@ try {
 }
 finally {
     Write-Host 'Capture stopped. Data is stored in C4; you can now end the meeting.'
+    Write-Host "Report: $reportUrl"
 }

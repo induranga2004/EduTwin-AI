@@ -35,12 +35,13 @@ def http_json(method, url, body=None, headers=None):
         return exc.code, exc.read().decode("utf-8", "replace")[:500]
 
 
-def hasura(gql):
+def hasura(gql, variables=None):
     url = os.environ.get("EDUSYNC_HASURA_URL", "")
     secret = os.environ.get("EDUSYNC_HASURA_ADMIN_SECRET", "")
     if not url or not secret:
         sys.exit("EDUSYNC_HASURA_URL / EDUSYNC_HASURA_ADMIN_SECRET are not set in the container")
-    status, body = http_json("POST", url, {"query": gql}, {"x-hasura-admin-secret": secret})
+    payload = {"query": gql, "variables": variables or {}}
+    status, body = http_json("POST", url, payload, {"x-hasura-admin-secret": secret})
     if status != 200 or (isinstance(body, dict) and body.get("errors")):
         sys.exit("Hasura query failed (%s): %s" % (status, str(body)[:300]))
     return body["data"]
@@ -60,11 +61,12 @@ def start_ms(meeting_id):
 
 
 def pages(meeting_id):
+    # BBB's database can still hold slides of earlier meetings, so always filter by meeting.
     gql = (
-        "query { pres_page { pageId num width height scaledWidth scaledHeight content "
-        "isCurrentPage presentationId } }"
+        "query Pages($m: String!) { pres_page(where: {meetingId: {_eq: $m}}) { pageId num width "
+        "height scaledWidth scaledHeight content isCurrentPage presentationId } }"
     )
-    return hasura(gql)["pres_page"]
+    return hasura(gql, {"m": meeting_id})["pres_page"]
 
 
 def current_presentation(rows):
@@ -77,6 +79,9 @@ def current_presentation(rows):
 def cmd_info():
     meeting = current_meeting()
     rows = pages(meeting["meetingId"])
+    if not rows:
+        sys.exit("No slides found. Upload your PDF in the meeting, wait until it has finished "
+                 "converting, then run this again.")
     print(
         json.dumps(
             {
