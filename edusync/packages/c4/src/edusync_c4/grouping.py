@@ -11,6 +11,11 @@ Known limitations (by design, not bugs):
   * Thresholds are in virtual slide units and seconds; they are not scaled to slide size or
     to a presenter's pace, so they need tuning per deployment.
   * Groups say nothing about meaning. Equations, diagrams and handwriting are NOT recognised.
+  * A shape's time span runs from its first version to its last edit (or retraction); a live,
+    never-edited shape therefore has a zero-length span at its creation time.
+  * Events without a usable timestamp (`AnnotationTimeline.unplaced`) cannot be placed in time
+    and are NOT grouped; they remain available on the timeline for audit.
+  * Pairwise comparison is O(n^2) in the number of shapes on one slide.
 Replaceable via the `Clusterer` protocol (e.g. a learned segmenter later).
 """
 
@@ -26,6 +31,7 @@ from edusync_c4.schemas import (
     GroupingConfig,
     NormalizedAnnotation,
     ShapeType,
+    SlideSnapshot,
 )
 
 METHOD = "spatiotemporal-single-linkage-v1"
@@ -156,3 +162,25 @@ def group_timeline(
 ) -> list[AnnotationGroup]:
     """Group one slide's annotations into candidate groups (default: spatio-temporal)."""
     return (clusterer or SpatioTemporalClusterer()).group(timeline, config)
+
+
+def group_snapshot(
+    snapshot: SlideSnapshot,
+    config: GroupingConfig | None = None,
+    clusterer: Clusterer | None = None,
+) -> list[AnnotationGroup]:
+    """Group only what is on the board at `snapshot.timestamp_seconds`.
+
+    Future retractions are hidden (`timestamp_out`/`timestamp_undo` cleared on copies), so the
+    result depends only on what was visible at that moment, not on later events.
+    """
+    visible = []
+    for ann in snapshot.annotations:
+        copy = ann.model_copy(deep=True)
+        copy.timestamp_out = None
+        copy.timestamp_undo = None
+        visible.append(copy)
+    timeline = AnnotationTimeline(
+        lecture_id=snapshot.lecture_id, slide_id=snapshot.slide_id, events=visible
+    )
+    return group_timeline(timeline, config, clusterer)

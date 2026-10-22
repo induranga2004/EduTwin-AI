@@ -2,7 +2,7 @@
 
 from edusync_c4.annotations import parse_annotation_text
 from edusync_c4.evidence import merge_evidence, reconcile
-from edusync_c4.grouping import Clusterer, SpatioTemporalClusterer, group_timeline
+from edusync_c4.grouping import Clusterer, SpatioTemporalClusterer, group_snapshot, group_timeline
 from edusync_c4.normalizer import (
     apply_delta,
     compute_bounds,
@@ -61,6 +61,7 @@ __all__ = [
     "build_timelines",
     "compute_bounds",
     "extract_stroke_points",
+    "group_snapshot",
     "group_timeline",
     "merge_evidence",
     "normalize_event",

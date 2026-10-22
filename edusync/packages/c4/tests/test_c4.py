@@ -10,6 +10,7 @@ from edusync_c4.evidence import merge_evidence, reconcile
 from edusync_c4.grouping import (
     SpatioTemporalClusterer,
     box_distance,
+    group_snapshot,
     group_timeline,
     time_gap,
 )
@@ -763,3 +764,35 @@ def test_single_linkage_chaining_limitation_is_real():
 def test_invalid_config_rejected():
     with pytest.raises(ValueError, match="greater than or equal"):
         GroupingConfig(max_distance=-1)
+
+
+def test_thresholds_are_inclusive_at_the_boundary():
+    # boxes 40 wide: a at x=0..40, b at x=90..130 -> gap exactly 50
+    events = [_geo("a", 1, 0, 0), _geo("b", 16, 90, 0)]  # time gap exactly 15
+    assert len(_groups(events)) == 1
+    assert len(_groups([_geo("a", 1, 0, 0), _geo("b", 16, 90.01, 0)])) == 2
+    assert len(_groups([_geo("a", 1, 0, 0), _geo("b", 16.01, 90, 0)])) == 2
+
+
+def test_events_without_timestamp_are_not_grouped_but_stay_on_timeline():
+    tl = build_timeline([_geo("a", 1, 0, 0), {"id": "z", "type": "geo", "props": {"w": 5, "h": 5}}])
+    assert [g.shape_ids for g in group_timeline(tl)] == [["a"]]
+    assert len(tl.unplaced) == 1
+
+
+def test_group_snapshot_uses_only_what_is_visible_at_t():
+    events = [_geo("a", 1, 0, 0), _geo("b", 2, 30, 0), _del("b", 10), _geo("c", 12, 900, 900)]
+    tl = build_timeline(events, lecture_id="lec", slide_id="sl")
+    snap = reconstruct_snapshot(tl, 5.0)
+    (g,) = group_snapshot(snap)
+    assert g.shape_ids == ["a", "b"]
+    assert g.retracted_shape_ids == []  # b's later deletion must not leak into the t=5 view
+    later = group_snapshot(reconstruct_snapshot(tl, 13.0))
+    assert sorted(s for grp in later for s in grp.shape_ids) == ["a", "c"]
+
+
+def test_grouping_handles_a_thousand_shapes():
+    events = [_geo(f"s{i}", i, (i % 40) * 500, (i // 40) * 500) for i in range(1000)]
+    groups = _groups(events)
+    assert len(groups) == 1000
+    assert sum(g.member_count for g in groups) == 1000
