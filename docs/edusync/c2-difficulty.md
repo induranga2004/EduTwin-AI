@@ -23,7 +23,7 @@ replaced one at a time without changing the response shape. What exists:
 
 - a parser for PPTX and PDF lecture files;
 - a way to accept C1's graph (as a request payload) or build a clearly labelled mock graph from slide titles;
-- 35 registered features in four groups (A = 8, B = 7, C = 7, D = 13): 26 implemented (15 computed from the lecture text, 3 from PPTX structure only, 8 from the C1 graph), 1 mock (`expl.semantic_support_score`) and 8 planned, which are always `unavailable` until their milestone (see section 4; the vocabulary features of group A became real in Phase 2, milestone M1, see "Feature A method" in section 4; the other planned features were pre-registered in schema version 0.3 and `prereq.weighted_depth` / `prereq.dependents_count` have since been built without a schema change, see "Schema versioning policy");
+- 35 registered features in four groups (A = 8, B = 7, C = 7, D = 13): 32 implemented (15 computed from the lecture text, 9 from PPTX structure only, 8 from the C1 graph), 1 mock (`expl.semantic_support_score`) and 2 planned (`expl.semantic_definition_count`, `expl.semantic_example_count`), which are always `unavailable` until their milestone (see section 4; the six slide-geometry features of group D became real in Phase 2, milestone M3, see "Feature D method"; the vocabulary features of group A became real in Phase 2, milestone M1, see "Feature A method" in section 4; the other planned features were pre-registered in schema version 0.3 and `prereq.weighted_depth` / `prereq.dependents_count` have since been built without a schema change, see "Schema versioning policy");
 - ordered, mask-aware fusion input;
 - a transparent rule baseline (`RuleBaselineModel`) that produces a label and a raw score, with no probabilities and no
   confidence;
@@ -86,6 +86,7 @@ All paths are under `edusync/packages/c2/src/edusync_c2/`.
 | `schemas.py` | Request/response models of the comprehension route |
 | `difficulty/schemas.py` | All Phase 1 contracts: C1 graph input, slide/concept/feature records, fusion, model output, `DifficultyResponse` |
 | `difficulty/materials.py` | PPTX/PDF parser, upload validation (`MaterialsError`), formula and code detectors |
+| `difficulty/geometry.py` | Pure integer-EMU helpers for the parser: rotation swap, group transform, box clipping, union area (cap `MAX_UNION_SHAPES = 200`) |
 | `difficulty/graph.py` | `GraphView`: valid prerequisite edges and per-concept metrics; optional `aliases` and `dropped` arguments remap edges to canonical concepts and cut dropped ones |
 | `difficulty/providers.py` | Graph providers: `PayloadGraphProvider`, `MockC1GraphProvider`, `C1ApiGraphProvider` (TODO, raises `NotImplementedError`) |
 | `difficulty/concepts.py` | Concepts from graph nodes, slide alignment, `ConceptFilter` and `ContextualConceptFilter` protocols, `FilterContext`, `MockConceptFilter` (`is_mock = True`), `create_concept_filter` |
@@ -100,7 +101,7 @@ All paths are under `edusync/packages/c2/src/edusync_c2/`.
 | `difficulty/features/_common.py` | `assemble`: builds a group's feature list by registry name (planned names become unavailable `todo:` values; a missing implemented/mock name or an unknown name raises `ValueError`) |
 | `difficulty/features/prerequisites.py` | Group B processor |
 | `difficulty/features/explanation.py` | Group C processor (definition/example/step regexes, diagram count) |
-| `difficulty/features/density.py` | Group D processor |
+| `difficulty/features/density.py` | Group D processor (text, structure and the six geometry/visual features; `_VC_WEIGHTS`, `_VC_SATURATION`) |
 | `difficulty/features/__init__.py` | `compute_all_features`: all 35 in registry order |
 | `difficulty/fusion.py` | `build_fusion_input`, `to_vector`, `summarize_features` |
 | `difficulty/models.py` | `DifficultyModel` protocol, `RuleBaselineModel`, `MiniLMFusionModel` (TODO) |
@@ -120,7 +121,7 @@ Source of truth: `difficulty/registry.py`. Each feature has two registry fields:
 The legacy `phase1` field (`real`, `real_needs_structure`, `graph`, `mock`, `todo`) is no longer stored. It is derived from `maturity` and
 `requires` and is still in the JSON of `/difficulty/info` for one more release; it is deprecated, so read `maturity` and `requires`.
 
-Counts: 26 implemented (15 `text`, 3 `pptx_structure`, 8 `c1_graph`), 1 mock, 8 planned (group B: 7 implemented, 0 planned). Group sizes: A = 8, B = 7, C = 7, D = 13.
+Counts: 32 implemented (15 `text`, 9 `pptx_structure`, 8 `c1_graph`), 1 mock, 2 planned (group B: 7 implemented, 0 planned; group D: 13 implemented, 0 planned). Group sizes: A = 8, B = 7, C = 7, D = 13.
 
 | # | Name | Group | Maturity | Requires | Description |
 |---|------|-------|----------|----------|-------------|
@@ -153,12 +154,12 @@ Counts: 26 implemented (15 `text`, 3 `pptx_structure`, 8 `c1_graph`), 1 mock, 8 
 | 27 | `dens.max_bullet_depth` | D | implemented | pptx_structure | Deepest bullet level on its slides (PPTX). |
 | 28 | `dens.shape_count_mean` | D | implemented | pptx_structure | Mean shapes per concept slide (PPTX). |
 | 29 | `dens.concept_frequency` | D | implemented | c1_graph | C1 node frequency of the concept. |
-| 30 | `dens.visual_complexity` | D | planned | pptx_structure | TODO: diagram/visual complexity analysis. |
-| 31 | `dens.text_area_ratio` | D | planned | pptx_structure | Share of slide area covered by text boxes. |
-| 32 | `dens.picture_area_ratio` | D | planned | pptx_structure | Share of slide area covered by pictures. |
-| 33 | `dens.min_font_pt` | D | planned | pptx_structure | Smallest explicit font size on the concept's slides, in points. |
-| 34 | `dens.diagram_element_count` | D | planned | pptx_structure | Diagram elements (shapes, connectors, SmartArt) on its slides. |
-| 35 | `dens.table_cell_count` | D | planned | pptx_structure | Table cells on its slides. |
+| 30 | `dens.visual_complexity` | D | implemented | pptx_structure | 0-1 heuristic: 0.35 sat(media, 4) + 0.25 sat(diagram, 15) + 0.25 visual area + 0.15 sat(info, 30), weights renormalised over known components (see "Feature D method"). |
+| 31 | `dens.text_area_ratio` | D | implemented | pptx_structure | Mean share of slide area covered by shapes with text (union, clamped 0-1). |
+| 32 | `dens.picture_area_ratio` | D | implemented | pptx_structure | Mean share of slide area covered by pictures (union, clamped 0-1). |
+| 33 | `dens.min_font_pt` | D | implemented | pptx_structure | Smallest explicit font size on the concept's slides, in points (inherited sizes are never read). |
+| 34 | `dens.diagram_element_count` | D | implemented | pptx_structure | Mean diagram elements (autoshapes, connectors, freeforms, SmartArt) per concept slide. |
+| 35 | `dens.table_cell_count` | D | implemented | pptx_structure | Mean table cells (rows x columns) per concept slide. |
 
 Groups: A = technical vocabulary and language complexity, B = prerequisite and concept complexity, C = explanation and
 example support, D = information density and structure.
@@ -247,6 +248,104 @@ see the `vocab_loaded` and `vocab_unavailable` events below; no slide text or wo
 Tests: `test_wordpiece.py`, `test_lexicon.py`, `test_vocab.py`, `test_vocab_resources.py`, `test_features_language.py`
 under `edusync/packages/c2/tests/difficulty/`.
 
+### Feature D method (slide geometry, fonts, diagrams; Phase 2 milestone M3)
+
+Six group D features read the slide structure of a PPTX. They were `planned` (`dens.visual_complexity` had a TODO note);
+they are `implemented` now. Maturity is not hashed, so names, groups, order, the schema hash and `FEATURE_SCHEMA_VERSION`
+(`0.3`) are unchanged. Each value is the mean over the concept's slides that have a value (the minimum for `dens.min_font_pt`).
+
+| Feature | Definition | Range |
+|---------|------------|-------|
+| `dens.text_area_ratio` | union area of the shapes that hold non-empty text (title and table frames included, pictures not) divided by the slide area, clamped to [0, 1] | 0..1 |
+| `dens.picture_area_ratio` | union area of `Picture` and `PlaceholderPicture` shapes divided by the slide area, clamped | 0..1 |
+| `dens.min_font_pt` | smallest explicit font size of a non-blank text run, in points | > 0 |
+| `dens.diagram_element_count` | mean number of diagram leaves per slide | >= 0 |
+| `dens.table_cell_count` | mean rows x columns per slide, merged cells included | >= 0 |
+| `dens.visual_complexity` | weighted, saturated mix of four components (below) | 0..1 |
+
+**What is measured (`materials.py`, `geometry.py`).**
+
+- **Area.** Rectangles are integer EMU. A slide's union area is computed exactly by coordinate compression, so the same deck
+  always gives the same number. Each box is clipped to the slide first (off-slide and zero-size boxes contribute nothing).
+  With more than `MAX_UNION_SHAPES = 200` boxes on one slide the exact union is replaced by the sum of the clipped box areas,
+  itself clamped to the slide area; that can overestimate overlap-heavy slides and the response does not flag it.
+- **Position.** Shapes inside groups are mapped to slide space through each enclosing group's `off/ext/chOff/chExt` (nested
+  groups compose, integer floor division). A group whose child extent is zero cannot be mapped, so its children count as
+  unreadable. A rotation of 45 to 135 or 225 to 315 degrees swaps width and height about the centre. A shape without a
+  resolvable `left/top/width/height` is unreadable. Placeholders use the geometry python-pptx resolves for them (inherited
+  from the layout).
+- **Diagram leaves.** Autoshapes that are neither placeholders nor text boxes, connectors, freeforms, and SmartArt frames.
+  SmartArt is a graphic frame whose `graphicData` URI ends with `/drawingml/2006/diagram`. Groups are not counted (their
+  leaves are); charts, tables and pictures are not diagram elements (they have their own counts).
+- **Tables.** `table_cell_count` is rows x columns, so merged cells are included; the text of every cell counts for the text
+  area and the font.
+- **Fonts: explicit sizes only.** A run's own size wins, otherwise the paragraph-level `defRPr` size. Nothing is read from the
+  master, the layout or list styles, and no default is guessed. A deck whose sizes are all inherited therefore gives
+  `dens.min_font_pt` = `unavailable` ("no explicit font size"), not a made-up number.
+- **Title.** The title shape is measured (area, font) as well as read for text, and is still counted in `shape_count`, so
+  `dens.shape_count_mean` and the golden are unchanged.
+- The parser never raises on an odd shape: a read error counts the shape in `SlideRecord.geometry_unknown_count` and the deck
+  still parses. A PDF sets none of the new fields.
+
+New fields (all default `None` = unknown, additive): `SlideRecord.text_area_emu`, `picture_area_emu`, `visual_area_emu`
+(union of picture and diagram boxes), `min_font_pt`, `diagram_element_count`, `table_cell_count`, `smartart_count`,
+`geometry_unknown_count`; `MaterialsDoc.slide_width_emu`, `slide_height_emu`. The pipeline passes the slide size to
+`density_features(..., slide_size=...)`.
+
+**`dens.visual_complexity`.** Components per slide, each averaged over the concept's slides where known:
+
+| Component | Per-slide value | Saturation `sat(x, k) = min(x / k, 1)` | Weight |
+|-----------|-----------------|------------------------------------------|--------|
+| `media` | pictures + charts + SmartArt frames | k = 4 | 0.35 |
+| `diagram` | diagram leaves | k = 15 | 0.25 |
+| `visual_area` | min(1, (picture + diagram union area) / slide area) | none (already 0..1) | 0.25 |
+| `info` | table cells + `shape_count` | k = 30 | 0.15 |
+
+`visual_complexity = sum(weight_i * level_i) / sum(weight_i)` over the components that are known, so the weights are
+renormalised when one is missing (the note then lists "unknown components: ..."). It is `unavailable` when none is known. The
+constants are `_VC_WEIGHTS` and `_VC_SATURATION` in `features/density.py`. They are a first guess, not fitted to any data, and
+unvalidated. Arithmetic uses exact fractions and is rounded only when converted to float.
+
+**Status rules** (source `materials:pptx_structure`):
+
+| Case | Result |
+|------|--------|
+| PDF (no structure) | all six `unavailable`, note "PDF: structure not available" |
+| Concept not found on any slide | all six `unavailable`, note "concept not found in materials" |
+| Slide size unknown or not positive | the two ratios `unavailable`, note "slide size unknown"; `visual_complexity` still uses the components that do not need the area, and says "unknown components: visual_area" |
+| Every concept slide has the needed field unknown | `unavailable`, note "geometry unknown" |
+| No explicit font size on the concept's slides | `dens.min_font_pt` `unavailable`, note "no explicit font size" |
+| Some shapes had unreadable geometry | still `computed`; note "lower bound: N shape(s) with unreadable geometry" for the ratios, counts and `visual_complexity`; "upper bound: N shape(s) with unreadable geometry" for `dens.min_font_pt`, because an unreadable run could be smaller |
+| Otherwise | `computed`, empty note |
+
+A value built from partial data is never reported as exact: the note says in which direction it can be off.
+
+**Limits, stated plainly.**
+
+- Areas and counts are lower bounds when shapes are unreadable (the notes say so); the 200-shape cap can overestimate.
+- A PDF has none of this (`unavailable`). A PPTX made by a PDF converter may be one picture per slide.
+- Overlapping shapes are measured by their frames, not their pixels: a picture under text is in both ratios, and a cropped or
+  transparent picture counts as its whole frame. The two ratios are not mutually exclusive.
+- Only explicit sizes are read, and many real decks set sizes on the layout or master, so `dens.min_font_pt` can be
+  unavailable on ordinary slides.
+- The `visual_complexity` weights and saturation points are heuristic and unvalidated; no label was used to set them.
+- The default synthetic decks use one fixed layout, so these features are constant on them and carry no signal. Use
+  `--vary-layout` (below) to exercise them; that does not make them meaningful, and the circular labels never read geometry.
+
+**Synthetic layout variation (opt-in).** `build_pptx(spec, *, vary_layout=False)`. With `vary_layout=True` each concept slide
+gets a varied text-box size (rarely running off the slide), font size, picture width, 0 to 6 rectangles, 0 to 3 connectors and
+an optional table. The values come from a separate `random.Random(f"{lecture_id}:geom")` stream, so text, labels and graphs do
+not change and the default output is unchanged. `make_synthetic_data.py --vary-layout` needs an explicit `--out` and refuses
+(exit code 2) the committed `data/synthetic` directory; `feature_report.py --vary-layout` builds the varied decks in memory.
+
+**Baseline golden.** `dens.visual_complexity` was stored as `unavailable` for all 48 golden entries; for PPTX decks it is now
+computed. `tests/difficulty/test_baseline_golden.py` therefore has `EXCLUDED_BY_KIND = {"pptx": {"dens.visual_complexity"}}`
+(explained in its docstring); PDF entries are still checked and still report it unavailable. The other five Feature D
+features are not in the golden. Scores and labels are unchanged: the baseline reads none of the new features.
+
+Tests under `edusync/packages/c2/tests/difficulty/`: `test_geometry.py`, `test_materials.py` (odd decks), `test_features_density.py`,
+`test_features_density_geometry.py`, `test_synthetic_layout.py`, `test_baseline_golden.py`.
+
 ## 5. Statuses and provenance
 
 Every `FeatureValue` in the response has a `status`, a `source` and a `note`.
@@ -257,7 +356,7 @@ Every `FeatureValue` in the response has a `status`, a `source` and a `note`.
 |--------|---------|------------------|
 | `computed` | Real value from real inputs | Language, explanation and density features with slides found; group B from a caller-supplied graph; `dens.concept_frequency` from a caller graph |
 | `mocked` | Placeholder, or computed from a mocked input; never treated as real | `expl.semantic_support_score` (0.0) always (the only mock left in the registry); every group B feature and `dens.concept_frequency` when the graph is the mock graph |
-| `unavailable` | Cannot be produced; carries no value | No prerequisite edges in the graph (a v0 graph) -> all seven group B features, note "C1 graph has no prerequisite edges"; concept id unknown to the graph -> group B; PDF -> `expl.diagram_support`, `dens.max_bullet_depth`, `dens.shape_count_mean`; concept not found on any slide -> every slide-based feature of groups A, C, D; vocabulary resources missing, or no words under the vocabulary word rule -> the three vocabulary features of group A (see "Feature A method"); no direct prerequisites -> `prereq.mean_confidence` and `prereq.curriculum_defined_share`; every `planned` feature always (8 of them; source `todo:<name>`; the note is "not yet implemented" for those filled by `features/_common.assemble`, and `dens.visual_complexity` keeps its own TODO note) |
+| `unavailable` | Cannot be produced; carries no value | No prerequisite edges in the graph (a v0 graph) -> all seven group B features, note "C1 graph has no prerequisite edges"; concept id unknown to the graph -> group B; PDF -> `expl.diagram_support`, `dens.max_bullet_depth`, `dens.shape_count_mean` and the six geometry features of group D (see "Feature D method"); concept not found on any slide -> every slide-based feature of groups A, C, D; vocabulary resources missing, or no words under the vocabulary word rule -> the three vocabulary features of group A (see "Feature A method"); no direct prerequisites -> `prereq.mean_confidence` and `prereq.curriculum_defined_share`; every `planned` feature always (2 of them; source `todo:<name>`; the note is "not yet implemented", filled by `features/_common.assemble`) |
 
 A computed value never hides a mock: a feature derived from the mock graph is `mocked`, not `computed`.
 
@@ -271,7 +370,7 @@ The materials are always `real`; the graph is `real` when the caller supplied it
 graph).
 
 A prediction itself has `status` `ok` (all 35 features computed), `partial` (some mocked or unavailable) or `failed`
-(not enough computed features, `difficulty` is `null`). Because the registry holds 8 planned features that are
+(not enough computed features, `difficulty` is `null`). Because the registry holds 2 planned features that are
 `unavailable` by design and 1 mock, a prediction is `partial` by design until those milestones are built; `partial` here
 does not mean something went wrong. What matters for the baseline is whether enough of its own components are computed
 (`MIN_COMPONENTS`), not the overall status.
@@ -320,7 +419,7 @@ versioned: `FEATURE_SCHEMA_VERSION` in `difficulty/registry.py` (currently `0.3`
 - **Report**: `scripts/feature_report.py` runs the seeded synthetic decks through the pipeline and prints, per feature, its
   maturity, status counts and the number of distinct computed values, and flags `constant`, `all-unavailable`, `planned` and
   `partial` features (synthetic data makes some features constant by construction, for example `dens.concepts_per_slide`).
-  Options: `--json`, `--write-snapshot PATH`, `--seed`, `--lectures`, `--concepts`; exit code 0 on success, 2 on bad arguments.
+  Options: `--json`, `--write-snapshot PATH`, `--seed`, `--lectures`, `--concepts`, `--vary-layout` (varied PPTX layouts, so the Feature D features are not constant); exit code 0 on success, 2 on bad arguments.
 - **Graph metrics** (`graph.py`, `features/prerequisites.py`): `prereq.weighted_depth` is the largest sum of edge confidences
   along any prerequisite chain below the concept (a missing confidence counts 1.0; an edge back to a concept already on the
   chain is ignored, so cycles terminate like `prereq.chain_depth`); `prereq.dependents_count` is the number of distinct
@@ -413,8 +512,8 @@ for version 0.3):
      "description": "Transparent lexical difficulty heuristic in [0, 1].", "phase1": "real"},
     {"name": "expl.semantic_support_score", "group": "C_explanation", "maturity": "mock", "requires": "text",
      "description": "TODO: semantic definition/example detection.", "phase1": "mock"},
-    {"name": "dens.table_cell_count", "group": "D_density", "maturity": "planned", "requires": "pptx_structure",
-     "description": "Table cells on its slides.", "phase1": "todo"},
+    {"name": "expl.semantic_definition_count", "group": "C_explanation", "maturity": "planned", "requires": "text",
+     "description": "Semantic (embedding-based) definition detections on the concept's slides.", "phase1": "todo"},
     "..."
   ],
   "todo": ["..."]
@@ -475,10 +574,8 @@ from synthetic text and say nothing about real lectures.
          "source": "materials:regex", "note": ""},
         {"name": "dens.words_per_slide", "group": "D_density", "value": 73.0, "status": "computed",
          "source": "materials:regex", "note": ""},
-        {"name": "dens.visual_complexity", "group": "D_density", "value": null, "status": "unavailable",
-         "source": "todo:visual_complexity", "note": "TODO: visual complexity analysis not implemented"},
-        {"name": "dens.table_cell_count", "group": "D_density", "value": null, "status": "unavailable",
-         "source": "todo:dens.table_cell_count", "note": "not yet implemented"}
+        {"name": "expl.semantic_definition_count", "group": "C_explanation", "value": null, "status": "unavailable",
+         "source": "todo:expl.semantic_definition_count", "note": "not yet implemented"}
       ],
       "feature_summary": "...",
       "status": "partial",
@@ -637,12 +734,11 @@ text, default path builds one plain view), `test_settings.py`, `test_router.py` 
 1. Real C1 connection (`C1ApiGraphProvider`); the graph is a mock unless supplied by the caller.
 2. Concept filter: alias merging (TDE = Transparent Data Encryption) and generic phrases. **Status:** a heuristic filter exists behind `EDUSYNC_C2_CONCEPT_FILTER=heuristic` (see "Concept filter"); the default is still the mock `mock_keep_all` until the heuristic has been validated on real C1 output, so this item stays open and its text in `PHASE1_TODO` is unchanged.
 3. Feature C: semantic definition/example detection (`expl.semantic_support_score` is a mock; `expl.semantic_definition_count` and `expl.semantic_example_count` are planned).
-4. Feature D: visual/diagram complexity analysis (`dens.visual_complexity`, text and picture area ratios, minimum font size, diagram elements and table cells are planned).
-5. `MiniLMFusionModel` and learned feature fusion (Phase 3, trained on lecturer labels).
-6. Calibrated confidence and probabilities (never invented before a trained, evaluated model).
-7. Prediction persistence for Phase 5 comparison with live comprehension.
+4. `MiniLMFusionModel` and learned feature fusion (Phase 3, trained on lecturer labels).
+5. Calibrated confidence and probabilities (never invented before a trained, evaluated model).
+6. Prediction persistence for Phase 5 comparison with live comprehension.
 
-The former item "Feature A: unfamiliar-vocabulary score from a domain word list" was removed when Feature A became real (Phase 2, M1).
+The former item "Feature A: unfamiliar-vocabulary score from a domain word list" was removed when Feature A became real (Phase 2, M1), and "Feature D: visual/diagram complexity analysis" when the six geometry features became real (Phase 2, M3).
 
 Per-module mocks and TODOs found in the code:
 
@@ -656,8 +752,8 @@ Per-module mocks and TODOs found in the code:
 | `features/language.py`, `features/vocab.py` | No mock left in group A. Limits: the vocabulary features measure general-English rarity plus a CS/IT/ML lexicon, with unvalidated thresholds (see "Feature A method") |
 | `features/explanation.py` | `expl.semantic_support_score` is a 0.0 placeholder (mocked, the only mock in the registry); `expl.semantic_definition_count` and `expl.semantic_example_count` are planned (unavailable); definition/example/step counts are regex cues only |
 | `features/prerequisites.py` | All seven group B features are implemented; a mock graph gives `mocked` values, a v0 graph (no prerequisite edges) gives `unavailable` |
-| `features/density.py` | `dens.visual_complexity` and the five other planned density features (text and picture area ratio, minimum font size, diagram elements, table cells) are unavailable (TODO) |
-| `features/_common.assemble` | Any planned feature a processor does not produce is filled as unavailable, source `todo:<name>`, note "not yet implemented" |
+| `features/density.py` | No mock or planned feature left in group D. Limits: the `dens.visual_complexity` weights and saturation points are unvalidated guesses; only explicit font sizes are read; areas are lower bounds when shapes are unreadable; PDF gives `unavailable` (see "Feature D method") |
+| `features/_common.assemble` | Any planned feature a processor does not produce is filled as unavailable, source `todo:<name>`, note "not yet implemented" (2 planned features left, both group C) |
 | `models.MiniLMFusionModel` | Not implemented (Phase 3) |
 | `models.RuleBaselineModel` | Weights and thresholds are untuned guesses |
 | `pipeline.DifficultyPipeline` | `use_mocked_features` is off; mocked features never feed the baseline |
@@ -682,7 +778,7 @@ uv run python packages/c2/scripts/make_synthetic_data.py --seed 7 --lectures 5 -
 ```
 
 Options: `--seed` (default 42), `--lectures` (default 3), `--concepts` (default 8), `--out` (default
-`edusync/packages/c2/data/synthetic/`). Lecture k is built with `make_deck_spec(seed + k, concepts, ...)`
+`edusync/packages/c2/data/synthetic/`), `--vary-layout` (varied slide geometry, fonts, diagram shapes and tables in the PPTX files; needs an explicit `--out` and exits with code 2 if `--out` is the committed `data/synthetic` directory; see "Feature D method"). Lecture k is built with `make_deck_spec(seed + k, concepts, ...)`
 for k = 1..lectures, with lecture id `synthetic-lecture-<k>`. Per lecture it writes `lecture_<k>.pptx`, `lecture_<k>.pdf`,
 `lecture_<k>_graph_v0.json` and `lecture_<k>_graph_v1.json`; shared files are `labels.csv` and `README.txt`. The
 `.pptx` and `.pdf` files are git-ignored (regenerate them); labels, graphs and README are kept in the repository. PPTX
@@ -796,7 +892,7 @@ What remains before Phase 1 can be called fully closed: merge PR #19 and these c
 **Phase 2 - real features, one at a time.** Each replaces a mock or TODO without changing the response shape:
 
 1. Feature A: done in milestone M1. `lang.unfamiliar_vocab_ratio` is now real (MiniLM word pieces), with `lang.subword_fragmentation` and `lang.domain_term_ratio` added (section 4, "Feature A method"). Open: validate the thresholds and the lexicon against real lectures.
-2. Feature D: `dens.visual_complexity` and the five other planned density features (`dens.text_area_ratio`, `dens.picture_area_ratio`, `dens.min_font_pt`, `dens.diagram_element_count`, `dens.table_cell_count`).
+2. Feature D: done in milestone M3. The six slide-geometry features are real (section 4, "Feature D method"). Open: validate the `dens.visual_complexity` weights and saturation points against lecturer labels, and check the parser on real decks (inherited font sizes, SmartArt, grouped shapes).
 3. Feature C: `expl.semantic_support_score` (mock) and the planned `expl.semantic_definition_count` and `expl.semantic_example_count` (semantic definition/example detection).
 4. Feature B against the real C1 graph: `prereq.weighted_depth` and `prereq.dependents_count` are built (graph-metrics step, no schema change). Open: run all of group B on a real C1 v1 graph (needs the v1 contract to exist; see the contract doc and its contract tests).
 5. Concept filter: a heuristic filter (alias merging, generic phrases) exists since milestone M2 behind `EDUSYNC_C2_CONCEPT_FILTER=heuristic` (section "Concept filter"). Open: run it on real C1 output, then decide whether to make it the default; C1 aliases could replace parts of it.

@@ -101,16 +101,18 @@ Logging conventions and the checklist for new features: see the "Logging and dev
 
 ## Feature report and registry snapshot
 
-The registry (`difficulty/registry.py`) has 35 features (A = 8, B = 7, C = 7, D = 13): 26 implemented, 1 mock and 8 planned. Planned
+The registry (`difficulty/registry.py`) has 35 features (A = 8, B = 7, C = 7, D = 13): 32 implemented, 1 mock and 2 planned. Planned
 features are always `unavailable` (`todo:<name>`) until their milestone. The schema is versioned (`FEATURE_SCHEMA_VERSION`, now `0.3`)
 and pinned by `tests/difficulty/golden/registry_snapshot.json`, checked by `tests/difficulty/test_registry_snapshot.py`.
 `scripts/feature_report.py` prints, per feature, maturity, status counts and distinct computed values over the seeded synthetic decks,
 and flags constant, all-unavailable, planned and partial features (synthetic data makes some features constant by construction). From `edusync/`:
 
 ```bash
-uv run python packages/c2/scripts/feature_report.py                  # optional: --json, --seed, --lectures, --concepts
+uv run python packages/c2/scripts/feature_report.py                  # optional: --json, --seed, --lectures, --concepts, --vary-layout
 uv run python packages/c2/scripts/feature_report.py --write-snapshot packages/c2/tests/difficulty/golden/registry_snapshot.json
 ```
+
+The six slide-geometry features of group D (text and picture area ratio, minimum explicit font size, diagram elements, table cells, `dens.visual_complexity`) are PPTX-only: `unavailable` for a PDF, and constant on the default synthetic decks (one fixed layout). `--vary-layout` builds varied decks in memory; `scripts/make_synthetic_data.py --vary-layout --out <dir>` writes them and refuses the committed `data/synthetic` directory. Method and limits: "Feature D method" in the design document.
 
 Exit code 0 ok, 2 bad arguments. Run the second command only after a deliberate registry change and a version bump; see "Schema versioning
 policy" in the [design document](../../../docs/edusync/c2-difficulty.md).

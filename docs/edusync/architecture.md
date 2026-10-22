@@ -65,7 +65,7 @@ flowchart LR
   "current concept" and a coverage table; skipped/under-covered concepts become `Flag`s. The current concept is
   shared with C2/C3/C4.
 - **C2** has two stages. (1) Pre-lecture difficulty pipeline (built as a Phase 1 baseline): lecture file (PPTX/PDF) +
-  optional C1 graph JSON -> slide records -> concepts located on slides -> 35 features in four groups (26 implemented, 1 mock, 8 planned) -> model ->
+  optional C1 graph JSON -> slide records -> concepts located on slides -> 35 features in four groups (32 implemented, 1 mock, 2 planned) -> model ->
   Low/Medium/High per concept, before the lecture. The model is a rule baseline (not trained) and some inputs and
   features are mocked or TODO; the response labels them. The graph is passed to C2 as a request payload; without it C2
   uses a labelled mock. See [c2-difficulty.md](c2-difficulty.md) and the [C1 -> C2 graph contract](c1-c2-graph-contract.md).
