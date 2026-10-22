@@ -12,6 +12,7 @@ itself never imports C1. Standard library plus C1 only; ASCII output; no secrets
 import argparse
 import json
 import os
+import re
 import sys
 import tempfile
 import time
@@ -243,8 +244,61 @@ def cmd_transcribe(args):
     print("report-path: /edusync/api/c4/lectures/%s/report" % lecture)
 
 
+def cmd_transcribe_bbb(args):
+    """Transcribe BigBlueButton's own microphone recordings and store them on the meeting clock.
+
+    BBB names each file microphone-<user>-<track>-<epoch milliseconds>.webm, where the number is
+    the moment the track started. The lecture id ends with the meeting's creation time in epoch
+    milliseconds, so every segment can be placed on the meeting clock with no manual offset.
+    Several files (a microphone muted and unmuted again) are merged in time order.
+    """
+    lecture = args.lecture or latest_lecture()
+    try:
+        meeting_start = float(lecture.rsplit("-", 1)[-1]) / 1000.0
+    except ValueError:
+        fail("Cannot read the meeting start time from the lecture id: " + lecture)
+    transcriber = make_transcriber(args.model)
+    merged = []
+    for name in args.bbb_audio:
+        path = Path(name)
+        match = re.search(r"-(\d{13})\.[A-Za-z0-9]+$", path.name)
+        if not match:
+            fail("Cannot read the start time from the audio file name: " + path.name)
+        shift = int(match.group(1)) / 1000.0 - meeting_start
+        started = time.time()
+        result = transcriber.transcribe(path, args.language)
+        print(
+            "%s: %d segments, track started %.1f s after the meeting began (%.0f s to transcribe)"
+            % (ascii_safe(path.name)[:40], len(result["segments"]), shift, time.time() - started)
+        )
+        for seg in result["segments"]:
+            merged.append(
+                {"start": seg["start"] + shift, "end": seg["end"] + shift, "text": seg["text"]}
+            )
+    if not merged:
+        fail(
+            "No speech was found in the BBB recording. BBB only records a microphone that is "
+            "UNMUTED, so check the microphone button while you speak."
+        )
+    merged.sort(key=lambda s: s["start"])
+    body = {
+        "segments": [dict(id=i, **seg) for i, seg in enumerate(merged)],
+        "offset_seconds": 0.0,
+        "source": "BigBlueButton recording (%d audio file(s))" % len(args.bbb_audio),
+    }
+    status, resp = http_json("PUT", "%s/lectures/%s/speech" % (C4, lecture), body)
+    if status != 200:
+        print("storing the speech FAILED (%s): %s" % (status, ascii_safe(str(resp))))
+        sys.exit(1)
+    print("stored %d segments for lecture %s (BBB clock, no offset needed)" % (len(merged), lecture))
+    for seg in merged[:6]:
+        print("  %6.1fs  %s" % (seg["start"], ascii_safe(seg["text"].strip())[:100]))
+    print("report-path: /edusync/api/c4/lectures/%s/report" % lecture)
+
+
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--bbb-audio", dest="bbb_audio", nargs="+", metavar="FILE")
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--file")
     parser.add_argument("--lecture")
@@ -261,10 +315,12 @@ def main():
     args = parser.parse_args()
     if args.check:
         cmd_check(args.model)
+    elif args.bbb_audio:
+        cmd_transcribe_bbb(args)
     elif args.file:
         cmd_transcribe(args)
     else:
-        parser.error("use --check or --file PATH")
+        parser.error("use --check, --file PATH or --bbb-audio FILE...")
 
 
 if __name__ == "__main__":

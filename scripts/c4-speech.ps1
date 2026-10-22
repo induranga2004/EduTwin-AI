@@ -26,6 +26,7 @@ param(
     [string]$SyncWord,
     [double]$Offset,
     [switch]$AutoOffset,
+    [switch]$FromBbb,
     [string]$Model = 'small',
     [string]$Language = 'en',
     [string]$Vocabulary,
@@ -55,7 +56,19 @@ function Invoke-Native([string[]]$CommandLine, [switch]$Quiet) {
     return $out
 }
 
-if (-not $Check -and -not $Recording) { throw 'Give -Recording <file>, or use -Check to test the speech model.' }
+if (-not $Check -and -not $Recording -and -not $FromBbb) {
+    throw 'Give -FromBbb (use the audio BigBlueButton recorded), -Recording <file>, or -Check to test the speech model.'
+}
+if ($FromBbb -and ($Recording -or $Sync -or $SyncWord -or $AutoOffset -or $PSBoundParameters.ContainsKey('Offset'))) {
+    throw '-FromBbb needs no recording file and no offset: BBB audio is aligned by its own start time.'
+}
+
+function Get-BbbHost {
+    $name = 'bbb.test'
+    $line = Select-String -Path '.env' -Pattern '^BBB_HOSTNAME=' -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($line) { $name = ($line.Line -split '=', 2)[1].Trim() }
+    return $name
+}
 if ($Sync -and $SyncWord) { throw 'Use either -Sync or -SyncWord, not both.' }
 if ($AutoOffset -and ($Sync -or $SyncWord -or $PSBoundParameters.ContainsKey('Offset'))) {
     throw 'Use only one of -AutoOffset, -Sync, -SyncWord or -Offset.'
@@ -73,6 +86,42 @@ if ($Check) {
     $args2 = $py + @('--check')
     if ($Model) { $args2 += @('--model', $Model) }
     Invoke-Native $args2 | ForEach-Object { Write-Host ("    " + $_) }
+    return
+}
+
+if ($FromBbb) {
+    if (-not $Lecture) {
+        Write-Host '==> Find the newest lecture stored in C4'
+        $lectures = @(Invoke-RestMethod -Uri ("https://{0}/edusync/api/c4/lectures" -f (Get-BbbHost)) -TimeoutSec 30)
+        if ($lectures.Count -eq 0) { throw 'No lecture is stored in C4 yet. Run scripts\c4-capture.ps1 during the lecture.' }
+        $Lecture = $lectures[0].lecture_id
+    }
+    Write-Host "    lecture $Lecture"
+    Write-Host '==> Look for the microphone recording BigBlueButton saved'
+    $rawDir = "/var/bigbluebutton/recording/raw/$Lecture/audio"
+    $listing = Invoke-Native @('docker', 'compose', 'exec', '-T', 'bbb', 'bash', '-lc', "ls $rawDir 2>/dev/null") -Quiet
+    $names = @($listing | Where-Object { $_ -match '\.(webm|opus|ogg)$' })
+    if ($names.Count -eq 0) {
+        throw ('BBB saved no audio for this meeting. Make sure the meeting was started with -Record, was ended ' +
+            '(scripts\end-meeting.cmd), and your microphone was UNMUTED while you spoke.')
+    }
+    Write-Host "    found $($names.Count) audio file(s)"
+    $tmp = Join-Path $env:TEMP ('c4bbb_' + $Lecture)
+    if (Test-Path $tmp) { Remove-Item -Recurse -Force $tmp }
+    New-Item -ItemType Directory -Path $tmp | Out-Null
+    $destDir = '/tmp/c4bbb_' + (Get-Date -Format 'yyyyMMddHHmmss')
+    foreach ($n in $names) {
+        Invoke-Native @('docker', 'compose', 'cp', "bbb:$rawDir/$n", (Join-Path $tmp $n)) -Quiet | Out-Null
+    }
+    Invoke-Native @('docker', 'compose', 'cp', $tmp, "edusync:$destDir") -Quiet | Out-Null
+    Remove-Item -Recurse -Force $tmp
+    Write-Host '==> Transcribe and store (this can take a few minutes)'
+    $args2 = $py + @('--bbb-audio') + @($names | ForEach-Object { "$destDir/$_" }) + @('--language', $Language, '--lecture', $Lecture)
+    if ($Model) { $args2 += @('--model', $Model) }
+    $lines = Invoke-Native $args2
+    $lines | ForEach-Object { Write-Host ("    " + $_) }
+    $pathLine = $lines | Where-Object { $_ -like 'report-path:*' } | Select-Object -Last 1
+    if ($pathLine) { Write-Host ("Report: https://{0}{1}" -f (Get-BbbHost), ($pathLine -replace '^report-path:\s*', '')) }
     return
 }
 
