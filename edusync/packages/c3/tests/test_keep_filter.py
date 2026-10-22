@@ -22,6 +22,31 @@ def test_split_basic_and_whitespace():
     assert split_sentences("no end punctuation") == ["no end punctuation"]
 
 
+def test_split_keeps_currency_amounts_together():
+    text = "If an asset is worth Rs. 100,000 the SLE is Rs. 20,000. Remember to convert it."
+    assert split_sentences(text) == [
+        "If an asset is worth Rs. 100,000 the SLE is Rs. 20,000.",
+        "Remember to convert it.",
+    ]
+    assert split_sentences("It cost 5 Rs. Then we left.") == ["It cost 5 Rs.", "Then we left."]
+
+
+def test_split_puts_a_formula_line_on_its_own():
+    text = "The formula is:\nSLE = Asset Value x Exposure Factor\nIf it is worth 10, SLE is 2."
+    assert split_sentences(text) == [
+        "The formula is:",
+        "SLE = Asset Value x Exposure Factor",
+        "If it is worth 10, SLE is 2.",
+    ]
+    # Ordinary sentences with "=" or hard-wrapped prose are not treated as formulas.
+    assert split_sentences("We set x = 5 here.\nNext.") == ["We set x = 5 here.", "Next."]
+    for wrapped in (
+        "so then we say that x = 5 holds and\nthe rest follows.",
+        "Then we say that the result x = 5 holds and\nthe rest follows.",
+    ):
+        assert split_sentences(wrapped) == [" ".join(wrapped.split())]
+
+
 def test_split_keeps_abbreviations_and_initials_together():
     text = (
         "Sri Lanka has its own Act, Act No. 36 of 2003. "
