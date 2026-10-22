@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.9/dist/dist/vis-network.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.9/dist/vis-network.min.js"></script>
+  <style>
+    body { background: #0f172a; margin: 0; padding: 20px; color: #fff; font-family: sans-serif; }
+    #mynetwork { width: 1000px; height: 600px; border: 2px solid #38bdf8; background: #1e293b; }
+  </style>
+</head>
+<body>
+  <h2>VIS NETWORK TEST</h2>
+  <div id="mynetwork"></div>
+  <script>
+    const nodes = new vis.DataSet([
+      { id: 1, label: "Concept 1", color: "#22c55e", font: { color: "#fff" } },
+      { id: 2, label: "Concept 2", color: "#38bdf8", font: { color: "#fff" } }
+    ]);
+    const edges = new vis.DataSet([
+      { from: 1, to: 2, arrows: "to", color: "#38bdf8" }
+    ]);
+    const container = document.getElementById("mynetwork");
+    const network = new vis.Network(container, { nodes, edges }, {
+      physics: false,
+      layout: { hierarchical: { direction: "UD" } }
+    });
+  </script>
+</body>
+</html>

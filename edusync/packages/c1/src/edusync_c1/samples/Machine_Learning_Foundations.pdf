@@ -1,0 +1,128 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<<
+/Producer (pypdf)
+>>
+endobj
+2 0 obj
+<<
+/Type /Pages
+/Count 3
+/Kids [ 4 0 R 7 0 R 10 0 R ]
+>>
+endobj
+3 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+4 0 obj
+<<
+/Type /Page
+/MediaBox [ 0 0 612 792 ]
+/Contents 5 0 R
+/Resources <<
+/Font <<
+/F1 6 0 R
+>>
+>>
+/Parent 2 0 R
+>>
+endobj
+5 0 obj
+<<
+/Length 295
+>>
+stream
+BT /F1 14 Tf 72 720 Td 18 TL (Course: Machine Learning Foundations) Tj T* (Unit 1: Introduction to Machine Learning) Tj T* (Supervised learning trains predictive models from labeled training examples.) Tj T* (Feature engineering transforms raw observations into numerical representations.) Tj ET
+endstream
+endobj
+6 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+>>
+endobj
+7 0 obj
+<<
+/Type /Page
+/MediaBox [ 0 0 612 792 ]
+/Contents 8 0 R
+/Resources <<
+/Font <<
+/F1 9 0 R
+>>
+>>
+/Parent 2 0 R
+>>
+endobj
+8 0 obj
+<<
+/Length 260
+>>
+stream
+BT /F1 14 Tf 72 720 Td 18 TL (Unit 2: Optimization with Gradient Descent) Tj T* (Gradient Descent is an optimization algorithm that minimizes the Loss Function.) Tj T* (The Learning Rate determines the step size taken along the negative gradient vector.) Tj ET
+endstream
+endobj
+9 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+>>
+endobj
+10 0 obj
+<<
+/Type /Page
+/MediaBox [ 0 0 612 792 ]
+/Contents 11 0 R
+/Resources <<
+/Font <<
+/F1 12 0 R
+>>
+>>
+/Parent 2 0 R
+>>
+endobj
+11 0 obj
+<<
+/Length 286
+>>
+stream
+BT /F1 14 Tf 72 720 Td 18 TL (Unit 3: Deep Neural Networks) Tj T* (Artificial Neural Networks compose non-linear activation layers to model complex representations.) Tj T* (Backpropagation computes partial derivatives using the mathematical chain rule to update synaptic weights.) Tj ET
+endstream
+endobj
+12 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+>>
+endobj
+xref
+0 13
+0000000000 65535 f 
+0000000015 00000 n 
+0000000054 00000 n 
+0000000126 00000 n 
+0000000175 00000 n 
+0000000303 00000 n 
+0000000649 00000 n 
+0000000719 00000 n 
+0000000847 00000 n 
+0000001158 00000 n 
+0000001228 00000 n 
+0000001359 00000 n 
+0000001697 00000 n 
+trailer
+<<
+/Size 13
+/Root 3 0 R
+/Info 1 0 R
+>>
+startxref
+1768
+%%EOF

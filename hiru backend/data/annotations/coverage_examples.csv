@@ -1,3 +1,109 @@
-
 lecture_id,segment_id,timestamp_seconds,concept,transcript_text,semantic_similarity,prerequisite_coverage,previous_evidence_count,label
-
+LEC_01_ML_BASICS,0,15.0,Training Data,Please remember to submit your problem sets by Friday midnight.,0.054,0.0,0.0,not_yet_observed
+LEC_01_ML_BASICS,1,39.1,Training Data,Today we focus on Training Data. We prepare training data by collecting labelled feature vectors.,0.769,1.0,0.0,introduced
+LEC_01_ML_BASICS,2,78.9,Training Data,Let us examine how Training Data functions mathematically in practice.,0.886,1.0,1.0,adequately_covered
+LEC_01_ML_BASICS,3,109.8,Training Data,Let us examine how Training Data functions mathematically in practice.,0.819,1.0,2.0,adequately_covered
+LEC_01_ML_BASICS,4,155.0,Training Data,Let us examine how Training Data functions mathematically in practice.,0.881,1.0,3.0,adequately_covered
+LEC_01_ML_BASICS,5,206.4,Training Data,"In modern systems, Training Data is essential because We prepare training data by collecting labelled feature vectors.",0.82,1.0,4.0,adequately_covered
+LEC_01_ML_BASICS,6,254.1,Loss Function,Today we focus on Loss Function. The loss function calculates the error between our prediction and ground truth.,0.721,1.0,0.0,introduced
+LEC_01_ML_BASICS,7,295.2,Loss Function,"In modern systems, Loss Function is essential because The loss function calculates the error between our prediction and ground truth.",0.841,1.0,1.0,adequately_covered
+LEC_01_ML_BASICS,8,329.9,Loss Function,Notice what happens to Loss Function when we adjust the model hyperparameters.,0.798,1.0,2.0,adequately_covered
+LEC_01_ML_BASICS,9,371.3,Loss Function,Notice what happens to Loss Function when we adjust the model hyperparameters.,0.933,1.0,3.0,adequately_covered
+LEC_01_ML_BASICS,10,419.4,Loss Function,Let us examine how Loss Function functions mathematically in practice.,0.911,1.0,4.0,adequately_covered
+LEC_01_ML_BASICS,11,465.5,Gradient Descent,Today we focus on Gradient Descent. Gradient descent computes the derivative of the loss to find optimal weights.,0.803,1.0,0.0,introduced
+LEC_01_ML_BASICS,12,501.5,Gradient Descent,Notice what happens to Gradient Descent when we adjust the model hyperparameters.,0.884,1.0,1.0,adequately_covered
+LEC_01_ML_BASICS,13,552.7,Gradient Descent,Let us examine how Gradient Descent functions mathematically in practice.,0.899,1.0,2.0,adequately_covered
+LEC_01_ML_BASICS,14,605.9,Gradient Descent,Let us examine how Gradient Descent functions mathematically in practice.,0.934,1.0,3.0,adequately_covered
+LEC_01_ML_BASICS,15,661.9,Gradient Descent,"In modern systems, Gradient Descent is essential because Gradient descent computes the derivative of the loss to find optimal weights.",0.83,1.0,4.0,adequately_covered
+LEC_01_ML_BASICS,16,710.9,Learning Rate,Today we focus on Learning Rate. The learning rate dictates our step size down the error gradient.,0.801,1.0,0.0,introduced
+LEC_01_ML_BASICS,17,740.1,Learning Rate,Let us examine how Learning Rate functions mathematically in practice.,0.89,1.0,1.0,adequately_covered
+LEC_01_ML_BASICS,18,775.3,Learning Rate,A key property of Learning Rate is that The learning rate dictates our step size down the error gradient.,0.809,1.0,2.0,adequately_covered
+LEC_01_ML_BASICS,19,816.6,Learning Rate,A key property of Learning Rate is that The learning rate dictates our step size down the error gradient.,0.903,1.0,3.0,adequately_covered
+LEC_01_ML_BASICS,20,871.9,Overfitting,Today we focus on Overfitting. Overfitting occurs when our model memorizes training noise instead of generalizing.,0.77,1.0,0.0,introduced
+LEC_01_ML_BASICS,21,897.6,Overfitting,"In modern systems, Overfitting is essential because Overfitting occurs when our model memorizes training noise instead of generalizing.",0.828,1.0,1.0,adequately_covered
+LEC_01_ML_BASICS,22,933.9,Overfitting,Notice what happens to Overfitting when we adjust the model hyperparameters.,0.818,1.0,2.0,adequately_covered
+LEC_01_ML_BASICS,23,978.9,Overfitting,"In modern systems, Overfitting is essential because Overfitting occurs when our model memorizes training noise instead of generalizing.",0.806,1.0,3.0,adequately_covered
+LEC_02_NEURAL_NETS,0,15.0,Perceptron,Next week we will have a guest speaker from the industry lab.,0.177,0.0,0.0,not_yet_observed
+LEC_02_NEURAL_NETS,1,41.4,Perceptron,"Today we focus on Perceptron. A single perceptron takes input features, multiplies by weights, and adds a bias.",0.848,1.0,0.0,introduced
+LEC_02_NEURAL_NETS,2,73.7,Perceptron,"In modern systems, Perceptron is essential because A single perceptron takes input features, multiplies by weights, and adds a bias.",0.796,1.0,1.0,adequately_covered
+LEC_02_NEURAL_NETS,3,105.1,Perceptron,Let us examine how Perceptron functions mathematically in practice.,0.808,1.0,2.0,adequately_covered
+LEC_02_NEURAL_NETS,4,139.9,Activation Function,Today we focus on Activation Function. Non-linear activation functions like ReLU allow networks to model complex boundaries.,0.851,1.0,0.0,introduced
+LEC_02_NEURAL_NETS,5,172.6,Activation Function,"In modern systems, Activation Function is essential because Non-linear activation functions like ReLU allow networks to model complex boundaries.",0.875,1.0,1.0,adequately_covered
+LEC_02_NEURAL_NETS,6,231.7,Activation Function,Let us examine how Activation Function functions mathematically in practice.,0.902,1.0,2.0,adequately_covered
+LEC_02_NEURAL_NETS,7,265.1,Activation Function,Notice what happens to Activation Function when we adjust the model hyperparameters.,0.918,1.0,3.0,adequately_covered
+LEC_02_NEURAL_NETS,8,305.3,Activation Function,Notice what happens to Activation Function when we adjust the model hyperparameters.,0.858,1.0,4.0,adequately_covered
+LEC_02_NEURAL_NETS,9,349.0,Forward Propagation,"Today we focus on Forward Propagation. During forward propagation, signals pass through successive dense layers.",0.913,1.0,0.0,introduced
+LEC_02_NEURAL_NETS,10,379.2,Forward Propagation,"A key property of Forward Propagation is that During forward propagation, signals pass through successive dense layers.",0.871,1.0,1.0,adequately_covered
+LEC_02_NEURAL_NETS,11,412.4,Forward Propagation,Notice what happens to Forward Propagation when we adjust the model hyperparameters.,0.932,1.0,2.0,adequately_covered
+LEC_02_NEURAL_NETS,12,457.7,Forward Propagation,"A key property of Forward Propagation is that During forward propagation, signals pass through successive dense layers.",0.808,1.0,3.0,adequately_covered
+LEC_02_NEURAL_NETS,13,510.5,Forward Propagation,Let us examine how Forward Propagation functions mathematically in practice.,0.888,1.0,4.0,adequately_covered
+LEC_02_NEURAL_NETS,14,555.2,Forward Propagation,Next week we will have a guest speaker from the industry lab.,0.256,1.0,5.0,not_yet_observed
+LEC_02_NEURAL_NETS,15,586.8,Backpropagation,Today we focus on Backpropagation. Backpropagation applies the chain rule backward from the output layer to compute gradients.,0.788,1.0,0.0,introduced
+LEC_02_NEURAL_NETS,16,613.0,Backpropagation,Let us examine how Backpropagation functions mathematically in practice.,0.795,1.0,1.0,adequately_covered
+LEC_02_NEURAL_NETS,17,657.6,Backpropagation,Let us examine how Backpropagation functions mathematically in practice.,0.956,1.0,2.0,adequately_covered
+LEC_02_NEURAL_NETS,18,703.5,Backpropagation,A key property of Backpropagation is that Backpropagation applies the chain rule backward from the output layer to compute gradients.,0.803,1.0,3.0,adequately_covered
+LEC_02_NEURAL_NETS,19,747.8,Backpropagation,A key property of Backpropagation is that Backpropagation applies the chain rule backward from the output layer to compute gradients.,0.828,1.0,4.0,adequately_covered
+LEC_02_NEURAL_NETS,20,804.0,Weight Initialization,Today we focus on Weight Initialization. He or Xavier weight initialization prevents gradients from vanishing or exploding.,0.767,1.0,0.0,introduced
+LEC_02_NEURAL_NETS,21,839.8,Weight Initialization,A key property of Weight Initialization is that He or Xavier weight initialization prevents gradients from vanishing or exploding.,0.908,1.0,1.0,adequately_covered
+LEC_02_NEURAL_NETS,22,881.7,Weight Initialization,Notice what happens to Weight Initialization when we adjust the model hyperparameters.,0.859,1.0,2.0,adequately_covered
+LEC_02_NEURAL_NETS,23,927.3,Weight Initialization,Let us examine how Weight Initialization functions mathematically in practice.,0.825,1.0,3.0,adequately_covered
+LEC_02_NEURAL_NETS,24,959.2,Weight Initialization,Let us examine how Weight Initialization functions mathematically in practice.,0.886,1.0,4.0,adequately_covered
+LEC_02_NEURAL_NETS,25,996.1,Weight Initialization,Please remember to submit your problem sets by Friday midnight.,0.222,1.0,5.0,not_yet_observed
+LEC_03_CNN_VISION,0,15.0,Kernel Filter,Please remember to submit your problem sets by Friday midnight.,0.204,0.0,0.0,not_yet_observed
+LEC_03_CNN_VISION,1,47.9,Flattening,Today we focus on Flattening. We flatten the 2D spatial feature representations into a 1D vector.,0.736,0.0,0.0,insufficiently_covered
+LEC_03_CNN_VISION,2,77.7,Flattening,"In modern systems, Flattening is essential because We flatten the 2D spatial feature representations into a 1D vector.",0.819,0.0,1.0,insufficiently_covered
+LEC_03_CNN_VISION,3,111.6,Flattening,"In modern systems, Flattening is essential because We flatten the 2D spatial feature representations into a 1D vector.",0.824,0.0,2.0,insufficiently_covered
+LEC_03_CNN_VISION,4,155.8,Flattening,"In modern systems, Flattening is essential because We flatten the 2D spatial feature representations into a 1D vector.",0.814,0.0,3.0,insufficiently_covered
+LEC_03_CNN_VISION,5,188.7,Flattening,"In modern systems, Flattening is essential because We flatten the 2D spatial feature representations into a 1D vector.",0.844,0.0,4.0,insufficiently_covered
+LEC_03_CNN_VISION,6,231.1,Softmax Classifier,Today we focus on Softmax Classifier. The final softmax layer outputs a normalized probability distribution across target classes.,0.732,1.0,0.0,introduced
+LEC_03_CNN_VISION,7,269.1,Softmax Classifier,Let us examine how Softmax Classifier functions mathematically in practice.,0.791,1.0,1.0,adequately_covered
+LEC_03_CNN_VISION,8,321.0,Softmax Classifier,Let us examine how Softmax Classifier functions mathematically in practice.,0.825,1.0,2.0,adequately_covered
+LEC_03_CNN_VISION,9,356.7,Softmax Classifier,"In modern systems, Softmax Classifier is essential because The final softmax layer outputs a normalized probability distribution across target classes.",0.805,1.0,3.0,adequately_covered
+LEC_03_CNN_VISION,10,392.2,Softmax Classifier,"In modern systems, Softmax Classifier is essential because The final softmax layer outputs a normalized probability distribution across target classes.",0.825,1.0,4.0,adequately_covered
+LEC_03_CNN_VISION,11,449.9,Kernel Filter,Today we focus on Kernel Filter. A convolutional kernel slides across the 2D pixel matrix calculating dot products.,0.909,1.0,0.0,introduced
+LEC_03_CNN_VISION,12,485.9,Kernel Filter,Let us examine how Kernel Filter functions mathematically in practice.,0.954,1.0,1.0,adequately_covered
+LEC_03_CNN_VISION,13,543.7,Kernel Filter,A key property of Kernel Filter is that A convolutional kernel slides across the 2D pixel matrix calculating dot products.,0.81,1.0,2.0,adequately_covered
+LEC_03_CNN_VISION,14,588.2,Kernel Filter,Let us take a brief two-minute water break before proceeding.,0.26,1.0,3.0,not_yet_observed
+LEC_03_CNN_VISION,15,606.5,Feature Map,Today we focus on Feature Map. The convolved feature map activates when local spatial patterns like edges are detected.,0.72,1.0,0.0,introduced
+LEC_03_CNN_VISION,16,639.3,Feature Map,Notice what happens to Feature Map when we adjust the model hyperparameters.,0.856,1.0,1.0,adequately_covered
+LEC_03_CNN_VISION,17,698.1,Feature Map,"In modern systems, Feature Map is essential because The convolved feature map activates when local spatial patterns like edges are detected.",0.808,1.0,2.0,adequately_covered
+LEC_03_CNN_VISION,18,737.0,Feature Map,Let us examine how Feature Map functions mathematically in practice.,0.884,1.0,3.0,adequately_covered
+LEC_03_CNN_VISION,19,783.2,Pooling Layer,Today we focus on Pooling Layer. Max pooling downsamples spatial resolution while preserving translational invariance.,0.733,1.0,0.0,introduced
+LEC_03_CNN_VISION,20,819.9,Pooling Layer,A key property of Pooling Layer is that Max pooling downsamples spatial resolution while preserving translational invariance.,0.79,1.0,1.0,adequately_covered
+LEC_03_CNN_VISION,21,865.2,Pooling Layer,A key property of Pooling Layer is that Max pooling downsamples spatial resolution while preserving translational invariance.,0.792,1.0,2.0,adequately_covered
+LEC_03_CNN_VISION,22,897.2,Pooling Layer,A key property of Pooling Layer is that Max pooling downsamples spatial resolution while preserving translational invariance.,0.853,1.0,3.0,adequately_covered
+LEC_03_CNN_VISION,23,955.4,Pooling Layer,A key property of Pooling Layer is that Max pooling downsamples spatial resolution while preserving translational invariance.,0.884,1.0,4.0,adequately_covered
+LEC_03_CNN_VISION,24,986.6,Pooling Layer,Next week we will have a guest speaker from the industry lab.,0.267,1.0,5.0,not_yet_observed
+LEC_04_SEQUENCE_MODELS,0,15.0,Sequential Input,Next week we will have a guest speaker from the industry lab.,0.091,0.0,0.0,not_yet_observed
+LEC_04_SEQUENCE_MODELS,1,40.9,Sequential Input,Today we focus on Sequential Input. Sequential data like speech audio and text requires maintaining temporal order.,0.868,1.0,0.0,introduced
+LEC_04_SEQUENCE_MODELS,2,71.9,Sequential Input,"And of course Sequential Input exists, but we won't dwell on it today.",0.634,1.0,1.0,insufficiently_covered
+LEC_04_SEQUENCE_MODELS,3,101.0,Sequential Input,Please remember to submit your problem sets by Friday midnight.,0.095,1.0,2.0,not_yet_observed
+LEC_04_SEQUENCE_MODELS,4,120.2,Hidden State,Today we focus on Hidden State. The recurrent hidden state acts as an internal memory passing information across timesteps.,0.778,0.0,0.0,insufficiently_covered
+LEC_04_SEQUENCE_MODELS,5,163.9,Hidden State,"We also have Hidden State, which you will read about in the textbook.",0.622,0.0,1.0,insufficiently_covered
+LEC_04_SEQUENCE_MODELS,6,184.4,Hidden State,Next week we will have a guest speaker from the industry lab.,0.202,0.0,2.0,not_yet_observed
+LEC_04_SEQUENCE_MODELS,7,219.2,Vanishing Gradient,Today we focus on Vanishing Gradient. Repeated matrix multiplications over long sequences cause the gradient to vanish.,0.864,0.0,0.0,insufficiently_covered
+LEC_04_SEQUENCE_MODELS,8,244.3,Vanishing Gradient,Remember that Vanishing Gradient is related here.,0.489,0.0,1.0,insufficiently_covered
+LEC_04_SEQUENCE_MODELS,9,269.3,LSTM Cell,Today we focus on LSTM Cell. An LSTM cell introduces a dedicated cell state to preserve memory across distant time horizons.,0.75,0.0,0.0,insufficiently_covered
+LEC_04_SEQUENCE_MODELS,10,296.6,LSTM Cell,"We also have LSTM Cell, which you will read about in the textbook.",0.591,0.0,1.0,insufficiently_covered
+LEC_04_SEQUENCE_MODELS,11,313.9,LSTM Cell,Does anyone have questions about the syllabus or midterm exam?,0.224,0.0,2.0,not_yet_observed
+LEC_04_SEQUENCE_MODELS,12,333.0,Gate Mechanism,"Today we focus on Gate Mechanism. Forget, input, and output gates selectively filter incoming and outgoing temporal information.",0.86,0.0,0.0,insufficiently_covered
+LEC_04_SEQUENCE_MODELS,13,363.3,Gate Mechanism,"And of course Gate Mechanism exists, but we won't dwell on it today.",0.478,0.0,1.0,insufficiently_covered
+LEC_04_SEQUENCE_MODELS,14,391.9,Gate Mechanism,Let us take a brief two-minute water break before proceeding.,0.246,0.0,2.0,not_yet_observed
+LEC_05_TRANSFORMERS,0,15.0,Self-Attention,Next week we will have a guest speaker from the industry lab.,0.181,0.0,0.0,not_yet_observed
+LEC_05_TRANSFORMERS,1,44.6,Self-Attention,Today we focus on Self-Attention. Self-attention computes dynamic affinity scores between all tokens in parallel.,0.778,1.0,0.0,introduced
+LEC_05_TRANSFORMERS,2,84.4,Self-Attention,"In modern systems, Self-Attention is essential because Self-attention computes dynamic affinity scores between all tokens in parallel.",0.881,1.0,1.0,adequately_covered
+LEC_05_TRANSFORMERS,3,117.7,Self-Attention,A key property of Self-Attention is that Self-attention computes dynamic affinity scores between all tokens in parallel.,0.878,1.0,2.0,adequately_covered
+LEC_05_TRANSFORMERS,4,172.8,Self-Attention,A key property of Self-Attention is that Self-attention computes dynamic affinity scores between all tokens in parallel.,0.857,1.0,3.0,adequately_covered
+LEC_05_TRANSFORMERS,5,204.0,Self-Attention,Notice what happens to Self-Attention when we adjust the model hyperparameters.,0.942,1.0,4.0,adequately_covered
+LEC_05_TRANSFORMERS,6,257.9,Query Key Value,"Today we focus on Query Key Value. We project each token embedding into Query, Key, and Value representations.",0.918,1.0,0.0,introduced
+LEC_05_TRANSFORMERS,7,287.1,Query Key Value,Let us examine how Query Key Value functions mathematically in practice.,0.844,1.0,1.0,adequately_covered
+LEC_05_TRANSFORMERS,8,333.9,Query Key Value,"In modern systems, Query Key Value is essential because We project each token embedding into Query, Key, and Value representations.",0.955,1.0,2.0,adequately_covered
+LEC_05_TRANSFORMERS,9,386.4,Multi-Head Attention,Today we focus on Multi-Head Attention. Multiple attention heads learn complementary linguistic relationships simultaneously.,0.772,1.0,0.0,introduced
+LEC_05_TRANSFORMERS,10,414.6,Multi-Head Attention,"In modern systems, Multi-Head Attention is essential because Multiple attention heads learn complementary linguistic relationships simultaneously.",0.784,1.0,1.0,adequately_covered
+LEC_05_TRANSFORMERS,11,466.7,Multi-Head Attention,Notice what happens to Multi-Head Attention when we adjust the model hyperparameters.,0.921,1.0,2.0,adequately_covered
+LEC_05_TRANSFORMERS,12,509.1,Positional Encoding,Today we focus on Positional Encoding. Sinusoidal positional encodings inject sequence order since attention is permutation invariant.,0.882,1.0,0.0,introduced
+LEC_05_TRANSFORMERS,13,539.1,Positional Encoding,Let us examine how Positional Encoding functions mathematically in practice.,0.849,1.0,1.0,adequately_covered
+LEC_05_TRANSFORMERS,14,570.2,Positional Encoding,"In modern systems, Positional Encoding is essential because Sinusoidal positional encodings inject sequence order since attention is permutation invariant.",0.82,1.0,2.0,adequately_covered
+LEC_05_TRANSFORMERS,15,624.7,Residual Connection,Today we focus on Residual Connection. Add and norm skip connections prevent gradient degradation in deep transformer blocks.,0.787,1.0,0.0,introduced
+LEC_05_TRANSFORMERS,16,665.6,Residual Connection,A key property of Residual Connection is that Add and norm skip connections prevent gradient degradation in deep transformer blocks.,0.784,1.0,1.0,adequately_covered
+LEC_05_TRANSFORMERS,17,701.4,Residual Connection,Notice what happens to Residual Connection when we adjust the model hyperparameters.,0.83,1.0,2.0,adequately_covered

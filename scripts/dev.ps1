@@ -515,8 +515,23 @@ function Invoke-Meeting {
     $joinQuery = "fullName=$([uri]::EscapeDataString($Name))&meetingID=edusync-demo&password=$password&redirect=true"
     Write-Step "Create meeting 'EduSync Demo' (id edusync-demo) and join as $Name ($Role)"
     if ($DryRun) { return }
-    try { $created = Invoke-RestMethod -Uri (Get-BbbApiUrl 'create' $createQuery $secret) -TimeoutSec 30 }
-    catch { throw "BigBlueButton API not reachable ($($_.Exception.Message)). Is it running? Try: .\scripts\dev.ps1 status" }
+    $created = $null
+    $maxAttempts = 6
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+        try {
+            $created = Invoke-RestMethod -Uri (Get-BbbApiUrl 'create' $createQuery $secret) -TimeoutSec 30
+            break
+        }
+        catch {
+            if ($_.Exception.Message -match '502' -and $attempt -lt $maxAttempts) {
+                Write-Info ("BigBlueButton backend is still warming up... waiting 10s (attempt " + $attempt + "/" + $maxAttempts + ")")
+                Start-Sleep -Seconds 10
+            }
+            else {
+                throw "BigBlueButton API not reachable ($($_.Exception.Message)). Is it running? Try: .\scripts\dev.ps1 status"
+            }
+        }
+    }
     $code = [string]$created.response.returncode
     if ($code -ne 'SUCCESS') { throw "create failed: $($created.response.messageKey) $($created.response.message)" }
     $joinUrl = Get-BbbApiUrl 'join' $joinQuery $secret
