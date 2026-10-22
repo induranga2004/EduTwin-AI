@@ -35,7 +35,8 @@ from edusync_c4.schemas import (
 )
 from edusync_c4.timeline import build_timeline
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
+VISIT_JOIN_GAP = 10.0  # samples this close belong to one visit
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS events (
@@ -90,6 +91,13 @@ CREATE TABLE IF NOT EXISTS slide_words (
     words_json TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     PRIMARY KEY (lecture_id, slide_id)
+);
+CREATE TABLE IF NOT EXISTS slide_visits (
+    lecture_id TEXT NOT NULL,
+    slide_id TEXT NOT NULL,
+    start_seconds REAL NOT NULL,
+    end_seconds REAL NOT NULL,
+    PRIMARY KEY (lecture_id, slide_id, start_seconds)
 );
 CREATE TABLE IF NOT EXISTS speech_segments (
     lecture_id TEXT NOT NULL,
@@ -426,6 +434,7 @@ class AnnotationRepository:
                 "groups",
                 "slides",
                 "slide_words",
+                "slide_visits",
                 "events",
                 "speech_segments",
                 "speech_meta",
@@ -546,6 +555,52 @@ class AnnotationRepository:
             )
             for r in rows
         ]
+
+    # ------------------------------------------------------------------ slide visits
+
+    def record_slide_seen(self, lecture_id: str, slide_id: str, seconds: float) -> None:
+        """Note that `slide_id` was on screen at `seconds`; close samples make one visit."""
+        with self._connect() as conn:
+            last = conn.execute(
+                "SELECT slide_id, start_seconds, end_seconds FROM slide_visits "
+                "WHERE lecture_id = ? ORDER BY end_seconds DESC, start_seconds DESC LIMIT 1",
+                (lecture_id,),
+            ).fetchone()
+            if (
+                last is not None
+                and last["slide_id"] == slide_id
+                and last["start_seconds"] <= seconds <= last["end_seconds"] + VISIT_JOIN_GAP
+            ):
+                conn.execute(
+                    "UPDATE slide_visits SET end_seconds = ? WHERE lecture_id = ? "
+                    "AND slide_id = ? AND start_seconds = ?",
+                    (
+                        max(seconds, last["end_seconds"]),
+                        lecture_id,
+                        slide_id,
+                        last["start_seconds"],
+                    ),
+                )
+            else:
+                conn.execute(
+                    "INSERT OR IGNORE INTO slide_visits VALUES (?,?,?,?)",
+                    (lecture_id, slide_id, seconds, seconds),
+                )
+
+    def get_slide_visits(self, lecture_id: str) -> dict[str, list[tuple[float, float]]]:
+        """Visits per slide, oldest first, as (start, end) seconds on the meeting clock."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT slide_id, start_seconds, end_seconds FROM slide_visits "
+                "WHERE lecture_id = ? ORDER BY start_seconds",
+                (lecture_id,),
+            ).fetchall()
+        visits: dict[str, list[tuple[float, float]]] = {}
+        for row in rows:
+            visits.setdefault(row["slide_id"], []).append(
+                (row["start_seconds"], row["end_seconds"])
+            )
+        return visits
 
     # ------------------------------------------------------------------ slide words
 

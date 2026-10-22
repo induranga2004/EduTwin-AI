@@ -253,7 +253,7 @@ def test_database_lives_under_data_dir(tmp_path):
 
 def test_sqlite_schema_version_and_foreign_keys(repo):
     with sqlite3.connect(repo.db_path) as conn:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 4
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 5
         tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert {"events", "groups", "analyses", "slides", "speech_segments", "speech_meta"} <= tables
 
@@ -360,6 +360,7 @@ def test_delete_lecture_removes_everything_and_only_that_lecture(client):
         "slides": 1,
         "events": 3,
         "slide_words": 0,
+        "slide_visits": 0,
         "speech_segments": 0,
         "speech_meta": 0,
     }
@@ -368,5 +369,14 @@ def test_delete_lecture_removes_everything_and_only_that_lecture(client):
     assert client.get(f"{BASE}/lectures/{L}/catchup").status_code == 404
     assert len(client.get(f"{BASE}/lectures/keep/events").json()) == 1
     assert client.delete(f"{BASE}/lectures/nothing").json() == dict.fromkeys(
-        ("groups", "slides", "slide_words", "events", "speech_segments", "speech_meta"), 0
+        (
+            "groups",
+            "slides",
+            "slide_words",
+            "slide_visits",
+            "events",
+            "speech_segments",
+            "speech_meta",
+        ),
+        0,
     )

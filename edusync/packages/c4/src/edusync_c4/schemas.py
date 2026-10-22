@@ -438,6 +438,20 @@ class SlideInfo(BaseModel):
     has_svg: bool = False
 
 
+class SlideSeen(BaseModel):
+    """One sample of "this slide was on screen at this second" (meeting clock)."""
+
+    seconds: float = Field(ge=0, le=10_000_000)
+
+
+class SlideVisit(BaseModel):
+    """A stretch of time during which one slide was on screen."""
+
+    slide_id: str
+    start_seconds: float
+    end_seconds: float
+
+
 # --- Demo Step 3: diagrams (boxes joined by arrows) ---
 
 

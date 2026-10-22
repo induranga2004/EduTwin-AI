@@ -96,6 +96,8 @@ class SlideView:
     groups: list[AnnotationGroup]
     analyses: dict[str, GroupAnalysis] = field(default_factory=dict)
     words: list[SlideWord] = field(default_factory=list)
+    # speech spoken while this slide was on screen; None means use the whole lecture's
+    speech: list[SpeechSegment] | None = None
 
 
 # ---------------------------------------------------------------------------- helpers
@@ -699,13 +701,14 @@ def build_report_html(
                 f"<details><summary>Slide text</summary><pre>{escape(view.info.text.strip())}"
                 "</pre></details>"
             )
-        diagram_html = _diagram_rows(list(diagrams.values()), speech)
+        slide_speech = speech if view.speech is None else view.speech
+        diagram_html = _diagram_rows(list(diagrams.values()), slide_speech)
         meaning_html = _meaning_html(view)
         sections.append(
             f'<section class="slide"><h2>{_slide_title(view)}</h2>{"".join(figures)}'
             f"{'<h3>Diagrams</h3>' + diagram_html if diagrams else ''}"
             f"{'<h3>What it means</h3>' + meaning_html if meaning_html else ''}"
-            f"<h3>What was written and drawn</h3>{_timeline_rows(view, visible_ids, speech)}"
+            f"<h3>What was written and drawn</h3>{_timeline_rows(view, visible_ids, slide_speech)}"
             f"{'<h3>Grouped items</h3>' + _groups_rows(view) if view.groups else ''}"
             f"{slide_text}</section>"
         )

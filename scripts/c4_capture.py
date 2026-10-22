@@ -15,6 +15,7 @@ import argparse
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -132,9 +133,26 @@ def cmd_slides(directory):
     print("slides stored: %d of %d (with image: %d)" % (stored, len(rows), with_svg))
 
 
+def note_current_slide(meeting_id):
+    """Tell C4 which slide is on screen now, so speech can be kept to the slide it was said on."""
+    shown = [r for r in pages(meeting_id) if r.get("isCurrentPage")]
+    if not shown:
+        return
+    seconds = time.time() * 1000.0 - start_ms(meeting_id)
+    slide = urllib.parse.quote(shown[0]["pageId"], safe="/")
+    status, resp = http_json(
+        "POST",
+        "%s/lectures/%s/slides/%s/seen" % (C4, meeting_id, slide),
+        {"seconds": max(0.0, seconds / 1000.0)},
+    )
+    if status != 200:
+        print("slide visit not stored (%s): %s" % (status, str(resp)[:150]))
+
+
 def cmd_once():
     meeting = current_meeting()
     meeting_id = meeting["meetingId"]
+    note_current_slide(meeting_id)
     gql = (
         "query { pres_annotation_history_curr(order_by: {updatedAt: asc}) "
         "{ meetingId pageId userId annotationId annotationInfo updatedAt } }"

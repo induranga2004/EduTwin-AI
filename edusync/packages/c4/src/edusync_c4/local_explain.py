@@ -34,6 +34,9 @@ MAX_QUOTES = 2
 MAX_QUOTE_CHARS = 160
 MAX_SLIDE_LINE_CHARS = 200
 CONFIDENCE = 0.3  # fixed: this is word overlap, not understanding
+# Slide visits come from a poll about every 2 s, so a slide may have changed up to this
+# long before the first sample on the new slide (and after the last on the old one).
+VISIT_MARGIN = 2.0
 
 _WORD = re.compile(r"[A-Za-z][A-Za-z'-]{2,}")
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+|\n+")
@@ -45,6 +48,21 @@ STOP_WORDS = frozenset(
     just like more most only over such some very your because while being both each other
     """.split()  # noqa: SIM905 - kept as readable prose
 )
+
+
+def speech_on_slide(
+    speech: list[SpeechSegment] | None, visits: list[tuple[float, float]] | None
+) -> list[SpeechSegment] | None:
+    """Only the speech spoken while the slide was on screen (None or no visits: unchanged)."""
+    if not speech or not visits:
+        return speech
+    return [
+        s
+        for s in speech
+        if any(
+            s.end >= start - VISIT_MARGIN and s.start <= end + VISIT_MARGIN for start, end in visits
+        )
+    ]
 
 
 def _clock(seconds: float) -> str:

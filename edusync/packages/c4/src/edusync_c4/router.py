@@ -13,7 +13,7 @@ from edusync_c4.evidence import reconcile
 from edusync_c4.grouping import group_timeline
 from edusync_c4.interpreter import TemplateContextualInterpreter, analyze_groups
 from edusync_c4.local_explain import METHOD as LOCAL_METHOD
-from edusync_c4.local_explain import explain_slide
+from edusync_c4.local_explain import explain_slide, speech_on_slide
 from edusync_c4.mock_data import MOCK_COMPREHENSION, MOCK_CONCEPTS, MOCK_SLIDE_TEXT, MOCK_TRANSCRIPT
 from edusync_c4.report import SlideView, build_report_html, fullest_time
 from edusync_c4.repository import AnnotationRepository
@@ -35,9 +35,11 @@ from edusync_c4.schemas import (
     ReconcileRequest,
     ReconcileResponse,
     SlideInfo,
+    SlideSeen,
     SlideSnapshot,
     SlideText,
     SlideUpsert,
+    SlideVisit,
     SlideWord,
     SlideWordsUpsert,
     SpeechInfo,
@@ -265,6 +267,28 @@ def get_slide_words(lecture_id: str, slide_id: str, repo: RepoDep) -> list[Slide
     return repo.get_slide_words(lecture_id, slide_id)
 
 
+@router.post("/lectures/{lecture_id}/slides/{slide_id:path}/seen")
+def post_slide_seen(
+    lecture_id: str, slide_id: str, body: SlideSeen, repo: RepoDep
+) -> dict[str, bool]:
+    """Note that this slide is on screen right now (called by the capture script every ~2 s)."""
+    repo.record_slide_seen(lecture_id, slide_id, body.seconds)
+    return {"recorded": True}
+
+
+@router.get("/lectures/{lecture_id}/visits")
+def get_visits(lecture_id: str, repo: RepoDep) -> list[SlideVisit]:
+    """When each slide was on screen, oldest first."""
+    return sorted(
+        (
+            SlideVisit(slide_id=slide_id, start_seconds=start, end_seconds=end)
+            for slide_id, spans in repo.get_slide_visits(lecture_id).items()
+            for start, end in spans
+        ),
+        key=lambda v: (v.start_seconds, v.slide_id),
+    )
+
+
 @router.put("/lectures/{lecture_id}/slides/{slide_id:path}")
 def put_slide(lecture_id: str, slide_id: str, slide: SlideUpsert, repo: RepoDep) -> SlideInfo:
     return repo.save_slide(lecture_id, slide_id, slide)
@@ -306,12 +330,14 @@ def report(
     stored = repo.load_speech(lecture_id)
     speech = stored[1] if stored else None
     saved = {a.context.group_id: a for _, _, _, a in repo.load_analyses(lecture_id)}
+    visits = repo.get_slide_visits(lecture_id)
     for view in views:  # stored explanations win (for example AI ones); else explain live
         view.analyses = {g.group_id: saved[g.group_id] for g in view.groups if g.group_id in saved}
         missing = [g for g in view.groups if g.group_id not in view.analyses]
         slide_text = view.info.text if view.info else None
         view.words = repo.get_slide_words(lecture_id, view.slide_id)
-        for a in explain_slide(view.timeline, missing, speech, slide_text, words=view.words):
+        view.speech = speech_on_slide(speech, visits.get(view.slide_id))
+        for a in explain_slide(view.timeline, missing, view.speech, slide_text, words=view.words):
             view.analyses[a.context.group_id] = a
     return HTMLResponse(
         build_report_html(lecture_id, views, at, speech=speech),
@@ -393,6 +419,7 @@ def explain_lecture(lecture_id: str, repo: RepoDep) -> ExplainResponse:
     stored = repo.load_speech(lecture_id)
     speech = stored[1] if stored else None
     infos = {s.slide_id: s for s in repo.list_slides(lecture_id)}
+    visits = repo.get_slide_visits(lecture_id)
     slides = groups_total = 0
     for slide_id in repo.slide_ids(lecture_id):
         timeline = repo.timeline(lecture_id, slide_id)
@@ -402,9 +429,10 @@ def explain_lecture(lecture_id: str, repo: RepoDep) -> ExplainResponse:
         repo.replace_groups(lecture_id, slide_id, groups, GroupingConfig())
         info = infos.get(slide_id)
         words = repo.get_slide_words(lecture_id, slide_id)
+        slide_speech = speech_on_slide(speech, visits.get(slide_id))
         repo.save_analyses(
             lecture_id,
-            explain_slide(timeline, groups, speech, info.text if info else None, words=words),
+            explain_slide(timeline, groups, slide_speech, info.text if info else None, words=words),
         )
         slides += 1
         groups_total += len(groups)
