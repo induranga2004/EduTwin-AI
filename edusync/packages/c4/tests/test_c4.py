@@ -12,7 +12,16 @@ from edusync_c4.normalizer import (
     normalize_event,
     normalize_events,
 )
-from edusync_c4.schemas import BoundingBox, ShapeType
+from edusync_c4.schemas import (
+    BoundingBox,
+    ShapeType,
+)
+from edusync_c4.timeline import (
+    build_timeline,
+    build_timelines,
+    reconstruct_snapshot,
+    replay_timeline,
+)
 from edusync_core import ConceptRef, EvidenceItem, EvidenceSource, LectureTimestamp
 
 
@@ -230,7 +239,7 @@ def test_normalize_deletion_event():
         "pageId": "p1",
         "annotationId": "shape:del1",
         "annotationInfo": None,
-        "updatedAt": 125.0,
+        "updatedAt": 125000.0,  # BBB updatedAt is epoch milliseconds
     }
     norm = normalize_event(raw)
     assert norm.shape_id == "shape:del1"
@@ -290,3 +299,351 @@ def test_normalize_malformed_event_resilience():
     assert norm.bounds == BoundingBox(x=0.0, y=0.0, width=0.0, height=0.0)
     assert norm.is_deleted is False
     assert norm.text_content is None
+
+
+# --- Phase 2: Temporal Reconstruction & Interval Tests ---
+
+
+def test_build_timeline_interval_chaining():
+    events = [
+        {
+            "id": "shape:dyn1",
+            "type": "text",
+            "x": 10.0,
+            "y": 20.0,
+            "timestamp": 10.0,
+            "props": {"text": "v1"},
+        },
+        {
+            "id": "shape:dyn1",
+            "type": "text",
+            "x": 15.0,
+            "y": 25.0,
+            "timestamp": 20.0,
+            "props": {"text": "v2"},
+        },
+        {
+            "id": "shape:dyn1",
+            "type": "text",
+            "x": 20.0,
+            "y": 30.0,
+            "timestamp": 35.0,
+            "props": {"text": "v3"},
+        },
+    ]
+    timeline = build_timeline(events, lecture_id="lec1", slide_id="slide1")
+    assert timeline.lecture_id == "lec1"
+    assert timeline.slide_id == "slide1"
+    assert len(timeline.events) == 3
+
+    v1, v2, v3 = timeline.events
+    assert v1.text_content == "v1"
+    assert v1.timestamp_seconds == 10.0
+    assert v1.timestamp_out == 20.0
+    assert v1.timestamp_undo is None
+
+    assert v2.text_content == "v2"
+    assert v2.timestamp_seconds == 20.0
+    assert v2.timestamp_out == 35.0
+    assert v2.timestamp_undo is None
+
+    assert v3.text_content == "v3"
+    assert v3.timestamp_seconds == 35.0
+    assert v3.timestamp_out is None
+    assert v3.timestamp_undo is None
+
+
+def test_build_timeline_deletion_undo():
+    events = [
+        {
+            "id": "shape:del_test",
+            "type": "geo",
+            "x": 0.0,
+            "y": 0.0,
+            "timestamp": 5.0,
+            "props": {"w": 100, "h": 50},
+        },
+        {
+            "id": "shape:del_test",
+            "x": 10.0,
+            "y": 10.0,
+            "timestamp": 15.0,
+            "props": {"w": 120},
+        },
+        {
+            "id": "shape:del_test",
+            "timestamp": 28.0,
+            "is_deleted": True,
+        },
+    ]
+    timeline = build_timeline(events, lecture_id="lec1", slide_id="slide1")
+    v1 = timeline.events[0]
+    v2 = timeline.events[1]
+    v_del = timeline.events[2]
+
+    assert v1.timestamp_undo == 28.0
+    assert v2.timestamp_undo == 28.0
+    assert v_del.is_deleted is True
+    assert v_del.timestamp_undo == 28.0
+
+
+def test_reconstruct_snapshot_point_in_time():
+    events = [
+        {
+            "id": "shape:target",
+            "type": "text",
+            "x": 10.0,
+            "y": 10.0,
+            "timestamp": 10.0,
+            "props": {"text": "Version A"},
+        },
+        {
+            "id": "shape:target",
+            "type": "text",
+            "x": 20.0,
+            "y": 20.0,
+            "timestamp": 20.0,
+            "props": {"text": "Version B"},
+        },
+        {
+            "id": "shape:target",
+            "timestamp": 30.0,
+            "is_deleted": True,
+        },
+    ]
+    timeline = build_timeline(events, lecture_id="m1", slide_id="p1")
+
+    # Before creation (t = 5.0): nothing visible
+    s5 = reconstruct_snapshot(timeline, 5.0)
+    assert s5.active_shape_count == 0
+    assert s5.annotations == []
+
+    # Exactly at creation (t = 10.0): Version A visible
+    s10 = reconstruct_snapshot(timeline, 10.0)
+    assert s10.active_shape_count == 1
+    assert s10.annotations[0].text_content == "Version A"
+
+    # Mid Version A (t = 15.0): Version A visible
+    s15 = reconstruct_snapshot(timeline, 15.0)
+    assert s15.active_shape_count == 1
+    assert s15.annotations[0].text_content == "Version A"
+
+    # Exactly at update (t = 20.0): Version B visible
+    s20 = reconstruct_snapshot(timeline, 20.0)
+    assert s20.active_shape_count == 1
+    assert s20.annotations[0].text_content == "Version B"
+
+    # Mid Version B (t = 25.0): Version B visible
+    s25 = reconstruct_snapshot(timeline, 25.0)
+    assert s25.active_shape_count == 1
+    assert s25.annotations[0].text_content == "Version B"
+
+    # Exactly at deletion (t = 30.0): retracted, nothing visible
+    s30 = reconstruct_snapshot(timeline, 30.0)
+    assert s30.active_shape_count == 0
+
+    # Long after deletion (t = 100.0): nothing visible
+    s100 = reconstruct_snapshot(timeline, 100.0)
+    assert s100.active_shape_count == 0
+
+
+def test_timeline_multiple_shapes_interleaving():
+    events = [
+        # Shape A: created t=5, updated t=15
+        {"id": "shape:A", "type": "text", "timestamp": 5.0, "props": {"text": "A1"}},
+        {"id": "shape:A", "type": "text", "timestamp": 15.0, "props": {"text": "A2"}},
+        # Shape B: created t=10, deleted t=25
+        {"id": "shape:B", "type": "note", "timestamp": 10.0, "props": {"text": "B1"}},
+        {"id": "shape:B", "timestamp": 25.0, "is_deleted": True},
+        # Shape C: created t=20
+        {"id": "shape:C", "type": "arrow", "timestamp": 20.0, "props": {}},
+    ]
+    timeline = build_timeline(events, lecture_id="lec", slide_id="slide")
+
+    # t = 7: Shape A only (A1)
+    active_7 = [a.shape_id for a in timeline.get_active_annotations(7.0)]
+    assert active_7 == ["shape:A"]
+    assert timeline.get_active_annotations(7.0)[0].text_content == "A1"
+
+    # t = 12: Shape A (A1) and Shape B (B1)
+    active_12 = sorted(a.shape_id for a in timeline.get_active_annotations(12.0))
+    assert active_12 == ["shape:A", "shape:B"]
+
+    # t = 18: Shape A (A2) and Shape B (B1)
+    s18 = reconstruct_snapshot(timeline, 18.0)
+    assert s18.active_shape_count == 2
+    a_shape = next(a for a in s18.annotations if a.shape_id == "shape:A")
+    assert a_shape.text_content == "A2"
+
+    # t = 22: Shape A (A2), Shape B (B1), Shape C
+    active_22 = sorted(a.shape_id for a in timeline.get_active_annotations(22.0))
+    assert active_22 == ["shape:A", "shape:B", "shape:C"]
+
+    # t = 28: Shape B is deleted; Shape A (A2) and Shape C active
+    active_28 = sorted(a.shape_id for a in timeline.get_active_annotations(28.0))
+    assert active_28 == ["shape:A", "shape:C"]
+
+
+def test_timeline_keyframes_and_replay():
+    events = [
+        {"id": "shape:X", "type": "text", "timestamp": 10.0, "props": {"text": "X"}},
+        {"id": "shape:Y", "type": "text", "timestamp": 20.0, "props": {"text": "Y"}},
+        {"id": "shape:X", "timestamp": 30.0, "is_deleted": True},
+    ]
+    timeline = build_timeline(events)
+    keyframes = timeline.get_keyframes()
+    assert keyframes == [10.0, 20.0, 30.0]
+
+    snapshots = replay_timeline(timeline, slide_text="Background Slide Text")
+    assert len(snapshots) == 3
+    assert snapshots[0].timestamp_seconds == 10.0
+    assert snapshots[0].active_shape_count == 1
+    assert snapshots[0].slide_text == "Background Slide Text"
+
+    assert snapshots[1].timestamp_seconds == 20.0
+    assert snapshots[1].active_shape_count == 2
+
+    assert snapshots[2].timestamp_seconds == 30.0
+    assert snapshots[2].active_shape_count == 1
+    assert snapshots[2].annotations[0].shape_id == "shape:Y"
+
+
+def test_build_timeline_empty():
+    timeline = build_timeline([], lecture_id="none", slide_id="none")
+    assert timeline.events == []
+    assert timeline.get_keyframes() == []
+    assert timeline.get_active_annotations(100.0) == []
+    assert reconstruct_snapshot(timeline, 50.0).active_shape_count == 0
+    assert replay_timeline(timeline) == []
+
+
+# --- Phase 2 audit regressions (all fixtures are SYNTHETIC, shaped like BBB rows) ---
+
+
+def _txt(shape, ts, text="x", **extra):
+    return {"id": shape, "type": "text", "timestamp": ts, "props": {"text": text}, **extra}
+
+
+def _del(shape, ts):
+    return {"id": shape, "timestamp": ts, "is_deleted": True}
+
+
+def _texts(timeline, t):
+    return [(a.shape_id, a.text_content) for a in timeline.get_active_annotations(t)]
+
+
+def test_reappear_after_delete_then_deleted_again():
+    # create -> delete -> re-add (undo/redo) -> delete: must be gone after the 2nd delete
+    tl = build_timeline([_txt("s", 1, "a"), _del("s", 2), _txt("s", 3, "b"), _del("s", 4)])
+    assert _texts(tl, 1.5) == [("s", "a")]
+    assert _texts(tl, 2.5) == []
+    assert _texts(tl, 3.5) == [("s", "b")]
+    assert _texts(tl, 10) == []
+
+
+def test_whiteboard_clear_retracts_all_shapes_and_is_deterministic():
+    clear = {"eventName": "ClearWhiteboardEvent", "timestamp": 5, "fullClear": True}
+    events = [_txt("a", 1), _txt("b", 2), clear, _txt("c", 7)]
+    tl = build_timeline(events)
+    assert sorted(s for s, _ in _texts(tl, 4)) == ["a", "b"]
+    assert _texts(tl, 6) == []
+    assert [s for s, _ in _texts(tl, 8)] == ["c"]
+    clears = [e for e in tl.events if e.is_clear]
+    assert len(clears) == 1
+    assert clears[0].shape_id == "clear:default"
+    # same input -> same ids (idempotent import)
+    assert [e.event_id for e in build_timeline(events).events] == [e.event_id for e in tl.events]
+
+
+def test_partial_clear_only_removes_clearing_users_shapes():
+    clear = {
+        "eventName": "ClearWhiteboardEvent",
+        "timestamp": 5,
+        "fullClear": False,
+        "userId": "u1",
+    }
+    tl = build_timeline(
+        [_txt("a", 1, userId="u1"), _txt("b", 2, userId="u2"), clear],
+    )
+    assert [s for s, _ in _texts(tl, 6)] == ["b"]
+
+
+def test_bbb_history_row_deletion_and_millisecond_timestamps():
+    rows = [
+        {
+            "annotationId": "s",
+            "annotationInfo": {"id": "s", "type": "text", "props": {"text": "a"}},
+            "updatedAt": 1000,
+        },
+        {"annotationId": "s", "annotationInfo": None, "updatedAt": 2000},
+    ]
+    tl = build_timeline(rows, lecture_start_ms=1000)
+    assert [e.timestamp_seconds for e in tl.events] == [0.0, 1.0]
+    assert _texts(tl, 0.5) == [("s", "a")]
+    assert _texts(tl, 1.5) == []
+
+
+def test_timestamp_units_are_explicit_not_guessed():
+    # 12000 elapsed seconds (3h20m) must stay 12000 s, small ms values stay ms
+    assert normalize_event(_txt("s", 12000)).timestamp_seconds == 12000.0
+    assert normalize_event(_txt("s", 12000), time_unit="ms").timestamp_seconds == 12.0
+    assert normalize_event({"id": "s", "type": "text", "updatedAt": 1500}).timestamp_seconds == 1.5
+
+
+def test_missing_timestamp_is_flagged_not_zeroed():
+    norm = normalize_event({"id": "s", "type": "text", "props": {"text": "q"}})
+    assert norm.timestamp_valid is False
+    tl = build_timeline([{"id": "s", "type": "text", "props": {"text": "q"}}])
+    assert tl.events == []
+    assert len(tl.unplaced) == 1
+    assert tl.get_active_annotations(0.0) == []
+
+
+def test_zero_duration_versions_are_kept():
+    tl = build_timeline([_txt("s", 10, "a"), _txt("s", 10, "b")])
+    assert len(tl.events) == 2
+    assert _texts(tl, 10) == [("s", "b")]
+
+
+def test_build_timeline_does_not_mutate_inputs():
+    norm = normalize_events([_txt("s", 1), _txt("s", 5)])
+    build_timeline(norm)
+    assert norm[0].timestamp_out is None
+    tl = build_timeline(norm)
+    tl.get_active_annotations(2.0)[0].text_content = "changed"
+    assert tl.events[0].text_content == "x"
+
+
+def test_mixed_raw_and_normalized_input():
+    pre = normalize_event(_txt("a", 1, "pre"))
+    tl = build_timeline([pre, _txt("b", 2, "raw")])
+    assert sorted(s for s, _ in _texts(tl, 3)) == ["a", "b"]
+
+
+def test_multiple_slides_are_split_not_merged():
+    events = [_txt("s1", 1, pageId="p1"), _txt("s2", 2, pageId="p2")]
+    with pytest.raises(ValueError, match="span 2 slides"):
+        build_timeline(events)
+    timelines = build_timelines(events)
+    assert {k[1] for k in timelines} == {"p1", "p2"}
+    assert [e.shape_id for e in timelines[("default", "p1")].events] == ["s1"]
+
+
+def test_unsorted_delta_input_merges_chronologically():
+    events = [
+        {"id": "s", "type": "text", "timestamp": 20, "props": {"text": "new"}},
+        {"id": "s", "type": "text", "timestamp": 10, "props": {"text": "old", "w": 9}},
+    ]
+    tl = build_timeline(events)
+    old, new = tl.events
+    assert old.text_content == "old"
+    assert old.bounds.width == 9.0
+    assert new.text_content == "new"
+    assert new.bounds.width == 9.0  # later delta inherits earlier props
+    assert old.timestamp_out == 20
+
+
+def test_same_millisecond_update_and_delete_have_distinct_event_ids():
+    a = normalize_event(_txt("s", 1))
+    b = normalize_event(_del("s", 1))
+    assert a.event_id != b.event_id

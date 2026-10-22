@@ -1,10 +1,11 @@
 """Normalization and geometry extraction for BigBlueButton / tldraw whiteboard events."""
 
 import copy
+import hashlib
 import json
-import uuid
+import math
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from edusync_c4.annotations import parse_annotation_text
 from edusync_c4.schemas import BoundingBox, NormalizedAnnotation, ShapeType, StrokePoint
@@ -150,28 +151,67 @@ def extract_stroke_points(
     return points_out
 
 
-def _resolve_timestamp(raw: dict[str, Any]) -> float:
-    """Extract and normalize timestamp to elapsed/wall-clock seconds."""
-    for key in ("timestamp_seconds", "timestamp", "updatedAt", "lastUpdatedAt", "time"):
+TimeUnit = Literal["s", "ms"]
+
+# (field, unit). Units are fixed per field instead of guessed from magnitude, because a
+# magnitude heuristic mislabels both long lectures (> 10,000 s) and small millisecond values.
+# "timestamp" is ambiguous in BBB sources, so its unit is supplied by the caller.
+_CLEAR_EVENT_NAMES = ("ClearWhiteboardEvent", "ClearWhiteboardEvtMsg")
+
+
+def _timestamp_candidates(time_unit: TimeUnit) -> tuple[tuple[str, str], ...]:
+    return (
+        ("timestamp_seconds", "s"),
+        ("timestamp", time_unit),
+        ("updatedAt", "ms-epoch"),
+        ("lastUpdatedAt", "ms-epoch"),
+        ("timestampUTC", "ms-epoch"),
+        ("time", "s"),
+    )
+
+
+def resolve_timestamp(
+    raw: dict[str, Any],
+    time_unit: TimeUnit = "s",
+    lecture_start_ms: float | None = None,
+) -> float | None:
+    """Return the event time in lecture seconds, or None if no usable timestamp exists.
+
+    `updatedAt`, `lastUpdatedAt` and `timestampUTC` are epoch milliseconds; when
+    `lecture_start_ms` is given it is subtracted so the result is lecture-relative.
+    Negative or non-finite results are rejected rather than clamped.
+    """
+    for key, unit in _timestamp_candidates(time_unit):
         val = raw.get(key)
-        if val is None:
+        if val is None or isinstance(val, bool):
             continue
+        seconds: float | None = None
         if isinstance(val, (int, float)):
-            fval = float(val)
-            # If timestamp is in milliseconds (> 10,000s), convert to seconds
-            return fval / 1000.0 if fval > 10000.0 else fval
-        if isinstance(val, str) and val.strip():
-            # Try ISO 8601 parsing
+            seconds = float(val) / 1000.0 if unit.startswith("ms") else float(val)
+        elif isinstance(val, str) and val.strip():
             try:
-                dt = datetime.fromisoformat(val.replace("Z", "+00:00"))
-                return float(dt.timestamp())
+                fval = float(val)
+                seconds = fval / 1000.0 if unit.startswith("ms") else fval
             except ValueError:
                 try:
-                    fval = float(val)
-                    return fval / 1000.0 if fval > 10000.0 else fval
+                    seconds = datetime.fromisoformat(val.replace("Z", "+00:00")).timestamp()
+                    unit = "ms-epoch"  # ISO strings are absolute wall-clock time
                 except ValueError:
                     continue
-    return 0.0
+        if seconds is None or not math.isfinite(seconds):
+            continue
+        if unit == "ms-epoch" and lecture_start_ms is not None:
+            seconds -= lecture_start_ms / 1000.0
+        if seconds < 0:
+            continue
+        return seconds
+    return None
+
+
+def _digest(raw: dict[str, Any]) -> str:
+    """Deterministic short hash of a raw event, used for fallback ids."""
+    blob = json.dumps(raw, sort_keys=True, default=str)
+    return hashlib.sha1(blob.encode("utf-8")).hexdigest()[:8]
 
 
 def _parse_shape_type(raw_type: str | None) -> ShapeType:
@@ -189,10 +229,14 @@ def normalize_event(
     default_lecture_id: str = "default",
     default_slide_id: str = "default",
     state_cache: dict[str, dict[str, Any]] | None = None,
+    time_unit: TimeUnit = "s",
+    lecture_start_ms: float | None = None,
 ) -> NormalizedAnnotation:
     """Normalize a raw BBB/tldraw whiteboard event into a structured NormalizedAnnotation.
 
-    Handles full shapes, delta history entries, deletion events, and Redis envelopes.
+    Handles full shapes, delta history entries, deletion events, whiteboard-clear events
+    and Redis envelopes. Never raises on malformed input: an event without a usable
+    timestamp is returned with `timestamp_valid=False` so callers can keep it for audit.
     """
     # 1. Resolve meeting/lecture ID
     lecture_id = str(
@@ -215,7 +259,8 @@ def normalize_event(
     )
 
     # 3. Detect deletion / clear event
-    is_deleted = bool(
+    is_clear = bool(raw.get("is_clear") or raw.get("eventName") in _CLEAR_EVENT_NAMES)
+    is_deleted = is_clear or bool(
         raw.get("is_deleted")
         or ("annotationInfo" in raw and raw["annotationInfo"] is None)
         or raw.get("annotationInfo") == ""
@@ -226,7 +271,9 @@ def normalize_event(
     # 4. Extract shape payload
     shape_payload: dict[str, Any] = {}
     info = raw.get("annotationInfo")
-    if isinstance(info, str) and info.strip():
+    if is_clear:
+        shape_payload = {}
+    elif isinstance(info, str) and info.strip():
         try:
             shape_payload = json.loads(info)
         except ValueError:
@@ -239,24 +286,31 @@ def normalize_event(
         shape_payload = raw
 
     # 5. Resolve shape ID
-    shape_id = str(
-        raw.get("annotationId")
-        or raw.get("shape_id")
-        or raw.get("shapeId")
-        or shape_payload.get("id")
-        or raw.get("id")
-        or f"shape:{uuid.uuid4().hex[:8]}"
-    )
+    if is_clear:
+        shape_id = f"clear:{slide_id}"
+    else:
+        shape_id = str(
+            raw.get("annotationId")
+            or raw.get("shape_id")
+            or raw.get("shapeId")
+            or shape_payload.get("id")
+            or raw.get("id")
+            or f"shape:{_digest(raw)}"
+        )
 
-    # 6. Apply stateful delta merging if cache is supplied
+    # 6. Apply stateful delta merging if cache is supplied (keyed per slide)
     if state_cache is not None:
-        if is_deleted:
-            state_cache.pop(shape_id, None)
+        cache_key = f"{slide_id}|{shape_id}"
+        if is_clear:
+            for key in [k for k in state_cache if k.startswith(f"{slide_id}|")]:
+                del state_cache[key]
+        elif is_deleted:
+            state_cache.pop(cache_key, None)
         else:
-            cached = state_cache.get(shape_id, {})
+            cached = state_cache.get(cache_key, {})
             if cached and shape_payload:
                 shape_payload = apply_delta(cached, shape_payload)
-            state_cache[shape_id] = shape_payload
+            state_cache[cache_key] = shape_payload
 
     # 7. Extract geometry and coordinates
     origin_x = float(shape_payload.get("x", raw.get("x", 0.0)))
@@ -273,8 +327,10 @@ def normalize_event(
     text_content = parse_annotation_text(shape_payload) or parse_annotation_text(raw)
 
     # 9. Resolve timestamp and lifespan
-    ts_seconds = _resolve_timestamp(raw)
-    ts_undo = ts_seconds if is_deleted else None
+    resolved_ts = resolve_timestamp(raw, time_unit, lecture_start_ms)
+    timestamp_valid = resolved_ts is not None
+    ts_seconds = resolved_ts if resolved_ts is not None else 0.0
+    ts_undo = ts_seconds if is_deleted and timestamp_valid else None
 
     # 10. Resolve author / user ID
     payload_meta = shape_payload.get("meta") if isinstance(shape_payload.get("meta"), dict) else {}
@@ -286,7 +342,12 @@ def normalize_event(
         or "unknown"
     )
 
-    event_id = str(raw.get("event_id") or f"{lecture_id}:{slide_id}:{shape_id}:{ts_seconds:.3f}")
+    # The payload digest keeps ids deterministic (idempotent re-import) yet distinct for
+    # different events on the same shape in the same millisecond (e.g. update + delete).
+    ts_part = f"{ts_seconds:.3f}" if timestamp_valid else "na"
+    event_id = str(
+        raw.get("event_id") or f"{lecture_id}:{slide_id}:{shape_id}:{ts_part}:{_digest(raw)}"
+    )
 
     return NormalizedAnnotation(
         event_id=event_id,
@@ -301,6 +362,8 @@ def normalize_event(
         stroke_points=stroke_points,
         text_content=text_content,
         is_deleted=is_deleted,
+        is_clear=is_clear,
+        timestamp_valid=timestamp_valid,
         user_id=user_id,
         raw_payload=raw,
     )
@@ -310,16 +373,28 @@ def normalize_events(
     events: list[dict[str, Any]],
     lecture_id: str = "default",
     slide_id: str = "default",
+    time_unit: TimeUnit = "s",
+    lecture_start_ms: float | None = None,
 ) -> list[NormalizedAnnotation]:
-    """Normalize a sequence of raw annotation events in temporal order, tracking state deltas."""
+    """Normalize raw annotation events, tracking state deltas, and return them in input order.
+
+    Deltas are merged in chronological order (stable for equal timestamps) regardless of the
+    order of `events`, so a later version never leaks properties into an earlier one. Events
+    without a usable timestamp keep their relative position and are merged first.
+    """
     state_cache: dict[str, dict[str, Any]] = {}
-    normalized: list[NormalizedAnnotation] = []
-    for raw in events:
-        norm = normalize_event(
-            raw,
+    chronological = sorted(
+        range(len(events)),
+        key=lambda i: resolve_timestamp(events[i], time_unit, lecture_start_ms) or 0.0,
+    )
+    normalized: list[NormalizedAnnotation | None] = [None] * len(events)
+    for i in chronological:
+        normalized[i] = normalize_event(
+            events[i],
             default_lecture_id=lecture_id,
             default_slide_id=slide_id,
             state_cache=state_cache,
+            time_unit=time_unit,
+            lecture_start_ms=lecture_start_ms,
         )
-        normalized.append(norm)
-    return normalized
+    return [n for n in normalized if n is not None]
