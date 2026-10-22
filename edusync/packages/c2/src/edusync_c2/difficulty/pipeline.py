@@ -48,7 +48,8 @@ CONCEPT_CYCLE_WARNING = "prerequisite cycle found below this concept; the back e
 NO_PREDICTION_WARNING = "not enough computed features for the baseline"
 NO_PREREQ_WARNING = "C1 graph has no prerequisite edges: group B features unavailable"
 MOCK_GRAPH_WARNING = (
-    "C1 graph is a mock built from slide titles: group B and frequency features are mocked"
+    "C1 graph is a mock, not C1 output for this lecture (see inputs): "
+    "group B and frequency features are mocked"
 )
 
 
