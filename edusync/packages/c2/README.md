@@ -42,6 +42,7 @@ The old `{text}` body of `/difficulty` no longer works.
 packages/c2/
   pyproject.toml
   scripts/make_synthetic_data.py      # CLI: seeded synthetic decks, C1 graphs, labels
+  scripts/validate_c1_graph.py        # CLI: check a C1 graph file against the contract
   data/synthetic/                     # generated; .pptx/.pdf git-ignored; labels are circular
   src/edusync_c2/
     router.py                         # HTTP routes
@@ -61,5 +62,26 @@ packages/c2/
 ## Docs
 
 - [C2 difficulty pipeline design](../../../docs/edusync/c2-difficulty.md)
+- [C2 model interface, artifact spec and blueprint assessment](../../../docs/edusync/c2-model-and-blueprint.md)
 - [C1 -> C2 graph contract](../../../docs/edusync/c1-c2-graph-contract.md)
 - [Architecture](../../../docs/edusync/architecture.md)
+
+## Settings
+
+Read from environment variables (prefix `EDUSYNC_C2_`, see `src/edusync_c2/settings.py`).
+
+| Variable | Values | Default | Meaning |
+|----------|--------|---------|---------|
+| `EDUSYNC_C2_LOG_LEVEL` | DEBUG, INFO, WARNING, ERROR | `INFO` | Level of the `edusync_c2` logger; configured once when the pipeline is built |
+| `EDUSYNC_C2_MODEL` | `baseline`, `minilm` | `baseline` | Model used by `/difficulty`; `minilm` answers HTTP 501 until Phase 3 |
+| `EDUSYNC_C2_MODEL_DIR` | folder path | unset | Model artifact folder for `minilm` (spec in the model doc above) |
+
+Logging conventions and the checklist for new features: see the "Logging and development conventions" section of the [design document](../../../docs/edusync/c2-difficulty.md).
+
+## Validate a C1 graph
+
+Check a C1 graph JSON file against the contract (exit code 0 ok, 1 contract errors, 2 unreadable file or invalid JSON). From `edusync/`:
+
+```bash
+uv run python packages/c2/scripts/validate_c1_graph.py --file path/to/graph.json   # optional: --expected v0|v1, --json
+```

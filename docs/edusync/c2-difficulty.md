@@ -379,6 +379,80 @@ accuracy; the data only exercises the pipeline end to end.
 - **Registry as single source of truth.** Feature names and order live in `registry.py`; every processor must return
   exactly its group, even when values are unavailable.
 
+## Phase 1 Definition of Done - evidence
+
+Paths are relative to `edusync/packages/c2/` unless they start with `docs/`. Tests live in `tests/difficulty/`.
+
+| # | Item | Status | Evidence | Remaining gap |
+|---|------|--------|----------|---------------|
+| 1 | End-to-end pre-lecture difficulty pipeline implemented | Done | `src/edusync_c2/difficulty/pipeline.py`; `POST /api/c2/difficulty` in `router.py`; `test_pipeline.py` (`test_v1_payload`, `test_v0_payload_group_b_unavailable`, `test_mock_provider`, `test_deterministic_and_roundtrip`), `test_router.py` (`test_with_graph`, `test_without_graph`, `test_pdf`) | The model is a rule baseline, not trained |
+| 2 | Four feature modules have defined inputs, outputs and test coverage | Done | `difficulty/features/{language,prerequisites,explanation,density}.py`; registry in `difficulty/registry.py`; `test_features_language.py`, `test_features_prerequisites.py`, `test_features_explanation.py`, `test_features_density.py`, `test_features_registry.py` (`test_names_and_order`, `test_statuses_real_deck`) | Some features are mocked or unavailable by design (see the register in section 8) |
+| 3 | C1 knowledge-graph integration has a documented interface and can be tested with sample data | Partially done / pending C1 | Interface and contract: `docs/edusync/c1-c2-graph-contract.md`; `difficulty/graph.py`, `providers.py`; validator `difficulty/contract_check.py` and `scripts/validate_c1_graph.py`; synthetic v0/v1 graphs from `scripts/make_synthetic_data.py`; tests `test_contract_check.py`, `test_validate_script.py`, `test_providers.py`, `test_graph.py`, `test_synthetic.py` | C1's real v1 sample file is not on GitHub, so the contract has never been checked against real C1 output. `C1ApiGraphProvider` is not implemented |
+| 4 | Feature fusion and the MiniLM prediction interface are defined and connected | Partially done | Fusion: `difficulty/fusion.py`, `test_fusion.py`. Interface, factory and artifact spec: `difficulty/models.py` (`create_model`, `OnnxFusionModel.from_artifacts`, `MiniLMFusionModel`), `docs/edusync/c2-model-and-blueprint.md`; `test_model_contract.py` (reusable contract checks), `test_model_artifacts.py`, `test_models.py`; HTTP 501 selection in `test_router.py` (`test_minilm_is_501_and_not_cached`, `test_artifact_error_is_501`, `test_model_not_implemented_at_inference_is_501`) | Only the rule baseline can predict. `OnnxFusionModel` validates its artifacts but does not run inference, and `MiniLMFusionModel` is a TODO marker; both wait for Phase 3 |
+| 5 | The existing MiniLM blueprint has been located and assessed for reuse | Done | Assessment and the copy-in-Phase-3 decision in `docs/edusync/c2-model-and-blueprint.md`, section 5 | The assessment is documentation only; no blueprint code has been copied or run |
+| 6 | The pipeline returns structured concept-level results | Done | `DifficultyResponse` and `ConceptPrediction` in `difficulty/schemas.py` (label, raw `score`, feature statuses, provenance); `test_schemas.py`, `test_pipeline.py::test_deterministic_and_roundtrip`, `test_router.py::test_info_shows_model_fields` | `score` is a raw baseline value, not a probability; no probabilities exist yet |
+| 7 | Mocked and unavailable functionality is explicitly identified | Done | Per-feature status (computed / mocked / unavailable) and `source` in every response; mock graph warning; `PHASE1_TODO` in the registry; `GET /difficulty/info`; section 8 of this document; `test_features_registry.py`, `test_fusion.py::test_use_mocked`, `test_pipeline.py::test_mock_provider` | The register must be kept current as features are replaced (see the checklist below) |
+| 8 | Unit tests and an end-to-end test demonstrate the workflow | Done | Unit tests per module in `tests/difficulty/`; end-to-end with synthetic data: `test_pipeline.py`, `test_router.py`, `test_synthetic.py`, `test_make_synthetic_data.py`; logging and warnings: `test_pipeline_logging.py`, `test_cycle_warning.py`. Run `uv run pytest packages/c2` from `edusync/` | Tests use synthetic decks and graphs only; no real lecture or real C1 output |
+| 9 | The code is ready for later phases to replace placeholders without redesign | Done | Model protocol and factory selected by `EDUSYNC_C2_MODEL`; registry-ordered features plus mask and `feature_schema_hash()` guard model artifacts; graph provider protocol; the model contract tests can be pointed at any new model | Not proven until a real model and a real C1 graph are plugged in (Phase 2 and 3) |
+
+What remains before Phase 1 can be called fully closed: merge PR #19 and these closure commits, and obtain C1's real v1 sample graph to run the validator against it (item 3). Nothing else.
+
+## Phase 5 hand-off: difficulty labels versus the 0-1 input
+
+- Phase 1 returns an ordinal label per concept (Low, Medium, High) and a raw baseline `score` (0 to 1, `None` when too few inputs). The `score` is a rule-baseline value and is not a probability.
+- The Phase 5 comprehension code takes `predicted_difficulty` as a float in [0, 1] (`comprehension.py`, `schemas.py`, `POST /api/c2/comprehension/evaluate`). It raises the clarification threshold: `effective = min(1, threshold + 0.1 * predicted_difficulty)`, with the input clamped to [0, 1] (`DIFFICULTY_BOOST = 0.1`). A ratio of correct answers below `effective` gives a REVIEW flag, below `effective / 2` an URGENT flag.
+- No mapping from label to float is defined, and none is invented now. The two components are not connected: the live stage does not read the pre-lecture output.
+- Open decision for Phase 5: how to turn the pre-lecture output into that float. Options to evaluate, none chosen:
+  1. Per-label constants (one value each for Low, Medium, High), chosen on real data rather than guessed.
+  2. An expected value computed from calibrated class probabilities, once a trained model that outputs them exists (Phase 3).
+  3. The raw baseline `score` used directly, which would need evidence that it is monotone with real difficulty, since it is not calibrated.
+  4. Changing the live stage to accept the ordinal label instead of a float.
+- Whatever is chosen should be evaluated against poll and quiz evidence, keeping in mind that a low poll score has causes other than difficulty.
+
+## Logging and development conventions
+
+**Using the logger.** Modules use `from edusync_c2.logger import get_logger` and `logger = get_logger(__name__)`. Names are placed under the `edusync_c2` namespace.
+
+**Configuration.** `EDUSYNC_C2_LOG_LEVEL` (DEBUG, INFO, WARNING or ERROR; default INFO; see `settings.py`). Logging is configured once, when `get_pipeline()` builds the cached pipeline, and never at import. `configure_logging` sets the level of the `edusync_c2` logger; it adds its own stderr handler only if the root logger has no handlers, so it does not touch an existing root logging setup.
+
+**Line format.** Handler format: `%(asctime)s %(levelname)s %(name)s [%(request_id)s] %(message)s`. The message is the event name first, then `key=value` fields.
+
+| Event | Level | Fields |
+|-------|-------|--------|
+| `materials` | INFO | `type`, `bytes`, `slides`, `warnings` |
+| `graph` | INFO | `source`, `nodes`, `edges`, `prerequisite_edges`, `ignored` |
+| `concepts` | INFO | `total`, `aligned`, `not_found`, `filter`, `dropped` |
+| `features` | INFO | `concepts`, `computed`, `mocked`, `unavailable` |
+| `fusion` | INFO | `inputs`, `features_per_input` |
+| `model` | INFO | `name`, `kind`, `predicted`, `none` |
+| `done` | INFO | `concepts`, `duration_ms` |
+| `materials_rejected` | WARNING | `status`, `reason` |
+| `graph_warning` | WARNING | `count` |
+| `graph_cycle` | WARNING | `concepts` |
+| `rejected` (router) | WARNING | `status`, `reason` (and `limit_mb` for 413) |
+| `graph_warning_detail`, `concepts_detail` | DEBUG | warning text; concept ids |
+
+**Request id.** The router sets a short request id (`set_request_id(new_request_id())`) for each `POST /difficulty` call and resets it afterwards, so all lines of one request share the id in the `[...]` field (`-` outside a request). The id is used in logs only and is not returned in the response.
+
+**Privacy.** Never log slide text, speaker notes or file names (the file type is enough). Concept ids appear only at DEBUG. Test: `test_pipeline_logging.py::test_privacy_nothing_sensitive_logged`.
+
+**Timings only in logs.** `duration_ms` is logged on the `done` line and never put in the response, so responses stay deterministic (`test_response_independent_of_log_level`).
+
+**Seeing logs.** Under uvicorn the lines go to stderr in the terminal, for example `EDUSYNC_C2_LOG_LEVEL=DEBUG uv run python -m edusync_api`. Under Docker use `docker compose logs edusync` (add `-f` to follow). If the host application configures root logging, C2 lines use that setup.
+
+### Checklist for any new feature or step
+
+- [ ] Add a registry entry in `difficulty/registry.py` (name, group, maturity). Names are `group.feature_name`; the registry order is the order of the fusion vector.
+- [ ] Use the status rules: `computed` (real value), `mocked` (placeholder value, labelled) or `unavailable` (no value, with a reason note).
+- [ ] Set the provenance `source` for the feature.
+- [ ] Write unit tests, including the unavailable path.
+- [ ] Add a metamorphic or golden test.
+- [ ] Log through `get_logger` with `key=value` fields and follow the privacy rule above.
+- [ ] Update the docs: the feature table (section 4) and the Mock and TODO register (section 8).
+- [ ] Add no new mock without a registry entry and a note.
+- [ ] Keep `edusync_c2` at 100% line and branch coverage, and ruff clean.
+- [ ] Keep consistency: ordinal label order Low < Medium < High, and deterministic output for the same input.
+
 ## 11. Roadmap
 
 **Phase 2 - real features, one at a time.** Each replaces a mock or TODO without changing the response shape:

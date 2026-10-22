@@ -71,7 +71,7 @@ flowchart LR
   uses a labelled mock. See [c2-difficulty.md](c2-difficulty.md) and the [C1 -> C2 graph contract](c1-c2-graph-contract.md).
   (2) Live comprehension (later, **FUTURE**): when poll/quiz results for a concept arrive, compare predicted vs.
   observed and flag mismatches. Only a rule-based placeholder exists (`/api/c2/comprehension/evaluate`). The C1 -> C2
-  runtime hand-off of the current concept is not implemented.
+  runtime hand-off of the current concept is not implemented. The model interface and logging convention are in [c2-model-and-blueprint.md](c2-model-and-blueprint.md) and [c2-difficulty.md](c2-difficulty.md#logging-and-development-conventions).
 - **C3**: score each transcript/chat segment against the current concept; flag sustained off-topic stretches.
 - **C4**: collect slide changes and timestamped whiteboard annotations as `EvidenceItem`s; reconcile with
   evidence from C1-C3 (e.g. slide says concept X while speech says Y) and flag conflicts.
