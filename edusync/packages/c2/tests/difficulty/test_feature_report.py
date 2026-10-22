@@ -37,8 +37,7 @@ def test_text_report_lists_all_features_and_flags(script, collected) -> None:
         if spec.maturity == "planned":
             assert "planned" in line
     visual = next(x for x in lines if "dens.visual_complexity" in x)
-    assert "all-unavailable" in visual
-    assert "planned" in visual
+    assert "planned" not in visual  # implemented since Feature D
     assert "[A_language]" in text
     assert "check" in text
 

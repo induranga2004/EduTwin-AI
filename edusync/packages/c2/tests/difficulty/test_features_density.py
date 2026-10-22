@@ -12,6 +12,14 @@ from edusync_c2.difficulty.schemas import (
     InputSource,
 )
 
+STRUCTURE = {
+    "dens.text_area_ratio",
+    "dens.picture_area_ratio",
+    "dens.min_font_pt",
+    "dens.diagram_element_count",
+    "dens.table_cell_count",
+    "dens.visual_complexity",
+}
 NAMES = list(features_of(FeatureGroup.DENSITY))
 REAL = InputSource(name="c1_graph", kind="real")
 MOCK = InputSource(name="c1_graph", kind="mock")
@@ -48,7 +56,7 @@ def test_values(make_slide):
     assert r["dens.concept_frequency"].value == 7
     assert r["dens.concept_frequency"].status is FeatureStatus.COMPUTED
     assert r["dens.visual_complexity"].status is FeatureStatus.UNAVAILABLE
-    assert "TODO" in r["dens.visual_complexity"].note
+    assert r["dens.visual_complexity"].note == "slide size unknown"
 
 
 def test_mock_graph_frequency(make_slide):
@@ -83,22 +91,7 @@ def test_no_slides_keeps_frequency():
     assert [f.name for f in fs] == NAMES
     st = {f.name: f.status for f in fs}
     assert st["dens.concept_frequency"] is FeatureStatus.COMPUTED
-    assert (
-        sum(s is FeatureStatus.UNAVAILABLE for s in st.values()) == 12
-    )  # 6 built + visual_complexity + 5 other planned
-
-
-@pytest.mark.parametrize("structure", [True, False])
-def test_planned_structure_features_are_todo(make_slide, structure):
-    me = rec("me", [1])
-    fs = d(density_features(me, [make_slide(1, "a b")], [me], structure, REAL))
-    for name in (
-        "dens.text_area_ratio",
-        "dens.picture_area_ratio",
-        "dens.min_font_pt",
-        "dens.diagram_element_count",
-        "dens.table_cell_count",
-    ):
-        assert fs[name].status is FeatureStatus.UNAVAILABLE
-        assert fs[name].value is None
-        assert fs[name].source == f"todo:{name}"
+    assert sum(s is FeatureStatus.UNAVAILABLE for s in st.values()) == 12  # all but frequency
+    others = [f for f in fs if f.name != "dens.concept_frequency"]
+    assert {f.note for f in others} == {"concept not found in materials"}
+    assert {f.source for f in others if f.name in STRUCTURE} == {"materials:pptx_structure"}

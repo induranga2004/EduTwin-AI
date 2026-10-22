@@ -20,15 +20,16 @@ def test_assemble_returns_registry_order() -> None:
 
 
 def test_planned_name_is_filled_as_unavailable() -> None:
-    names = features_of(G)
-    produced = {n: _val(n) for n in names if n != "dens.visual_complexity"}
-    filled = {v.name: v for v in assemble(G, produced)}["dens.visual_complexity"]
-    assert filled.name == "dens.visual_complexity"
+    group = FeatureGroup.EXPLANATION
+    names = features_of(group)
+    produced = {n: _val(n, group) for n in names if n != "expl.semantic_definition_count"}
+    filled = {v.name: v for v in assemble(group, produced)}["expl.semantic_definition_count"]
+    assert filled.name == "expl.semantic_definition_count"
     assert filled.status is FeatureStatus.UNAVAILABLE
     assert filled.value is None
-    assert filled.source == "todo:dens.visual_complexity"
+    assert filled.source == "todo:expl.semantic_definition_count"
     assert filled.note == "not yet implemented"
-    assert filled.group is G
+    assert filled.group is group
 
 
 def test_missing_implemented_name_raises() -> None:

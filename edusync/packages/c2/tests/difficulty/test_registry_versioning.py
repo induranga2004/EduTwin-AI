@@ -38,7 +38,17 @@ LEGACY_PHASE1 = {
         "real",
     ),
     **dict.fromkeys(
-        ("expl.diagram_support", "dens.max_bullet_depth", "dens.shape_count_mean"),
+        (
+            "expl.diagram_support",
+            "dens.max_bullet_depth",
+            "dens.shape_count_mean",
+            "dens.visual_complexity",
+            "dens.text_area_ratio",
+            "dens.picture_area_ratio",
+            "dens.min_font_pt",
+            "dens.diagram_element_count",
+            "dens.table_cell_count",
+        ),
         "real_needs_structure",
     ),
     **dict.fromkeys(
@@ -55,17 +65,11 @@ LEGACY_PHASE1 = {
         "graph",
     ),
     "expl.semantic_support_score": "mock",
-    "dens.visual_complexity": "todo",
     # pre-registered in schema 0.3, still planned
     **dict.fromkeys(
         (
             "expl.semantic_definition_count",
             "expl.semantic_example_count",
-            "dens.text_area_ratio",
-            "dens.picture_area_ratio",
-            "dens.min_font_pt",
-            "dens.diagram_element_count",
-            "dens.table_cell_count",
         ),
         "todo",
     ),
@@ -109,7 +113,7 @@ def test_legacy_phase1_parity():
 
 
 def test_spec_of_and_unknown():
-    assert spec_of("dens.visual_complexity").maturity == "planned"
+    assert spec_of("dens.visual_complexity").maturity == "implemented"
     with pytest.raises(KeyError):
         spec_of("nope")
 

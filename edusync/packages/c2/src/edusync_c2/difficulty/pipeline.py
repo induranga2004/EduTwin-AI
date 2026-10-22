@@ -144,6 +144,11 @@ class DifficultyPipeline:
         )
         logger.debug("concepts_detail ids=%s", [c.id for c in concepts])
         slides_by_index = {s.index: s for s in materials.slides}
+        slide_size = (
+            (materials.slide_width_emu, materials.slide_height_emu)
+            if materials.slide_width_emu is not None and materials.slide_height_emu is not None
+            else None
+        )
 
         all_features = []
         fusion_inputs = []
@@ -161,6 +166,7 @@ class DifficultyPipeline:
                 graph_has_prerequisite_edges=view.has_prerequisite_edges,
                 graph_source=ctx.source,
                 vocab=self.vocab,
+                slide_size=slide_size,
             )
             all_features.append(features)
             fusion_inputs.append(

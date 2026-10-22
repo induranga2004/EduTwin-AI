@@ -2,6 +2,7 @@
 
 import random
 from collections.abc import Callable
+from typing import Any
 
 import pytest
 
@@ -41,6 +42,7 @@ def make_slide() -> SlideFactory:
         shapes: int | None = 3,
         formula: bool = False,
         code: bool = False,
+        **geometry: Any,
     ) -> SlideRecord:
         lines = [ln for ln in text.splitlines() if ln.strip()]
         levels = levels or [0] * len(lines)
@@ -58,6 +60,7 @@ def make_slide() -> SlideFactory:
             shape_count=shapes,
             formula_hint=formula,
             code_hint=code,
+            **geometry,
         )
 
     return build

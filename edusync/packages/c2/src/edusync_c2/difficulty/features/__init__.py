@@ -33,10 +33,12 @@ def compute_all_features(
     graph_has_prerequisite_edges: bool,
     graph_source: InputSource,
     vocab: VocabularyAnalyzer | None = None,
+    slide_size: tuple[int, int] | None = None,
 ) -> list[FeatureValue]:
     """All 26 features in registry order (A, B, C, D).
 
-    `vocab` overrides the shared default vocabulary analyzer (group A).
+    `vocab` overrides the shared default vocabulary analyzer (group A); `slide_size` is the deck's
+    (width, height) in EMU, `None` when unknown (group D).
     """
     indexes = sorted(set(concept.slide_indexes))
     slides = [slides_by_index[i] for i in indexes if i in slides_by_index]
@@ -44,5 +46,7 @@ def compute_all_features(
         *language_features(concept, slides, vocab),
         *prerequisite_features(concept, metrics, graph_has_prerequisite_edges, graph_source),
         *explanation_features(concept, slides, structure_available),
-        *density_features(concept, slides, all_concepts, structure_available, graph_source),
+        *density_features(
+            concept, slides, all_concepts, structure_available, graph_source, slide_size
+        ),
     ]
