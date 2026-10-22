@@ -183,6 +183,8 @@ Status rules in the response: a graph supplied by the caller is `real` (C2 does 
 
 ## 8. Contract-test plan (Phase 2)
 
+Status after Phase 2: items 1 to 3 below are still open because C1's real v1 sample is not on GitHub; items 4 and 5 are done on synthetic data and fake servers; item 6 is open. The schema of C2's own features is frozen as `1.0` and does not depend on this contract's open fields; a change to what C2 reads from C1 that changes a feature's meaning would need a schema bump (see "Schema versioning policy" in [c2-difficulty.md](c2-difficulty.md)).
+
 Goal: fail loudly if C1's real output drifts from what C2 reads.
 
 1. Commit C1's real sample (`sample_lecture_graph.json`) as a fixture once it is on GitHub, and add a C2 test that

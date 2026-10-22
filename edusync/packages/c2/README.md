@@ -6,7 +6,7 @@ C2 has two stages:
 
 | Stage | What | State |
 |-------|------|-------|
-| 1. Pre-lecture difficulty | Lecture file (PPTX/PDF) + optional C1 graph -> features -> model -> Low / Medium / High per concept, before the lecture | Phase 1 pipeline exists, end to end. The model is a **rule baseline, not trained**; some inputs and features are **mocked** or **TODO** and are labelled so in every response |
+| 1. Pre-lecture difficulty | Lecture file (PPTX/PDF) + optional C1 graph -> features -> model -> Low / Medium / High per concept, before the lecture | Phase 1 pipeline exists, end to end, and Phase 2 is complete (all 35 features implemented, schema frozen as `1.0`, pipeline version `0.2.0-phase2`). The model is a **rule baseline, not trained**, with unvalidated thresholds; mocked or unavailable inputs and features (for example a mock graph, a PDF, the opt-in semantic scorer when off) are labelled in every response |
 | 2. Live comprehension | Compare the prediction with poll/quiz results during the lecture | Only a rule-based placeholder (`comprehension.py`); not validated. The C1 -> C2 runtime hand-off is not implemented |
 
 No accuracy is claimed anywhere: there is no real labelled data yet.
@@ -45,6 +45,10 @@ packages/c2/
   scripts/validate_c1_graph.py        # CLI: check a C1 graph file against the contract
   scripts/feature_report.py           # CLI: per-feature report; regenerates the registry snapshot
   scripts/make_sample_graph.py        # CLI: rewrites the bundled sample C1 graph (synthetic)
+  scripts/write_feature_schema.py     # CLI: writes/checks feature_schema.json for a trained model package
+  scripts/export_label_sheet.py       # CLI: label sheet (CSV) of the concepts C2 finds in one lecture
+  scripts/validate_labels.py          # CLI: checks a filled label CSV; optional rater agreement
+  data/labels/labels_template.csv     # template label CSV (synthetic example rows); real labels are git-ignored
   data/synthetic/                     # generated; .pptx/.pdf git-ignored; labels are circular
   src/edusync_c2/
     router.py                         # HTTP routes
@@ -84,6 +88,7 @@ Method and limits: [design document](../../../docs/edusync/c2-difficulty.md), se
 - [C2 model interface, artifact spec and blueprint assessment](../../../docs/edusync/c2-model-and-blueprint.md)
 - [C1 -> C2 graph contract](../../../docs/edusync/c1-c2-graph-contract.md)
 - [Architecture](../../../docs/edusync/architecture.md)
+- [Label collection protocol (Phase 3)](../../../docs/edusync/c2-label-collection.md)
 
 ## Settings
 
@@ -118,7 +123,7 @@ Logging conventions and the checklist for new features: see the "Logging and dev
 
 The registry (`difficulty/registry.py`) has 35 features (A = 8, B = 7, C = 7, D = 13), all implemented: 0 mock, 0 planned. The three
 `expl.semantic_*` features are opt-in and `unavailable` while `EDUSYNC_C2_SEMANTIC` is `off` (default). A planned feature would be
-always `unavailable` (`todo:<name>`) until its milestone. The schema is versioned (`FEATURE_SCHEMA_VERSION`, now `0.3`)
+always `unavailable` (`todo:<name>`) until its milestone. The schema is versioned (`FEATURE_SCHEMA_VERSION`, now `1.0`, frozen at the end of Phase 2; hash `a3861d7787d4e4b52cad3d3025a402e6c068fba78e949479bb1e621dfda33e6f`; changing names, groups, order or meaning needs a version bump and retraining)
 and pinned by `tests/difficulty/golden/registry_snapshot.json`, checked by `tests/difficulty/test_registry_snapshot.py`.
 `scripts/feature_report.py` prints, per feature, maturity, status counts and distinct computed values over the seeded synthetic decks,
 and flags constant, all-unavailable, planned and partial features (synthetic data makes some features constant by construction). From `edusync/`:
@@ -140,3 +145,15 @@ Check a C1 graph JSON file against the contract (exit code 0 ok, 1 contract erro
 ```bash
 uv run python packages/c2/scripts/validate_c1_graph.py --file path/to/graph.json   # optional: --expected v0|v1, --json
 ```
+
+## Label collection and the model schema file (Phase 3 preparation)
+
+Protocol, rubric and CSV schema: [c2-label-collection.md](../../../docs/edusync/c2-label-collection.md). From `edusync/`:
+
+```bash
+uv run python packages/c2/scripts/export_label_sheet.py --file lecture.pptx --lecture-id L001 --out packages/c2/data/labels/real/L001_sheet.csv   # optional: --graph, --rubric-version, --force
+uv run python packages/c2/scripts/validate_labels.py --file packages/c2/data/labels/real/all_labels.csv --agreement                             # optional: --sheet, --json
+uv run python packages/c2/scripts/write_feature_schema.py --out <model_dir>/feature_schema.json                                                 # or --check <path>
+```
+
+Real labels stay in the git-ignored `data/labels/real/`; never commit them. Exit codes: 0 ok, 1 findings (validators, `--check`), 2 bad arguments or unreadable input.

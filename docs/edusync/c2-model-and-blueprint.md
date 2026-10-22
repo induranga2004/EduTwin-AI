@@ -7,9 +7,9 @@ Companion to [c2-difficulty.md](c2-difficulty.md). Code: `edusync/packages/c2/sr
 
 ## 1. Purpose and status
 
-- **Phase 1 (now):** the only working model is `RuleBaselineModel`, a transparent, untrained rule. Nothing here is a
+- **Phase 1 and 2 (now):** the only working model is `RuleBaselineModel`, a transparent, untrained rule. Nothing here is a
   trained model and no accuracy is claimed.
-- **Phase 3 (later):** a MiniLM text encoder fused with the structured features, trained on lecturer labels, exported
+- **Phase 3 (later):** a MiniLM text encoder fused with the structured features (feature schema frozen at `1.0`), trained on lecturer labels, exported
   as an artifact folder and selected with `EDUSYNC_C2_MODEL=minilm`.
 - What Phase 1 already delivers for Phase 3: the model interface, the artifact folder spec with validation
   (`OnnxFusionModel.from_artifacts`, no onnxruntime or torch needed), the feature schema hash and the contract test
@@ -60,11 +60,10 @@ Label order is ordinal: **Low < Medium < High**. This is the order of `Difficult
 | `minilm` | set | `OnnxFusionModel.from_artifacts(dir)`; `ModelArtifactError` with a precise message if the folder breaks the spec |
 | anything else | any | `ModelNotAvailableError` listing the valid names (`baseline, minilm`) |
 
-Intended HTTP behaviour (implemented in the router, owned by the pipeline/router work, not in `models.py`):
+HTTP behaviour (implemented in the router, not in `models.py`):
 `ModelNotAvailableError` and `ModelArtifactError` map to HTTP 501 on the difficulty route, and
 `GET /api/c2/difficulty/info` reports `selected_model` (the env value) and `feature_schema_hash`
-(`registry.feature_schema_hash()`), as declared on `DifficultyInfo` in `schemas.py`. Unverified here: the router wiring
-was being edited concurrently when this document was written; check `router.py` before relying on the 501 mapping.
+(`registry.feature_schema_hash()`), as declared on `DifficultyInfo` in `schemas.py`. The 501 mapping is in `router.py`.
 
 Note that with `minilm` and a valid folder the model still cannot predict in Phase 1, because inference is a Phase 3
 task.
@@ -78,7 +77,7 @@ task.
 | folder | exists and is a directory |
 | `model_int8.onnx` or `model_fp32.onnx` | at least one present; if both, int8 is used |
 | `labels.json` | JSON list exactly `["Low", "Medium", "High"]` in that order (a bare list, not `{"labels": [...]}`) |
-| `feature_schema.json` | object with `schema_version` (string, must equal `registry.FEATURE_SCHEMA_VERSION`, currently `0.3`); `names` equal to `FEATURE_NAMES` in order; `hash` equal to `feature_schema_hash()`. A mismatch says the registry changed since training |
+| `feature_schema.json` | object with `schema_version` (string, must equal `registry.FEATURE_SCHEMA_VERSION`, currently `1.0`, frozen at the end of Phase 2); `names` equal to the 35 `FEATURE_NAMES` in order; `hash` equal to `feature_schema_hash()` (`a3861d7787d4e4b52cad3d3025a402e6c068fba78e949479bb1e621dfda33e6f` for 1.0). A mismatch says the registry changed since training. Write the file with `scripts/write_feature_schema.py` (below) |
 | `inference_config.json` | object with `max_length` (int, 1..512, not a bool), `base_model` and `base_revision` (non-empty strings); optional `trained_on` (string) becomes `ModelInfo.trained_on` |
 | `tokenizer.json` | present and non-empty |
 | any JSON file | must parse; otherwise `<file> is not readable valid JSON` |
@@ -88,18 +87,34 @@ version=<v>
 ` followed by `name|group` lines in registry order (maturity, requires and description are not hashed). Adding, removing, renaming or
 reordering a feature, or moving it to another group, changes the hash and invalidates every trained artifact.
 
-Label collection protocol, validators and `scripts/write_feature_schema.py`: [c2-label-collection.md](c2-label-collection.md).
+The schema is frozen at `1.0`. Changing a feature name, group, order or meaning now requires a `FEATURE_SCHEMA_VERSION` bump and
+retraining; a model trained on `1.0` is rejected by `OnnxFusionModel.from_artifacts` once the registry moves on.
+
+`feature_schema.json` is produced by `edusync/packages/c2/scripts/write_feature_schema.py` from the registry, so it cannot be typed by hand
+wrongly: it holds `schema_version`, `names` (registry order) and `hash`. Write it at training time next to the ONNX graph, then verify:
+
+    python packages/c2/scripts/write_feature_schema.py --out <model_dir>/feature_schema.json
+    python packages/c2/scripts/write_feature_schema.py --check <model_dir>/feature_schema.json
+
+`--check` exits 1 and names the differing field when the file no longer matches the registry.
+
+Label collection protocol, the label sheet exporter and validator, and the hand-off checklist for the labels:
+[c2-label-collection.md](c2-label-collection.md). The training package consumes the validated lecturer labels (one row per lecture and
+concept id as C2 emits it) and must not use the circular synthetic labels for any quality claim.
 
 Phase 3 hand-off checklist: the trained package must export
 1. the ONNX graph (int8 and/or fp32) whose inputs include the feature vector in registry order;
 2. `labels.json` as a bare ordinal list (the blueprint writes `{"labels": [...]}` sorted alphabetically, so this
    must change);
-3. `feature_schema.json` written from `FEATURE_NAMES` and `feature_schema_hash()` at training time, plus the
+3. `feature_schema.json` written by `scripts/write_feature_schema.py` (from `FEATURE_NAMES` and `feature_schema_hash()`) at training time, plus the
    train-only imputation and scaling statistics (these may live inside the graph or in an extra file; the spec does
    not constrain extra files);
 4. `inference_config.json` with `max_length`, `base_model`, `base_revision` and ideally `trained_on`;
 5. `tokenizer.json`;
 6. evaluation results (see section 5.4) kept next to the artifacts for the report, not required by the loader.
+
+Also part of the hand-off, in the code and not in the folder: switch `OnnxFusionModel` from `ModelKind.TODO` to `ModelKind.TRAINED`
+when real inference is implemented, and not before the labels are validated (see section 10 of [c2-label-collection.md](c2-label-collection.md)).
 
 ## 5. Blueprint reuse assessment
 
@@ -177,13 +192,15 @@ must pass.
 
 ## 6. Open questions and unverified items
 
-- HTTP 501 mapping and the `/info` fields are described from the design; confirm against `router.py`.
+- The HTTP 501 mapping exists in `router.py` for `ModelNotAvailableError`, `ModelArtifactError` and an unimplemented concept filter; it is covered by `test_router.py` only for the cases named in the design document, and no real trained artifact has been through it.
 - Whether normalisation statistics live inside the ONNX graph or in an extra file is undecided.
 - Real latency of a 256-token pair input on the target CPU is not measured.
 - Whether int8 quantization is acceptable for the fusion head is unmeasured.
 - The minimum number of lecturer labels needed for the fusion model to beat the rule baseline is unknown.
-- `ModelKind.TODO` is reported by `OnnxFusionModel` because it cannot predict yet; Phase 3 should switch it to
-  `ModelKind.TRAINED`.
+- Reminder: `ModelKind.TODO` is reported by `OnnxFusionModel` because it cannot predict yet; Phase 3 must switch it to
+  `ModelKind.TRAINED` when real inference lands, and only once the labels are collected and validated, agreement is at or above the bar,
+  and `feature_schema.json` was written from the same registry the features were extracted with.
+- Copy the blueprint (`edusync/packages/blueprint_model`) into a new `packages/c2_difficulty_model` for training (section 5); do not train in place.
 - The blueprint line numbers will drift as that package changes.
 
 ## 7. Proposed target architecture (design proposal, not implemented)
@@ -198,7 +215,7 @@ the same properties the decks expose, so it only tests plumbing and must never b
 |---|---|---|---|
 | 1 | Input | lecture file (PPTX/PDF) to slide records (`materials.py`); C1 graph, real or labelled mock (`graph.py`, `providers.py`); concept alignment (`concepts.py`) | exists |
 | 2 | Feature | the 35 registry features in groups A to D with provenance (computed, mocked, unavailable; all 35 implemented, 0 mock, 0 planned; the three semantic ones are opt-in and unavailable while the scorer is off) | exists |
-| 2b | Learned feature models (optional) | replace or complement heuristic features (no placeholder is left: the group D geometry features, including `dens.visual_complexity`, and the group C semantic features, which use a pure-numpy MiniLM encoder with prototype centroids, are already real, unvalidated heuristics); each outputs one number into its existing registry slot. Turning a planned or mock feature into an implemented one does not change names, groups or order, so it does not change the hash or the version (maturity is not hashed), unless the meaning of an existing feature changes, which bumps `FEATURE_SCHEMA_VERSION`. Adding, removing, renaming or reordering a feature changes the hash and the version: Feature A did (24 to 26 features, version 0.2) and the nine pre-registered planned features did (35 features, version 0.3), which was safe because no trained artifact exists yet. Phase 2 may still change the schema; it is to be frozen as `1.0` at its end, and after that any change needs retraining (see the "Schema versioning policy" in the design document) | proposed |
+| 2b | Learned feature models (optional) | replace or complement heuristic features (no placeholder is left: the group D geometry features, including `dens.visual_complexity`, and the group C semantic features, which use a pure-numpy MiniLM encoder with prototype centroids, are already real, unvalidated heuristics); each outputs one number into its existing registry slot. Turning a planned or mock feature into an implemented one does not change names, groups or order, so it does not change the hash or the version (maturity is not hashed), unless the meaning of an existing feature changes, which bumps `FEATURE_SCHEMA_VERSION`. Adding, removing, renaming or reordering a feature changes the hash and the version: Feature A did (24 to 26 features, version 0.2) and the nine pre-registered planned features did (35 features, version 0.3), which was safe because no trained artifact existed. The schema was frozen as `1.0` at the end of Phase 2, so any change now needs a version bump and retraining (see the "Schema versioning policy" in the design document) | proposed |
 | 3 | Group experts | four models, each predicting overall difficulty from one group's inputs only | proposed |
 | 4 | Combiner | small stacking model over the four group outputs, tolerant of a missing group | proposed |
 | 5 | Calibration | calibrates the combiner probabilities; until evaluated, `probabilities` and `confidence` stay `None` | proposed |
