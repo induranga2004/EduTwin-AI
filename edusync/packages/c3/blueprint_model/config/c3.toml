@@ -1,0 +1,46 @@
+# C3 configuration: KEEP/REMOVE lecture-sentence filter (MiniLM-L6-v2 fine-tuning on CPU, INT8 quantization).
+# Copy this file, edit it, and pass it with --config. Relative paths are resolved against THIS file's folder.
+
+[model]
+# Base encoder downloaded from Hugging Face. The revision is pinned so everyone starts from the same weights.
+name = "sentence-transformers/all-MiniLM-L6-v2"
+revision = "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
+max_length = 128          # tokens per text (the model supports up to 256; shorter = faster on CPU)
+
+[data]
+# Pre-split CSVs (columns: sentence, label, category). label: 1 = KEEP, 0 = REMOVE. Used as given, never re-split.
+train_path = "../data/train.csv"
+val_path = "../data/val.csv"          # model selection / threshold tuning only
+test_path = "../data/test.csv"        # final report only, do not tune on it
+text_column = "sentence"
+label_column = "label"
+seed = 42
+
+[train]
+epochs = 4
+batch_size = 16
+encoder_lr = 3e-5         # learning rate for the pretrained MiniLM layers
+head_lr = 1e-3            # learning rate for the new classification layer
+weight_decay = 0.01
+warmup_ratio = 0.1
+dropout = 0.1
+threads = 0               # CPU threads for PyTorch; 0 = library default (all cores)
+seed = 3  # chosen by best validation macro-F1 across seeds 1, 2, 3 and 42
+select_by = "macro_f1_with_recall_floor"  # best macro-F1 among epochs that keep >= recall_floor of KEEP on val
+recall_floor = 0.99
+
+[decision]
+# KEEP (label "1") is the priority class: predict it whenever P(KEEP) >= threshold. Below 0.5 favours recall.
+positive_label = "1"
+threshold = 0.4
+
+[quantize]
+# Post-training dynamic INT8 with ONNX Runtime. See docs/quantization.md.
+weight_type = "qint8"     # "qint8" or "quint8"
+per_channel = false
+op_types = ["MatMul", "Gather"]  # operators whose weights are quantized; Gather = the embedding table (~half the model)
+benchmark_runs = 50       # timed runs per batch size in the fp32 vs int8 comparison
+
+[paths]
+# Everything the blueprint produces goes here (model files are tracked by Git LFS): base/, finetuned/, onnx/, quantized/, reports/.
+artifacts_dir = "../artifacts"
