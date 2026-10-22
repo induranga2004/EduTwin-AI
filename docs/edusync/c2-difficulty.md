@@ -23,7 +23,7 @@ replaced one at a time without changing the response shape. What exists:
 
 - a parser for PPTX and PDF lecture files;
 - a way to accept C1's graph (as a request payload) or build a clearly labelled mock graph from slide titles;
-- 35 registered features in four groups (A = 8, B = 7, C = 7, D = 13): 32 implemented (15 computed from the lecture text, 9 from PPTX structure only, 8 from the C1 graph), 1 mock (`expl.semantic_support_score`) and 2 planned (`expl.semantic_definition_count`, `expl.semantic_example_count`), which are always `unavailable` until their milestone (see section 4; the six slide-geometry features of group D became real in Phase 2, milestone M3, see "Feature D method"; the vocabulary features of group A became real in Phase 2, milestone M1, see "Feature A method" in section 4; the other planned features were pre-registered in schema version 0.3 and `prereq.weighted_depth` / `prereq.dependents_count` have since been built without a schema change, see "Schema versioning policy");
+- 35 registered features in four groups (A = 8, B = 7, C = 7, D = 13), all 35 implemented (18 computed from the lecture text, 9 from PPTX structure only, 8 from the C1 graph), no mock and no planned feature left (see section 4; the six slide-geometry features of group D became real in Phase 2, milestone M3, see "Feature D method"; the vocabulary features of group A in milestone M1, see "Feature A method"; the three semantic features of group C in milestone M4, see "Feature C method", and they are `unavailable` unless the opt-in semantic scorer is on; the other features pre-registered in schema version 0.3 were built without a schema change, see "Schema versioning policy");
 - ordered, mask-aware fusion input;
 - a transparent rule baseline (`RuleBaselineModel`) that produces a label and a raw score, with no probabilities and no
   confidence;
@@ -105,10 +105,14 @@ All paths are under `edusync/packages/c2/src/edusync_c2/`.
 | `difficulty/features/vocab.py` | `VocabularyAnalyzer`: word-piece fragmentation, unfamiliar share and domain-term share; shared default analyzer with one cached first load |
 | `difficulty/features/wordpiece.py` | Pure-Python BERT WordPiece (uncased) over the vendored MiniLM vocabulary |
 | `difficulty/features/lexicon.py` | Loader and plural fold of the curated CS/IT domain lexicon |
-| `difficulty/resources/` | Vendored data: `bert_uncased_vocab.txt`, `domain_terms.txt`, `NOTICE`, `LICENSE-APACHE-2.0.txt`, `.gitattributes` (LF line endings) |
+| `difficulty/resources/` | Vendored data: `bert_uncased_vocab.txt`, `domain_terms.txt`, `semantic_prototypes.txt`, `sample_c1_graph_v1.json`, `NOTICE`, `LICENSE-APACHE-2.0.txt`, `.gitattributes` (LF line endings) |
 | `difficulty/features/_common.py` | `assemble`: builds a group's feature list by registry name (planned names become unavailable `todo:` values; a missing implemented/mock name or an unknown name raises `ValueError`) |
 | `difficulty/features/prerequisites.py` | Group B processor |
-| `difficulty/features/explanation.py` | Group C processor (definition/example/step regexes, diagram count) |
+| `difficulty/features/explanation.py` | Group C processor (definition/example/step regexes, diagram count, and the three `expl.semantic_*` features from the optional scorer; unavailable when it is off) |
+| `difficulty/features/minilm.py` | `MiniLMEncoder`: pure-numpy MiniLM forward pass over the base `model.safetensors` (safetensors reader, exact GELU, mean pooling, L2), `SemanticModelError` with a short `reason`, LFS pointer detection. numpy is imported lazily |
+| `difficulty/features/semantic_loader.py` | `get_default_encoder`: process-wide, thread-safe lazy load of the encoder; success and failure are both cached; `weights_fingerprint` (the `<sha8>` in `/info`); `reset_default_encoder` for tests |
+| `difficulty/features/semantic.py` | `SemanticScorer`: sentence splitting, prototype centroids, cosine scores, thresholds, per-request sentence budget (`for_request`), bounded embedding cache |
+| `difficulty/resources/semantic_prototypes.txt` | The prototype sentences (12 each for `[definition]`, `[example]`, `[step]`, original wording) |
 | `difficulty/features/density.py` | Group D processor (text, structure and the six geometry/visual features; `_VC_WEIGHTS`, `_VC_SATURATION`) |
 | `difficulty/features/__init__.py` | `compute_all_features`: all 35 in registry order |
 | `difficulty/fusion.py` | `build_fusion_input`, `to_vector`, `summarize_features` |
@@ -123,13 +127,13 @@ All paths are under `edusync/packages/c2/src/edusync_c2/`.
 
 Source of truth: `difficulty/registry.py`. Each feature has two registry fields:
 
-- `maturity`: `implemented` (built), `mock` (placeholder value, labelled `mocked`) or `planned` (not built yet).
+- `maturity`: `implemented` (built), `mock` (placeholder value, labelled `mocked`) or `planned` (not built yet). The registry has no mock and no planned feature any more; the other two values stay in the schema for future features.
 - `requires`: `text` (computed from the lecture text), `pptx_structure` (PPTX only; from a PDF the status is `unavailable`) or `c1_graph` (needs the C1 graph; from a mock graph the status is `mocked`).
 
 The legacy `phase1` field (`real`, `real_needs_structure`, `graph`, `mock`, `todo`) is no longer stored. It is derived from `maturity` and
 `requires` and is still in the JSON of `/difficulty/info` for one more release; it is deprecated, so read `maturity` and `requires`.
 
-Counts: 32 implemented (15 `text`, 9 `pptx_structure`, 8 `c1_graph`), 1 mock, 2 planned (group B: 7 implemented, 0 planned; group D: 13 implemented, 0 planned). Group sizes: A = 8, B = 7, C = 7, D = 13.
+Counts: 35 implemented (18 `text`, 9 `pptx_structure`, 8 `c1_graph`), 0 mock, 0 planned. Per group: A = 8, B = 7, C = 7, D = 13, all implemented. Verified by parsing `registry.py`.
 
 | # | Name | Group | Maturity | Requires | Description |
 |---|------|-------|----------|----------|-------------|
@@ -152,9 +156,9 @@ Counts: 32 implemented (15 `text`, 9 `pptx_structure`, 8 `c1_graph`), 1 mock, 2 
 | 17 | `expl.example_count` | C | implemented | text | Worked-example phrases on the concept's slides. |
 | 18 | `expl.step_count` | C | implemented | text | Step-by-step markers (Step 1, numbered lists). |
 | 19 | `expl.diagram_support` | C | implemented | pptx_structure | Pictures + charts on its slides (PPTX). |
-| 20 | `expl.semantic_support_score` | C | mock | text | TODO: semantic definition/example detection. |
-| 21 | `expl.semantic_definition_count` | C | planned | text | Semantic (embedding-based) definition detections on the concept's slides. |
-| 22 | `expl.semantic_example_count` | C | planned | text | Semantic worked-example detections on the concept's slides. |
+| 20 | `expl.semantic_support_score` | C | implemented | text | (min(definitions, 1) + min(examples, 1)) / 2 of the semantic counts; off = unavailable. Opt-in (see "Feature C method"). |
+| 21 | `expl.semantic_definition_count` | C | implemented | text | Slide sentences closest to the definition prototypes (embedding based; opt-in, unavailable when the scorer is off). |
+| 22 | `expl.semantic_example_count` | C | implemented | text | Slide sentences closest to the worked-example prototypes (embedding based; opt-in, unavailable when the scorer is off). |
 | 23 | `dens.words_per_slide` | D | implemented | text | Mean words per concept slide. |
 | 24 | `dens.concepts_per_slide` | D | implemented | text | Mean distinct C1 concepts per concept slide (kept canonical concepts only: a merged alias counts once, a dropped concept not at all). |
 | 25 | `dens.formula_presence` | D | implemented | text | Share of concept slides that look like formulas. |
@@ -172,9 +176,9 @@ Counts: 32 implemented (15 `text`, 9 `pptx_structure`, 8 `c1_graph`), 1 mock, 2 
 Groups: A = technical vocabulary and language complexity, B = prerequisite and concept complexity, C = explanation and
 example support, D = information density and structure.
 
-Planned features are registered now so that the schema (names, groups, order) is complete before any model is trained; later milestones only change their status, not the schema. Until a milestone builds one, it is `unavailable` with source `todo:<name>` and the note "not yet implemented", never `mocked`, because fusion can treat a mock as usable. Planned features are not read by the baseline model.
+Features were pre-registered (schema 0.3) so that the schema (names, groups, order) is complete before any model is trained; milestones only changed their maturity, not the schema. None is `planned` any more. If a future feature is registered as `planned`, it is `unavailable` with source `todo:<name>` and the note "not yet implemented", never `mocked`, because fusion can treat a mock as usable. Planned features are not read by the baseline model.
 
-Notes on the real features: they are regex and counting heuristics (the three vocabulary features count word pieces and lexicon hits, see below) over the text of the slides that mention the
+Notes on the real features: they are regex and counting heuristics (the three vocabulary features count word pieces and lexicon hits, and the three semantic features compare sentence embeddings with prototypes, see below) over the text of the slides that mention the
 concept (`definition`/`example`/`step` cues in `features/explanation.py`; formula and code hints in `materials.py`).
 They are cheap proxies, not measurements of how a student experiences the slide.
 
@@ -255,6 +259,140 @@ see the `vocab_loaded` and `vocab_unavailable` events below; no slide text or wo
 
 Tests: `test_wordpiece.py`, `test_lexicon.py`, `test_vocab.py`, `test_vocab_resources.py`, `test_features_language.py`
 under `edusync/packages/c2/tests/difficulty/`.
+
+### Feature C method (semantic definition and example detection, Phase 2 milestone M4)
+
+Three group C features compare slide sentences with prototype sentences using a sentence embedding:
+`expl.semantic_definition_count`, `expl.semantic_example_count` and `expl.semantic_support_score`. The scorer is **opt-in and
+off by default** (`EDUSYNC_C2_SEMANTIC=off`), so a default deployment, its responses and its tests do not change. The regex
+counts (`expl.definition_count`, `expl.example_count`, `expl.step_count`) stay as they are and remain separate features:
+semantic and regex values are never mixed or substituted for each other.
+
+**Encoder** (`features/minilm.py`). A pure-numpy forward pass of all-MiniLM-L6-v2 over the repo's base weights
+(`packages/blueprint_model/artifacts/base/sentence-transformers--all-MiniLM-L6-v2/model.safetensors`, 90.9 MB). No torch,
+no sentence-transformers and no new package: the file is read directly (8-byte header length, JSON header, raw float32
+tensors via numpy). It has 6 transformer layers with post-LayerNorm and absolute positions, the exact (erf) GELU, mean pooling
+over all tokens and L2 normalisation. Tokenization uses the vendored MiniLM vocabulary (`features/wordpiece.py`) with
+`[CLS]`/`[SEP]` added, at most 128 tokens per text (longer text is cut). Every text is encoded on its own (no batching, no
+padding), so a text gets the same vector alone or inside any batch: the encoder is deterministic per text. numpy is imported
+lazily, so `import edusync_c2` never needs it.
+
+**Reference check.** The encoder was compared with the real sentence-transformers model on 7 fixed sentences; the cosine
+between the two embeddings is at least 0.9999 for every sentence. The reference vectors were produced once in a throwaway
+Docker container with torch and committed as `tests/difficulty/golden/minilm_reference.json` (model
+`sentence-transformers/all-MiniLM-L6-v2`, revision `1110a243fdf4706b3f48f1d95db1a4f5529b4d41`, rounded to 6 decimals). The
+comparison test is `test_minilm.py::test_real_model_matches_reference_embeddings`, marked `ml`; it is deselected in CI and skipped
+when the weights are missing or a Git LFS pointer. Other tests use a tiny synthetic model checked against an independent
+reference implementation.
+
+**Prototypes and scoring** (`features/semantic.py`, `resources/semantic_prototypes.txt`). The resource file holds 12
+original-wording sentences for each of three classes: `[definition]`, `[example]`, `[step]`. Each class is embedded once and
+averaged into a unit-length centroid when the scorer is built. A slide sentence is scored by its cosine to each centroid,
+rounded to 4 decimals. A sentence counts as a **definition** when its definition cosine is at least the definition threshold and
+higher than its example cosine, and as an **example** under the mirrored rule; a tie counts for neither, so no sentence is
+counted twice. The step centroid is scored but no feature counts steps semantically (the regex `expl.step_count` is unchanged).
+
+**Thresholds are unvalidated.** An earlier feasibility check used 65 hand-written sentences (12 prototypes per class, centroid
+cosine). It gave AUC 0.96 for definitions, 0.97 for steps and 0.81 for examples, with useful thresholds around 0.21 to 0.25.
+That is a feasibility signal, not a benchmark: the sentences were hand-written for the check, no lecturer labels were involved,
+and example detection is the weakest class. 0.23 is a heuristic default for both thresholds, and both are settings so they can
+be changed without code.
+
+**Sentence handling.** The text of a concept is the text and notes of its slides (the title is already part of the text). It is split
+on `.`, `!`, `?` and line breaks; a leading bullet or list number is removed; only sentences of 3 to 80 words are kept. Duplicates
+(compared case-insensitively) are dropped in input order, so the first occurrence is kept. Embeddings are cached by sentence
+text (bounded, 5000 entries), so a sentence repeated across concepts or requests is encoded once. A per-request budget
+(`EDUSYNC_C2_SEMANTIC_MAX_SENTENCES`, default 400) limits the number of distinct sentences scored in one request. Sentences beyond
+it are not scored, the affected features carry the note "sentence budget reached: later sentences were not scored", the counts
+are then lower bounds, and the response gets one warning ("semantic scorer sentence budget reached: ..."), with a
+`semantic_truncated` log line. The budget bounds CPU time on large decks.
+
+**Features and statuses.**
+
+| State | The three `expl.semantic_*` features |
+|-------|--------------------------------------|
+| `EDUSYNC_C2_SEMANTIC=off` (default) | `unavailable`, source `semantic:off`, note "semantic scorer is off"; no warning |
+| `minilm`, scorer works | `computed`, source `semantic:minilm`; the counts are numbers of sentences, the score is `(min(definitions, 1) + min(examples, 1)) / 2`, so it is 0, 0.5 or 1 |
+| `minilm`, weights missing, an LFS pointer, corrupt or incompatible, or no model folder set | `unavailable`, source `semantic:minilm`, note "semantic scorer unavailable"; one response warning "semantic scorer unavailable: semantic features are unavailable"; HTTP status stays 200 |
+| concept not found on any slide | `unavailable`, source `materials:regex`, note "concept not found in materials" (like the rest of group C) |
+
+A feature that cannot be computed is never a fake 0.0 and never filled with the regex value. `FusionFeature` has no source field,
+so mixing the two would silently change the meaning of one column; the two stay separate features.
+
+**Settings** (all read from the environment, see `settings.py`).
+
+| Variable | Values | Default | Meaning |
+|----------|--------|---------|---------|
+| `EDUSYNC_C2_SEMANTIC` | `off`, `minilm` | `off` | Switches the semantic scorer |
+| `EDUSYNC_C2_SEMANTIC_MODEL_DIR` | folder path | unset | Folder with `model.safetensors` and `config.json` (the base MiniLM folder); an empty value counts as unset |
+| `EDUSYNC_C2_SEMANTIC_DEF_THRESHOLD` | 0 to 1 | `0.23` | Minimum definition cosine (unvalidated) |
+| `EDUSYNC_C2_SEMANTIC_EX_THRESHOLD` | 0 to 1 | `0.23` | Minimum example cosine (unvalidated) |
+| `EDUSYNC_C2_SEMANTIC_MAX_SENTENCES` | integer >= 1 | `400` | Per-request sentence budget |
+
+**Loading and failure** (`features/semantic_loader.py`). The encoder is loaded lazily on the first request and shared by the whole
+process, once even under a thread race. A failure is cached too, so a missing model costs one attempt and one WARNING, not one per
+request. The cause is a short `reason` (`missing`, `lfs_pointer`, `corrupt`, `incompatible`, or an exception class name). A
+failure while embedding the prototypes logs `semantic_unavailable reason=prototype_encoding`. A failure while scoring a request
+(an unexpected encoder error or a wrong shape) is raised as `SemanticScoringError` and answered with HTTP 503 and the fixed
+message `semantic scorer failed`; the message never contains slide text, and the original exception is only chained. The next
+request is served normally again.
+
+**`/info`.** `GET /api/c2/difficulty/info` reports `semantic_scorer`: `off`, `minilm:<sha8>` (the first 8 hex characters of
+sha256 over the first 1 MiB of the weights plus their size) or `minilm:unavailable`.
+
+**Docker.** The weights are Git LFS files, and the runtime image contains no packages directory, so they are mounted as a volume.
+
+1. On the host, in the repo: `git lfs pull`. Without it `model.safetensors` is a small pointer file and the scorer reports
+   `lfs_pointer`.
+2. Mount the model folder read-only and set the variables (the image already has numpy):
+
+```bash
+docker run ... \
+  -v <host>/packages/blueprint_model/artifacts/base/sentence-transformers--all-MiniLM-L6-v2:/models/minilm:ro \
+  -e EDUSYNC_C2_SEMANTIC=minilm \
+  -e EDUSYNC_C2_SEMANTIC_MODEL_DIR=/models/minilm \
+  -e OPENBLAS_NUM_THREADS=4 \
+  ...
+```
+
+   A compose service takes the same volume and variables. This is documentation only; no compose file or Dockerfile is changed.
+3. Check `GET /api/c2/difficulty/info`: `semantic_scorer` should be `minilm:<sha8>`.
+
+Set `OPENBLAS_NUM_THREADS=4`. With the default threading on a 16-core machine, encoding took 136 to 196 ms per sentence; with 1 to 4
+threads it took about 17 to 24 ms.
+
+**Measured** (one developer machine and the C2 container; not a benchmark): the weights load in 0.12 s; embedding the 36 prototypes
+(once per pipeline build, at the first request) took about 7.5 s with default threading and much less with
+`OPENBLAS_NUM_THREADS=4`. In the container with the weights mounted, the first request took 1.6 s and a repeat 0.03 s, with an
+identical response. With the weights not mounted, the request answers 200 with the warning and unavailable features. With
+`EDUSYNC_C2_SEMANTIC=off` nothing is loaded. Latency and memory with the Whisper model loaded in the same container were not
+re-measured.
+
+**Baseline guarantee.** The rule baseline reads only the three regex support features (`SUPPORT_FEATURES` in `models.py`), never the
+`expl.semantic_*` features. Tests show that predictions (labels and scores) are identical with a scorer on (fake encoder) and
+off (`test_semantic_wiring.py::test_support_features_are_the_three_regex_ones` and `test_baseline_prediction_ignores_the_scorer`,
+`test_semantic_reporting.py::test_baseline_output_is_unchanged_by_the_scorer`). In `test_baseline_golden.py`,
+`expl.semantic_support_score` is in the explicit `EXCLUDED` set: the stored golden has `[0.0, "mocked"]`, and the feature is now
+`unavailable` by default. Scores, labels and all other features are still compared. The feature names, groups and order did not
+change, so the schema hash and `FEATURE_SCHEMA_VERSION` (0.3) are unchanged (maturity is not hashed).
+
+**Determinism and privacy.** Sentences are split and de-duplicated in order, each text is encoded alone, scores are rounded, and
+the output depends on the weights only. Logs carry the weights fingerprint, reasons and the limit, never slide text.
+
+**Known limits.**
+
+- The thresholds are unvalidated; the 65-sentence check is a feasibility signal only. Example detection is the weakest (AUC 0.81).
+- English only: the vocabulary and the prototypes are English.
+- Sentence level, not concept level: the features count sentences on the concept's slides that look like a definition or an
+  example. They do not check that a sentence defines that concept, or that an example is correct.
+- The prototype sentences are original wording; a different set would move the scores.
+- CPU latency grows with the number of distinct sentences; the per-request budget bounds it, at the price of lower-bound counts.
+- No model uses the features yet: the baseline ignores them and no trained model exists. Whether they help is a Phase 3 question.
+
+Tests: `test_minilm.py` (reader, GELU/erf, tiny model, reference embeddings), `test_semantic_loader.py` (lazy load, failure caching,
+LFS pointer, thread race), `test_semantic.py` (splitting, prototypes, cosine, counting, budget, cache),
+`test_semantic_wiring.py` (settings, pipeline, router, baseline guard) and `test_semantic_reporting.py` (`/info`, warnings,
+503, privacy, determinism).
 
 ### Feature D method (slide geometry, fonts, diagrams; Phase 2 milestone M3)
 
@@ -363,8 +501,8 @@ Every `FeatureValue` in the response has a `status`, a `source` and a `note`.
 | Status | Meaning | Rule in the code |
 |--------|---------|------------------|
 | `computed` | Real value from real inputs | Language, explanation and density features with slides found; group B from a caller-supplied graph; `dens.concept_frequency` from a caller graph |
-| `mocked` | Placeholder, or computed from a mocked input; never treated as real | `expl.semantic_support_score` (0.0) always (the only mock left in the registry); every group B feature and `dens.concept_frequency` when the graph is the mock graph |
-| `unavailable` | Cannot be produced; carries no value | No prerequisite edges in the graph (a v0 graph) -> all seven group B features, note "C1 graph has no prerequisite edges"; concept id unknown to the graph -> group B; PDF -> `expl.diagram_support`, `dens.max_bullet_depth`, `dens.shape_count_mean` and the six geometry features of group D (see "Feature D method"); concept not found on any slide -> every slide-based feature of groups A, C, D; vocabulary resources missing, or no words under the vocabulary word rule -> the three vocabulary features of group A (see "Feature A method"); no direct prerequisites -> `prereq.mean_confidence` and `prereq.curriculum_defined_share`; every `planned` feature always (2 of them; source `todo:<name>`; the note is "not yet implemented", filled by `features/_common.assemble`) |
+| `mocked` | Placeholder, or computed from a mocked input; never treated as real | No feature of group C or D is mocked any more; every group B feature and `dens.concept_frequency` when the graph is the mock graph |
+| `unavailable` | Cannot be produced; carries no value | No prerequisite edges in the graph (a v0 graph) -> all seven group B features, note "C1 graph has no prerequisite edges"; concept id unknown to the graph -> group B; PDF -> `expl.diagram_support`, `dens.max_bullet_depth`, `dens.shape_count_mean` and the six geometry features of group D (see "Feature D method"); concept not found on any slide -> every slide-based feature of groups A, C, D; vocabulary resources missing, or no words under the vocabulary word rule -> the three vocabulary features of group A (see "Feature A method"); no direct prerequisites -> `prereq.mean_confidence` and `prereq.curriculum_defined_share`; the three `expl.semantic_*` features whenever the semantic scorer is off (default; source `semantic:off`) or unavailable (source `semantic:minilm`), see "Feature C method"; a `planned` feature would always be unavailable (none exists now; source `todo:<name>`, note "not yet implemented", filled by `features/_common.assemble`) |
 
 A computed value never hides a mock: a feature derived from the mock graph is `mocked`, not `computed`.
 
@@ -378,8 +516,8 @@ The materials are always `real`; the graph is `real` when the caller supplied it
 graph).
 
 A prediction itself has `status` `ok` (all 35 features computed), `partial` (some mocked or unavailable) or `failed`
-(not enough computed features, `difficulty` is `null`). Because the registry holds 2 planned features that are
-`unavailable` by design and 1 mock, a prediction is `partial` by design until those milestones are built; `partial` here
+(not enough computed features, `difficulty` is `null`). With the default settings a prediction is `partial` by design: the
+three semantic features are `unavailable` while the scorer is off, and a mock graph or a PDF adds more; `partial` here
 does not mean something went wrong. What matters for the baseline is whether enough of its own components are computed
 (`MIN_COMPONENTS`), not the overall status.
 
@@ -485,8 +623,8 @@ Routes (mounted by the API under `/api/c2`, see `router.py`):
 
 | Route | Notes |
 |-------|-------|
-| `POST /api/c2/difficulty` | multipart form: `file` (required, `.pptx` or `.pdf`), `c1_graph` (optional text field holding C1's JSON exactly as C1 returns it) |
-| `GET /api/c2/difficulty/info` | model info, graph provider name, concept filter name (`mock_keep_all` or `heuristic`), the 35 `FeatureSpec`s (each with `maturity`, `requires` and the deprecated `phase1`), `feature_schema_version`, `feature_schema_hash` and the TODO list |
+| `POST /api/c2/difficulty` | multipart form: `file` (required, `.pptx` or `.pdf`), `c1_graph` (optional text field holding C1's JSON exactly as C1 returns it). An unexpected failure of the semantic scorer answers HTTP 503 `semantic scorer failed` (see "Feature C method") |
+| `GET /api/c2/difficulty/info` | model info, graph provider name, concept filter name (`mock_keep_all` or `heuristic`), the 35 `FeatureSpec`s (each with `maturity`, `requires` and the deprecated `phase1`), `semantic_scorer` (`off`, `minilm:<sha8>` or `minilm:unavailable`), `feature_schema_version`, `feature_schema_hash` and the TODO list |
 | `GET /api/c2/health` | component health |
 | `POST /api/c2/comprehension/evaluate` | unchanged; belongs to the later live stage (Phase 5 code) |
 
@@ -515,13 +653,14 @@ for version 0.3):
   "feature_schema_hash": "704824d7cc146540b170421ddaff2ce81ff3b1b8aac305b6392493cb859ae488",
   "graph_provider": "...",
   "concept_filter": "mock_keep_all",
+  "semantic_scorer": "off",
   "features": [
     {"name": "lang.lexical_score", "group": "A_language", "maturity": "implemented", "requires": "text",
      "description": "Transparent lexical difficulty heuristic in [0, 1].", "phase1": "real"},
-    {"name": "expl.semantic_support_score", "group": "C_explanation", "maturity": "mock", "requires": "text",
-     "description": "TODO: semantic definition/example detection.", "phase1": "mock"},
-    {"name": "expl.semantic_definition_count", "group": "C_explanation", "maturity": "planned", "requires": "text",
-     "description": "Semantic (embedding-based) definition detections on the concept's slides.", "phase1": "todo"},
+    {"name": "expl.semantic_support_score", "group": "C_explanation", "maturity": "implemented", "requires": "text",
+     "description": "(min(definitions, 1) + min(examples, 1)) / 2 of the semantic counts; off = unavailable.", "phase1": "real"},
+    {"name": "expl.semantic_definition_count", "group": "C_explanation", "maturity": "implemented", "requires": "text",
+     "description": "Slide sentences closest to the definition prototypes (embedding based; opt-in).", "phase1": "real"},
     "..."
   ],
   "todo": ["..."]
@@ -529,7 +668,7 @@ for version 0.3):
 ```
 
 Trimmed example response (real output of `DifficultyPipeline().run(...)` on a synthetic 4-concept deck with its v1
-synthetic graph; reduced to 2 concepts and 7 of the 35 features per concept, other parts replaced by `...`; the response now carries all 35 features per concept, and the last row shows how a planned feature appears). The values come
+synthetic graph; reduced to 2 concepts and 7 of the 35 features per concept, other parts replaced by `...`; the response now carries all 35 features per concept, and the last row shows how a semantic feature appears while the scorer is off, the default). The values come
 from synthetic text and say nothing about real lectures.
 
 ```json
@@ -583,7 +722,7 @@ from synthetic text and say nothing about real lectures.
         {"name": "dens.words_per_slide", "group": "D_density", "value": 73.0, "status": "computed",
          "source": "materials:regex", "note": ""},
         {"name": "expl.semantic_definition_count", "group": "C_explanation", "value": null, "status": "unavailable",
-         "source": "todo:expl.semantic_definition_count", "note": "not yet implemented"}
+         "source": "semantic:off", "note": "semantic scorer is off"}
       ],
       "feature_summary": "...",
       "status": "partial",
@@ -802,12 +941,11 @@ contract validator, regeneration, id derivation), `test_graph_provider_selection
 
 1. Real C1 connection (`C1ApiGraphProvider`); the graph is a mock unless supplied by the caller. **Status:** `C1ApiGraphProvider` is implemented behind `EDUSYNC_C2_GRAPH_PROVIDER=c1_api` and off by default (see "Graph providers"), but this item stays open, and its text in `PHASE1_TODO` is unchanged, because C1 still emits only v0 graphs: the real v1 sample and its fields (descriptions, prerequisite edges, direction, confidence, source type) have never been seen, so group B has not run on real C1 output.
 2. Concept filter: alias merging (TDE = Transparent Data Encryption) and generic phrases. **Status:** a heuristic filter exists behind `EDUSYNC_C2_CONCEPT_FILTER=heuristic` (see "Concept filter"); the default is still the mock `mock_keep_all` until the heuristic has been validated on real C1 output, so this item stays open and its text in `PHASE1_TODO` is unchanged.
-3. Feature C: semantic definition/example detection (`expl.semantic_support_score` is a mock; `expl.semantic_definition_count` and `expl.semantic_example_count` are planned).
-4. `MiniLMFusionModel` and learned feature fusion (Phase 3, trained on lecturer labels).
-5. Calibrated confidence and probabilities (never invented before a trained, evaluated model).
-6. Prediction persistence for Phase 5 comparison with live comprehension.
+3. `MiniLMFusionModel` and learned feature fusion (Phase 3, trained on lecturer labels).
+4. Calibrated confidence and probabilities (never invented before a trained, evaluated model).
+5. Prediction persistence for Phase 5 comparison with live comprehension.
 
-The former item "Feature A: unfamiliar-vocabulary score from a domain word list" was removed when Feature A became real (Phase 2, M1), and "Feature D: visual/diagram complexity analysis" when the six geometry features became real (Phase 2, M3).
+The former item "Feature A: unfamiliar-vocabulary score from a domain word list" was removed when Feature A became real (Phase 2, M1), "Feature D: visual/diagram complexity analysis" when the six geometry features became real (Phase 2, M3), and "Feature C: semantic definition/example detection" when the semantic scorer was built (Phase 2, M4; it is opt-in and its thresholds are unvalidated, see "Feature C method").
 
 Per-module mocks and TODOs found in the code:
 
@@ -820,10 +958,10 @@ Per-module mocks and TODOs found in the code:
 | `concepts.MockConceptFilter` | Keeps every concept (name `mock_keep_all`); still the default, stage `concepts` is `mocked` |
 | `concept_filter.HeuristicConceptFilter` | Real but not validated on real C1 output, and off by default (`EDUSYNC_C2_CONCEPT_FILTER=heuristic`); recall figures come from hand-written lists; known limits in "Concept filter" |
 | `features/language.py`, `features/vocab.py` | No mock left in group A. Limits: the vocabulary features measure general-English rarity plus a CS/IT/ML lexicon, with unvalidated thresholds (see "Feature A method") |
-| `features/explanation.py` | `expl.semantic_support_score` is a 0.0 placeholder (mocked, the only mock in the registry); `expl.semantic_definition_count` and `expl.semantic_example_count` are planned (unavailable); definition/example/step counts are regex cues only |
+| `features/explanation.py`, `features/semantic.py`, `features/minilm.py` | No mock or planned feature left in group C. The semantic features are opt-in (`EDUSYNC_C2_SEMANTIC`, default `off`) and unavailable when it is off or the model cannot be loaded. Limits: unvalidated thresholds, example detection weakest, English only, sentence level (see "Feature C method"); definition/example/step counts of the regex features are cues only |
 | `features/prerequisites.py` | All seven group B features are implemented; a mock graph gives `mocked` values, a v0 graph (no prerequisite edges) gives `unavailable` |
 | `features/density.py` | No mock or planned feature left in group D. Limits: the `dens.visual_complexity` weights and saturation points are unvalidated guesses; only explicit font sizes are read; areas are lower bounds when shapes are unreadable; PDF gives `unavailable` (see "Feature D method") |
-| `features/_common.assemble` | Any planned feature a processor does not produce is filled as unavailable, source `todo:<name>`, note "not yet implemented" (2 planned features left, both group C) |
+| `features/_common.assemble` | Any planned feature a processor does not produce is filled as unavailable, source `todo:<name>`, note "not yet implemented" (no planned feature is left) |
 | `models.MiniLMFusionModel` | Not implemented (Phase 3) |
 | `models.RuleBaselineModel` | Weights and thresholds are untuned guesses |
 | `pipeline.DifficultyPipeline` | `use_mocked_features` is off; mocked features never feed the baseline |
@@ -912,7 +1050,7 @@ What remains before Phase 1 can be called fully closed: merge PR #19 and these c
 
 **Using the logger.** Modules use `from edusync_c2.logger import get_logger` and `logger = get_logger(__name__)`. Names are placed under the `edusync_c2` namespace.
 
-**Configuration.** `EDUSYNC_C2_LOG_LEVEL` (DEBUG, INFO, WARNING or ERROR; default INFO; see `settings.py`). The concept filter has its own two variables, `EDUSYNC_C2_CONCEPT_FILTER` and `EDUSYNC_C2_CONCEPT_FILTER_EXTRAS` (see "Concept filter"); the graph provider has four (see "Graph providers"). Logging is configured once, when `get_pipeline()` builds the cached pipeline, and never at import. `configure_logging` sets the level of the `edusync_c2` logger; it adds its own stderr handler only if the root logger has no handlers, so it does not touch an existing root logging setup.
+**Configuration.** `EDUSYNC_C2_LOG_LEVEL` (DEBUG, INFO, WARNING or ERROR; default INFO; see `settings.py`). The semantic scorer has five variables (`EDUSYNC_C2_SEMANTIC`, `EDUSYNC_C2_SEMANTIC_MODEL_DIR`, `EDUSYNC_C2_SEMANTIC_DEF_THRESHOLD`, `EDUSYNC_C2_SEMANTIC_EX_THRESHOLD`, `EDUSYNC_C2_SEMANTIC_MAX_SENTENCES`; see "Feature C method"). The concept filter has its own two variables, `EDUSYNC_C2_CONCEPT_FILTER` and `EDUSYNC_C2_CONCEPT_FILTER_EXTRAS` (see "Concept filter"); the graph provider has four (see "Graph providers"). Logging is configured once, when `get_pipeline()` builds the cached pipeline, and never at import. `configure_logging` sets the level of the `edusync_c2` logger; it adds its own stderr handler only if the root logger has no handlers, so it does not touch an existing root logging setup.
 
 **Line format.** Handler format: `%(asctime)s %(levelname)s %(name)s [%(request_id)s] %(message)s`. The message is the event name first, then `key=value` fields.
 
@@ -927,6 +1065,9 @@ What remains before Phase 1 can be called fully closed: merge PR #19 and these c
 | `done` | INFO | `concepts`, `duration_ms` |
 | `vocab_loaded` | INFO | `words` (vocabulary entries), `lexicon` (terms), `sha` (first 8 hex digits of the vocabulary SHA-256); logged once per process, lazily on the first analysis (so during the first request's `features` step, before its `features` line), by `edusync_c2.difficulty.features.vocab` |
 | `vocab_unavailable` | WARNING | `reason` (exception class name); logged once per process when the vocabulary resources cannot be loaded |
+| `semantic_loaded` | INFO | `sha` (8 hex digits of the weights fingerprint), `dims`; logged once per model folder per process, on the first request with `EDUSYNC_C2_SEMANTIC=minilm` (logger `edusync_c2.difficulty.features.semantic_loader`) |
+| `semantic_unavailable` | WARNING | `reason` (`missing`, `lfs_pointer`, `corrupt`, `incompatible`, `prototype_encoding` or an exception class name); logged once per model folder per process, not at all when no folder is set |
+| `semantic_truncated` | WARNING | `limit` (the per-request sentence budget that was reached); logged once per affected request |
 | `materials_rejected` | WARNING | `status`, `reason` |
 | `c1_request_failed` | WARNING | `status`, `reason` (code such as `c1_http_503`, `timeout`, `unreachable`, `invalid_json`; logger `edusync_c2.c1_client`; no content, no file name) |
 | `graph_warning` | WARNING | `count` |
@@ -936,7 +1077,7 @@ What remains before Phase 1 can be called fully closed: merge PR #19 and these c
 
 **Request id.** The router sets a short request id (`set_request_id(new_request_id())`) for each `POST /difficulty` call and resets it afterwards, so all lines of one request share the id in the `[...]` field (`-` outside a request). The id is used in logs only and is not returned in the response.
 
-**Privacy.** Never log slide text, speaker notes or file names (the file type is enough). The vocabulary events carry sizes and a hash prefix only, never slide words. Concept ids appear only at DEBUG. Test: `test_pipeline_logging.py::test_privacy_nothing_sensitive_logged`.
+**Privacy.** Never log slide text, speaker notes or file names (the file type is enough). The vocabulary and semantic events carry sizes, reasons and a hash prefix only, never slide words or paths. Concept ids appear only at DEBUG. Test: `test_pipeline_logging.py::test_privacy_nothing_sensitive_logged`.
 
 **Timings only in logs.** `duration_ms` is logged on the `done` line and never put in the response, so responses stay deterministic (`test_response_independent_of_log_level`).
 
@@ -952,7 +1093,7 @@ What remains before Phase 1 can be called fully closed: merge PR #19 and these c
 - [ ] Write unit tests, including the unavailable path.
 - [ ] Add a metamorphic or golden test.
 - [ ] Log through `get_logger` with `key=value` fields and follow the privacy rule above.
-- [ ] Update the docs: the feature table (section 4) and the Mock and TODO register (section 8).
+- [ ] Update the docs: the feature table (section 4) and the Mock and TODO register (section 8). A feature that needs a model file or other opt-in resource is off by default, `unavailable` with a reason (never a fake value or another feature's value) when it cannot run, and reports its state in `/info` and as a response warning.
 - [ ] Add no new mock without a registry entry and a note.
 - [ ] If the step changes which concepts exist (a filter, merge or drop), keep the default path unchanged, keep absorbed ids in `merged_from`, build the graph view from the raw ids first, and document the rule, its measured precision and its known limits in "Concept filter".
 - [ ] Keep `edusync_c2` at 100% line and branch coverage, and ruff clean.
@@ -964,7 +1105,7 @@ What remains before Phase 1 can be called fully closed: merge PR #19 and these c
 
 1. Feature A: done in milestone M1. `lang.unfamiliar_vocab_ratio` is now real (MiniLM word pieces), with `lang.subword_fragmentation` and `lang.domain_term_ratio` added (section 4, "Feature A method"). Open: validate the thresholds and the lexicon against real lectures.
 2. Feature D: done in milestone M3. The six slide-geometry features are real (section 4, "Feature D method"). Open: validate the `dens.visual_complexity` weights and saturation points against lecturer labels, and check the parser on real decks (inherited font sizes, SmartArt, grouped shapes).
-3. Feature C: `expl.semantic_support_score` (mock) and the planned `expl.semantic_definition_count` and `expl.semantic_example_count` (semantic definition/example detection).
+3. Feature C: done in milestone M4. The three semantic features are real but opt-in (`EDUSYNC_C2_SEMANTIC=minilm`; section 4, "Feature C method"). Open: validate the thresholds against lecturer labels, improve example detection, and re-measure latency and memory in the full container.
 4. Feature B against the real C1 graph: `prereq.weighted_depth` and `prereq.dependents_count` are built (graph-metrics step, no schema change). Open: run all of group B on a real C1 v1 graph (needs the v1 contract to exist; see the contract doc and its contract tests).
 5. Concept filter: a heuristic filter (alias merging, generic phrases) exists since milestone M2 behind `EDUSYNC_C2_CONCEPT_FILTER=heuristic` (section "Concept filter"). Open: run it on real C1 output, then decide whether to make it the default; C1 aliases could replace parts of it.
 6. `C1ApiGraphProvider`: done in milestone M5b (section "Graph providers"), with a bundled sample graph behind a `file` provider. Both are off by default. Open: run it against a real C1 v1 graph (C1 still returns v0), then decide whether to make it the default.
@@ -1003,6 +1144,7 @@ based, not validated).
 - The heuristic concept filter has only been run on hand-written label lists and synthetic decks, never on real C1 output. Its recall figures are optimistic (the rules were tuned on similar lists).
 - No claim is made about how well the baseline matches real lecturer judgements; no real labelled data exists.
 - The regex cues (definition, example, step, formula, code) have been tested on synthetic and unit-test text only.
+- The semantic thresholds (0.23) and prototypes have only a 65-sentence feasibility check behind them (AUC 0.96, 0.97, 0.81 for definition, step, example); no lecturer labels exist, and latency and memory with Whisper loaded in the same container were not measured.
 - The Windows/Docker route to the API is documented elsewhere as unverified; the commands above were not checked
   against a running BBB.
 - Upload limits at the route use `EDUSYNC_MAX_UPLOAD_MB` (default 200 in core settings) capped at 100 MB.

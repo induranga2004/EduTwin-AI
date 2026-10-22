@@ -29,8 +29,8 @@ Without `c1_graph` the graph is a mock built from slide titles (labelled `mock` 
 
 | Route | Description |
 |-------|-------------|
-| `POST /difficulty` | multipart: `file` (.pptx/.pdf), optional `c1_graph` (C1's JSON as returned). Errors: 400 wrong type, corrupt or encrypted; 413 too large; 422 no text or invalid `c1_graph` |
-| `GET /difficulty/info` | model, graph provider, concept filter, the 35 features (with `maturity` and `requires`), `feature_schema_version`, TODO list |
+| `POST /difficulty` | multipart: `file` (.pptx/.pdf), optional `c1_graph` (C1's JSON as returned). Errors: 400 wrong type, corrupt or encrypted; 413 too large; 422 no text or invalid `c1_graph`; 503 semantic scorer failed (only with `EDUSYNC_C2_SEMANTIC=minilm`) |
+| `GET /difficulty/info` | model, graph provider, concept filter, `semantic_scorer`, the 35 features (with `maturity` and `requires`), `feature_schema_version`, TODO list |
 | `GET /health` | component health |
 | `POST /comprehension/evaluate` | rule-based poll flagging (later stage, unchanged) |
 
@@ -56,8 +56,8 @@ packages/c2/
       concepts.py                     # concepts on slides, filter protocols, mock filter, create_concept_filter
       concept_filter.py               # HeuristicConceptFilter: generic-phrase drop, alias merge (opt-in)
       registry.py                     # 35 features, FEATURE_SCHEMA_VERSION, PHASE1_TODO
-      features/                       # groups A-D; vocab.py, wordpiece.py, lexicon.py for the vocabulary features
-      resources/                      # vendored vocabulary + domain lexicon (see Vendored resources); sample_c1_graph_v1.json
+      features/                       # groups A-D; vocab.py, wordpiece.py, lexicon.py (vocabulary); minilm.py, semantic_loader.py, semantic.py (opt-in semantic scorer)
+      resources/                      # vendored vocabulary + domain lexicon (see Vendored resources); sample_c1_graph_v1.json; semantic_prototypes.txt
       fusion.py, models.py            # ordered features + mask; RuleBaselineModel
       pipeline.py, schemas.py         # orchestration; contracts
       synthetic.py                    # synthetic data helpers
@@ -100,6 +100,15 @@ Read from environment variables (prefix `EDUSYNC_C2_`, see `src/edusync_c2/setti
 | `EDUSYNC_C2_GRAPH_FILE` | file path | unset | `file` provider only: JSON graph to serve instead of the bundled sample |
 | `EDUSYNC_C2_C1_BASE_URL` | `http://` or `https://` URL | `http://127.0.0.1:8100/api/c1` | `c1_api` only: base URL of C1 |
 | `EDUSYNC_C2_C1_TIMEOUT_S` | number > 0 | `60` | `c1_api` only: timeout of the C1 call in seconds |
+| `EDUSYNC_C2_SEMANTIC` | `off`, `minilm` | `off` | Semantic scorer for the three `expl.semantic_*` features. `off`: they are `unavailable`. `minilm`: needs the model folder; if it cannot be loaded they stay `unavailable` and the response carries a warning (HTTP 200) |
+| `EDUSYNC_C2_SEMANTIC_MODEL_DIR` | folder path | unset | Folder with the base MiniLM `model.safetensors` (Git LFS: run `git lfs pull`) and `config.json`; in Docker mount it read-only, e.g. at `/models/minilm` |
+| `EDUSYNC_C2_SEMANTIC_DEF_THRESHOLD` | 0 to 1 | `0.23` | Minimum cosine to the definition prototypes (unvalidated) |
+| `EDUSYNC_C2_SEMANTIC_EX_THRESHOLD` | 0 to 1 | `0.23` | Minimum cosine to the example prototypes (unvalidated) |
+| `EDUSYNC_C2_SEMANTIC_MAX_SENTENCES` | integer >= 1 | `400` | Distinct sentences scored per request; later ones are skipped with a warning |
+
+With the scorer on in Docker, also set `OPENBLAS_NUM_THREADS=4` (default threading on a many-core machine was about 8 times slower per
+sentence). `GET /difficulty/info` reports `semantic_scorer` (`off`, `minilm:<sha8>` or `minilm:unavailable`); a scoring failure answers HTTP 503.
+Details, limits and the Docker volume example: "Feature C method" in the [design document](../../../docs/edusync/c2-difficulty.md).
 
 Rules, measured numbers and limits of the concept filter: "Concept filter" in the [design document](../../../docs/edusync/c2-difficulty.md).
 
@@ -107,8 +116,9 @@ Logging conventions and the checklist for new features: see the "Logging and dev
 
 ## Feature report and registry snapshot
 
-The registry (`difficulty/registry.py`) has 35 features (A = 8, B = 7, C = 7, D = 13): 32 implemented, 1 mock and 2 planned. Planned
-features are always `unavailable` (`todo:<name>`) until their milestone. The schema is versioned (`FEATURE_SCHEMA_VERSION`, now `0.3`)
+The registry (`difficulty/registry.py`) has 35 features (A = 8, B = 7, C = 7, D = 13), all implemented: 0 mock, 0 planned. The three
+`expl.semantic_*` features are opt-in and `unavailable` while `EDUSYNC_C2_SEMANTIC` is `off` (default). A planned feature would be
+always `unavailable` (`todo:<name>`) until its milestone. The schema is versioned (`FEATURE_SCHEMA_VERSION`, now `0.3`)
 and pinned by `tests/difficulty/golden/registry_snapshot.json`, checked by `tests/difficulty/test_registry_snapshot.py`.
 `scripts/feature_report.py` prints, per feature, maturity, status counts and distinct computed values over the seeded synthetic decks,
 and flags constant, all-unavailable, planned and partial features (synthetic data makes some features constant by construction). From `edusync/`:
