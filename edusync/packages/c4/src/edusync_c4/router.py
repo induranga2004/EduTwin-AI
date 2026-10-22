@@ -38,6 +38,8 @@ from edusync_c4.schemas import (
     SlideSnapshot,
     SlideText,
     SlideUpsert,
+    SlideWord,
+    SlideWordsUpsert,
     SpeechInfo,
     SpeechResponse,
     SpeechUpload,
@@ -248,6 +250,21 @@ def slide_svg(lecture_id: str, slide_id: str, repo: RepoDep) -> Response:
     return Response(svg, media_type="image/svg+xml", headers={"Content-Security-Policy": "sandbox"})
 
 
+# The "/words" routes must come BEFORE the bare slide route: its {slide_id:path} would otherwise
+# swallow "<slide>/words" as a slide id.
+@router.put("/lectures/{lecture_id}/slides/{slide_id:path}/words")
+def put_slide_words(
+    lecture_id: str, slide_id: str, body: SlideWordsUpsert, repo: RepoDep
+) -> dict[str, int]:
+    """Store the position of every word on a slide (from the slide PDF), in whiteboard units."""
+    return {"words": repo.save_slide_words(lecture_id, slide_id, body.words)}
+
+
+@router.get("/lectures/{lecture_id}/slides/{slide_id:path}/words")
+def get_slide_words(lecture_id: str, slide_id: str, repo: RepoDep) -> list[SlideWord]:
+    return repo.get_slide_words(lecture_id, slide_id)
+
+
 @router.put("/lectures/{lecture_id}/slides/{slide_id:path}")
 def put_slide(lecture_id: str, slide_id: str, slide: SlideUpsert, repo: RepoDep) -> SlideInfo:
     return repo.save_slide(lecture_id, slide_id, slide)
@@ -293,7 +310,8 @@ def report(
         view.analyses = {g.group_id: saved[g.group_id] for g in view.groups if g.group_id in saved}
         missing = [g for g in view.groups if g.group_id not in view.analyses]
         slide_text = view.info.text if view.info else None
-        for a in explain_slide(view.timeline, missing, speech, slide_text):
+        view.words = repo.get_slide_words(lecture_id, view.slide_id)
+        for a in explain_slide(view.timeline, missing, speech, slide_text, words=view.words):
             view.analyses[a.context.group_id] = a
     return HTMLResponse(
         build_report_html(lecture_id, views, at, speech=speech),
@@ -383,8 +401,10 @@ def explain_lecture(lecture_id: str, repo: RepoDep) -> ExplainResponse:
         groups = group_timeline(timeline, GroupingConfig())
         repo.replace_groups(lecture_id, slide_id, groups, GroupingConfig())
         info = infos.get(slide_id)
+        words = repo.get_slide_words(lecture_id, slide_id)
         repo.save_analyses(
-            lecture_id, explain_slide(timeline, groups, speech, info.text if info else None)
+            lecture_id,
+            explain_slide(timeline, groups, speech, info.text if info else None, words=words),
         )
         slides += 1
         groups_total += len(groups)

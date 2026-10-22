@@ -6,14 +6,19 @@ No handwriting, equation or diagram recognition exists here. Freehand strokes ar
 
 from typing import Protocol
 
+from edusync_c4.pointing import describe_marking
 from edusync_c4.schemas import (
     AnnotationGroup,
     NormalizedAnnotation,
     RecognizedContent,
     ShapeType,
+    SlideWord,
+    StrokeKind,
 )
 
 FREEHAND = {ShapeType.DRAW, ShapeType.HIGHLIGHT}
+# Strokes whose kind is recognised even when no slide text is found next to them.
+KNOWN_KINDS = {StrokeKind.UNDERLINE, StrokeKind.CIRCLE, StrokeKind.LOOP, StrokeKind.LINE}
 # TODO(later phase): VisionOcrRecognizer / math recognizer implementing ContentRecognizer.
 
 
@@ -24,18 +29,34 @@ class ContentRecognizer(Protocol):
 
 
 class HeuristicRecognizer:
-    name = "heuristic-native-text-v1"
+    """Reads native text; recognises underlines and circles and names the slide words they mark.
+
+    `words_by_slide` maps a slide id to its word boxes (whiteboard coordinates). Without words the
+    strokes are still classified (an underline, a circle) but point at nothing.
+    """
+
+    name = "heuristic-native-text-v2"
+
+    def __init__(self, words_by_slide: dict[str, list[SlideWord]] | None = None) -> None:
+        self._words = words_by_slide or {}
 
     def recognize(
         self, group: AnnotationGroup, members: list[NormalizedAnnotation]
     ) -> RecognizedContent:
-        strokes = sum(1 for m in members if m.shape_type in FREEHAND)
+        freehand = [m for m in members if m.shape_type in FREEHAND]
+        strokes = len(freehand)
+        markings = [
+            mk
+            for m in freehand
+            if (mk := describe_marking(m, self._words.get(m.slide_id))) is not None
+        ]
+        unnamed = strokes - sum(1 for mk in markings if mk.action or mk.kind in KNOWN_KINDS)
         text = group.native_text
         has_other = any(m.shape_type not in FREEHAND for m in members)
         notes: list[str] = []
-        if strokes:
+        if unnamed:
             notes.append(
-                f"{strokes} freehand stroke(s) not recognised: handwriting, equations and "
+                f"{unnamed} freehand stroke(s) not recognised: handwriting, equations and "
                 "diagrams are not supported yet."
             )
         if not members:
@@ -55,7 +76,8 @@ class HeuristicRecognizer:
             kind=kind,
             text=text,
             freehand_stroke_count=strokes,
-            is_placeholder=strokes > 0 and not text,
+            is_placeholder=unnamed > 0 and not text,
             recognizer=self.name,
             notes=notes,
+            markings=markings,
         )

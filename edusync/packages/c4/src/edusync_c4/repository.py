@@ -29,12 +29,13 @@ from edusync_c4.schemas import (
     ShapeType,
     SlideInfo,
     SlideUpsert,
+    SlideWord,
     SpeechInfo,
     SpeechSegment,
 )
 from edusync_c4.timeline import build_timeline
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS events (
@@ -80,6 +81,13 @@ CREATE TABLE IF NOT EXISTS slides (
     scaled_height REAL,
     text TEXT,
     svg TEXT,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (lecture_id, slide_id)
+);
+CREATE TABLE IF NOT EXISTS slide_words (
+    lecture_id TEXT NOT NULL,
+    slide_id TEXT NOT NULL,
+    words_json TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     PRIMARY KEY (lecture_id, slide_id)
 );
@@ -414,7 +422,14 @@ class AnnotationRepository:
         counts: dict[str, int] = {}
         with self._connect() as conn:
             conn.execute("DELETE FROM analyses WHERE lecture_id = ?", (lecture_id,))
-            for table in ("groups", "slides", "events", "speech_segments", "speech_meta"):
+            for table in (
+                "groups",
+                "slides",
+                "slide_words",
+                "events",
+                "speech_segments",
+                "speech_meta",
+            ):
                 cur = conn.execute(f"DELETE FROM {table} WHERE lecture_id = ?", (lecture_id,))
                 counts[table] = cur.rowcount
         return counts
@@ -531,3 +546,29 @@ class AnnotationRepository:
             )
             for r in rows
         ]
+
+    # ------------------------------------------------------------------ slide words
+
+    def save_slide_words(self, lecture_id: str, slide_id: str, words: list[SlideWord]) -> int:
+        """Replace the word boxes of one slide (whiteboard coordinates). Returns the count."""
+        payload = json.dumps([w.model_dump() for w in words])
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO slide_words VALUES (?,?,?,?)",
+                (lecture_id, slide_id, payload, _now()),
+            )
+            # strokes are described using these words, so cached analyses are stale
+            conn.execute(
+                "DELETE FROM groups WHERE lecture_id = ? AND slide_id = ?", (lecture_id, slide_id)
+            )
+        return len(words)
+
+    def get_slide_words(self, lecture_id: str, slide_id: str) -> list[SlideWord]:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT words_json FROM slide_words WHERE lecture_id = ? AND slide_id = ?",
+                (lecture_id, slide_id),
+            ).fetchone()
+        if row is None:
+            return []
+        return [SlideWord.model_validate(w) for w in json.loads(row["words_json"])]

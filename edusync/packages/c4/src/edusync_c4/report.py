@@ -22,15 +22,19 @@ from typing import Any
 
 from edusync_c4.diagram import build_diagrams
 from edusync_c4.local_explain import pick_relevant, terms
+from edusync_c4.pointing import describe_marking
 from edusync_c4.schemas import (
     AnnotationGroup,
     AnnotationTimeline,
     Diagram,
     GroupAnalysis,
+    Marking,
     NormalizedAnnotation,
     ShapeType,
     SlideInfo,
+    SlideWord,
     SpeechSegment,
+    StrokeKind,
 )
 from edusync_c4.timeline import reconstruct_snapshot
 
@@ -91,6 +95,7 @@ class SlideView:
     timeline: AnnotationTimeline
     groups: list[AnnotationGroup]
     analyses: dict[str, GroupAnalysis] = field(default_factory=dict)
+    words: list[SlideWord] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------- helpers
@@ -401,7 +406,26 @@ def render_board(
 # ---------------------------------------------------------------------------- page
 
 
-def _shape_label(ann: NormalizedAnnotation) -> str:
+MARK_LABEL = {
+    StrokeKind.UNDERLINE: ("Underline", "under"),
+    StrokeKind.CIRCLE: ("Circle", "around"),
+    StrokeKind.LOOP: ("Loop", "around"),
+}
+
+
+def marking_label(mk: Marking | None) -> str | None:
+    """'Underline under "Throughput"', 'Circle', ... or None for strokes that are not recognised."""
+    if mk is None or mk.kind not in MARK_LABEL:
+        return None
+    name, preposition = MARK_LABEL[mk.kind]
+    return f"{name} {preposition} \u201c{mk.target_text}\u201d" if mk.target_text else name
+
+
+def _shape_label(ann: NormalizedAnnotation, words: list[SlideWord] | None = None) -> str:
+    if ann.shape_type in (ShapeType.DRAW, ShapeType.HIGHLIGHT):
+        label = marking_label(describe_marking(ann, words))
+        if label:
+            return label
     if ann.shape_type == ShapeType.GEO:
         geo = str((ann.shape_state.get("props") or {}).get("geo", "rectangle"))
         return geo.replace("-", " ").capitalize()
@@ -490,7 +514,7 @@ def _timeline_rows(
             (
                 first.timestamp_seconds,
                 f'<li><span class="t">{clock(first.timestamp_seconds)}</span> '
-                f"<b>{escape(_shape_label(last))}</b> {quote}{extra}"
+                f"<b>{escape(_shape_label(last, view.words))}</b> {quote}{extra}"
                 f"{said_html}"
                 "</li>",
             )
@@ -539,6 +563,10 @@ def _meaning_title(a: GroupAnalysis) -> str:
         return "Diagram: " + ctx.diagram_sentences[0]
     if ctx.native_text:
         return ctx.native_text if len(ctx.native_text) <= 70 else ctx.native_text[:69] + "\u2026"
+    labels = [marking_label(mk) for mk in a.recognized.markings]
+    labels = [lb for lb in labels if lb]
+    if labels:
+        return "; ".join(labels)
     return {
         "unrecognized_freehand": "Freehand drawing",
         "shapes_only": "Shapes",
@@ -564,6 +592,13 @@ def _evidence_html(a: GroupAnalysis) -> str:
         items.append(
             "<li>A line of the slide text (shown in full under &ldquo;Slide text&rdquo;)</li>"
         )
+    for mk in a.recognized.markings:
+        if mk.kind in MARK_LABEL:
+            facts = ", ".join(f"{k} {v:g}" for k, v in sorted(mk.measurements.items()))
+            target = f" marking \u201c{mk.target_text}\u201d" if mk.target_text else ""
+            items.append(
+                f"<li>Stroke measured as {mk.kind.value}{escape(target)} ({escape(facts)})</li>"
+            )
     items.extend(f'<li class="muted">{escape(text)}</li>' for text in a.interpretation.limitations)
     return "<details><summary>Evidence</summary><ul>" + "".join(items) + "</ul></details>"
 

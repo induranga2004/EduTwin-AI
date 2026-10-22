@@ -69,6 +69,11 @@ if (-not $SkipSlides) {
     Invoke-Native @('docker', 'compose', 'cp', (Join-Path $tmp 'svgs'), "edusync:$dest") -Quiet | Out-Null
     Invoke-Native @('docker', 'compose', 'exec', '-T', 'edusync', 'python', '/tmp/c4_capture.py', '--slides', $dest) | ForEach-Object { Write-Host ("    " + $_) }
     Remove-Item -Recurse -Force $tmp
+
+    # Best effort: word positions let the report name what an underline or circle points at.
+    Write-Host '==> Store slide word positions (best effort)'
+    try { & (Join-Path $PSScriptRoot 'c4-words.ps1') -Lecture $m }
+    catch { Write-Host "    skipped: $($_.Exception.Message)" }
 }
 
 Write-Host '==> Capture annotations (Ctrl+C when the lecture is finished, before ending the meeting)'

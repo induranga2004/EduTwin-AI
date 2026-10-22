@@ -260,6 +260,51 @@ class AnnotationContext(BaseModel):
         return ids
 
 
+# --- Underlines, circles and what they point at ---
+
+MAX_SLIDE_WORDS = 5000
+
+
+class StrokeKind(StrEnum):
+    UNDERLINE = "underline"
+    LINE = "line"
+    CIRCLE = "circle"  # a closed, rounded loop
+    LOOP = "loop"  # a closed, boxy loop
+    SCRIBBLE = "scribble"
+    DOT = "dot"
+
+
+class SlideWord(BaseModel):
+    """One word of the slide text with its box, in whiteboard coordinates."""
+
+    text: str = Field(min_length=1, max_length=200)
+    x: float
+    y: float
+    width: float = Field(ge=0.0)
+    height: float = Field(ge=0.0)
+
+    @field_validator("x", "y", "width", "height")
+    @classmethod
+    def _finite(cls, v: float) -> float:
+        if v != v or v in (float("inf"), float("-inf")):
+            raise ValueError("coordinates must be finite numbers")
+        return v
+
+
+class SlideWordsUpsert(BaseModel):
+    words: list[SlideWord] = Field(max_length=MAX_SLIDE_WORDS)
+
+
+class Marking(BaseModel):
+    """A recognised freehand mark, and the slide text it points at (if any)."""
+
+    shape_id: str
+    kind: StrokeKind
+    action: str | None = None  # "underlined" | "circled" | "boxed" when text was found
+    target_text: str | None = None
+    measurements: dict[str, float] = Field(default_factory=dict)
+
+
 class RecognizedContent(BaseModel):
     """What can be read from a group without any ML. Placeholders are labelled as such."""
 
@@ -270,6 +315,7 @@ class RecognizedContent(BaseModel):
     is_placeholder: bool = False
     recognizer: str
     notes: list[str] = Field(default_factory=list)
+    markings: list[Marking] = Field(default_factory=list)
 
 
 class DifficultyEstimate(BaseModel):

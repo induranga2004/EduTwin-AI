@@ -872,7 +872,11 @@ def test_recognizer_labels_freehand_as_placeholder():
     assert rec.freehand_stroke_count == 1
     assert rec.text == "Kinetic energy"
     assert rec.is_placeholder is False  # it has real native text
-    assert any("not recognised" in n for n in rec.notes)
+    # the sample stroke is a flat 120-wide line: recognised as an underline (naming the slide text
+    # it sits under needs word positions, which this synthetic data does not have)
+    assert [mk.kind.value for mk in rec.markings] == ["underline"]
+    assert rec.markings[0].target_text is None
+    assert rec.notes == []
 
     tl2 = build_timeline(
         [{"id": "d", "type": "draw", "timestamp": 1, "props": {"segments": [{"points": [[0, 0]]}]}}]
@@ -882,6 +886,7 @@ def test_recognizer_labels_freehand_as_placeholder():
     assert only.kind == "unrecognized_freehand"
     assert only.text is None
     assert only.is_placeholder is True
+    assert any("not recognised" in n for n in only.notes)  # a single point is just a dot
 
 
 def test_pipeline_separates_evidence_from_interpretation_and_cites_it():

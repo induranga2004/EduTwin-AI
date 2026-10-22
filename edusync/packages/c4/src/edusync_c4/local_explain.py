@@ -23,8 +23,10 @@ from edusync_c4.schemas import (
     GroupAnalysis,
     RecognizedContent,
     SlideText,
+    SlideWord,
     SpeechEvidence,
     SpeechSegment,
+    StrokeKind,
 )
 
 METHOD = "evidence-local-v1"
@@ -133,6 +135,32 @@ def best_slide_line(slide_text: str | None, target: set[str]) -> str | None:
     return _trim(best[2], MAX_SLIDE_LINE_CHARS) if best else None
 
 
+_KIND_PHRASE = {
+    StrokeKind.UNDERLINE: "an underline",
+    StrokeKind.CIRCLE: "a circle",
+    StrokeKind.LOOP: "a loop",
+    StrokeKind.LINE: "a line",
+}
+
+
+def _joined(parts: list[str]) -> str:
+    return parts[0] if len(parts) == 1 else ", ".join(parts[:-1]) + " and " + parts[-1]
+
+
+def _marking_parts(recognized: RecognizedContent) -> tuple[list[str], int]:
+    """Phrases for recognised marks, and how many strokes remain unexplained."""
+    parts: list[str] = []
+    explained = 0
+    for mk in recognized.markings:
+        if mk.action and mk.target_text:
+            parts.append(f"{mk.action} \u201c{_trim(mk.target_text, 120)}\u201d")
+            explained += 1
+        elif mk.kind in _KIND_PHRASE:
+            parts.append(f"drew {_KIND_PHRASE[mk.kind]} (no slide text was found there)")
+            explained += 1
+    return parts, recognized.freehand_stroke_count - explained
+
+
 def _lead(context: AnnotationContext, recognized: RecognizedContent) -> str:
     when = _clock(context.span_start)
     text = (recognized.text or "").strip()
@@ -141,6 +169,16 @@ def _lead(context: AnnotationContext, recognized: RecognizedContent) -> str:
     if context.diagram_sentences:
         listed = "; ".join(context.diagram_sentences)
         return f"At {when} the lecturer drew a diagram: {listed}."
+    mark_parts, leftover = _marking_parts(recognized)
+    if mark_parts:
+        pieces = [f"wrote \u201c{_trim(text, 200)}\u201d"] if text else []
+        pieces.extend(mark_parts)
+        if leftover > 0:
+            pieces.append(
+                f"drew {leftover} more freehand stroke{'s' if leftover != 1 else ''} "
+                "(not recognised)"
+            )
+        return f"At {when} the lecturer {_joined(pieces)}."
     if recognized.kind == "native_text":
         return f"At {when} the lecturer wrote “{_trim(text, 200)}”."
     if recognized.kind == "mixed":
@@ -168,7 +206,12 @@ class EvidenceInterpreter:
         ann_id = f"annotation:{context.group_id}"
         cited = [ann_id]
         cited.extend(f"diagram:{i}" for i in range(len(context.diagram_sentences)))
-        target = terms(recognized.text or "") | terms(" ".join(context.diagram_sentences))
+        marked = " ".join(mk.target_text or "" for mk in recognized.markings)
+        target = (
+            terms(recognized.text or "")
+            | terms(" ".join(context.diagram_sentences))
+            | terms(marked)
+        )
 
         parts = [_lead(context, recognized)]
         quotes = rank_speech(context, target)
@@ -192,7 +235,14 @@ class EvidenceInterpreter:
             "so a quote can be off-topic and the reason for the drawing is not explained.",
             *recognized.notes,
         ]
-        category = "diagram" if context.diagram_sentences else recognized.kind
+        named = any(mk.action for mk in recognized.markings)
+        category = (
+            "diagram"
+            if context.diagram_sentences
+            else "marking"
+            if named and not recognized.text
+            else recognized.kind
+        )
         return AnnotationInterpretation(
             group_id=context.group_id,
             category=category,
@@ -210,6 +260,7 @@ def explain_slide(
     speech: list[SpeechSegment] | None,
     slide_text: str | None,
     interpreter: ContextualInterpreter | None = None,
+    words: list[SlideWord] | None = None,
 ) -> list[GroupAnalysis]:
     """Explain every group of one slide from real inputs only (no mock data, no concepts)."""
     from edusync_c4.context import ContextConfig
@@ -222,6 +273,6 @@ def explain_slide(
         slide,
         [],
         config=ContextConfig(max_slide_excerpt_chars=5000),
-        recognizer=HeuristicRecognizer(),
+        recognizer=HeuristicRecognizer({timeline.slide_id: words} if words else None),
         interpreter=interpreter or EvidenceInterpreter(),
     )
