@@ -248,9 +248,12 @@ class AnnotationContext(BaseModel):
     slide_text_truncated: bool = False
     speech: list[SpeechEvidence] = Field(default_factory=list)
     concept_candidates: list[ConceptCandidate] = Field(default_factory=list)
+    # Boxes-and-arrows read from the group's geometry (plain facts, e.g. 'help -> needed').
+    diagram_sentences: list[str] = Field(default_factory=list)
 
     def evidence_ids(self) -> list[str]:
         ids = [f"annotation:{self.group_id}"]
+        ids.extend(f"diagram:{i}" for i in range(len(self.diagram_sentences)))
         if self.slide_evidence_id:
             ids.append(self.slide_evidence_id)
         ids.extend(s.evidence_id for s in self.speech)
@@ -469,3 +472,12 @@ class LectureSummary(BaseModel):
     last_seconds: float | None = None
     last_imported: str
     has_speech: bool = False
+
+
+class ExplainResponse(BaseModel):
+    lecture_id: str
+    method: str
+    slide_count: int
+    group_count: int
+    used_speech: bool
+    used_slide_text: bool

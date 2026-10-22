@@ -22,6 +22,7 @@ from edusync_c4.interpreter import (
     TemplateContextualInterpreter,
     analyze_groups,
 )
+from edusync_c4.local_explain import EvidenceInterpreter, explain_slide
 from edusync_c4.normalizer import (
     apply_delta,
     compute_bounds,
@@ -51,6 +52,7 @@ from edusync_c4.schemas import (
     DifficultyEstimate,
     EventImportRequest,
     EventImportResponse,
+    ExplainResponse,
     GroupAnalysis,
     GroupingConfig,
     NormalizedAnnotation,
@@ -110,7 +112,9 @@ __all__ = [
     "DifficultyPredictor",
     "EventImportRequest",
     "EventImportResponse",
+    "EvidenceInterpreter",
     "ExactPhraseMatcher",
+    "ExplainResponse",
     "GroupAnalysis",
     "GroupingConfig",
     "HeuristicRecognizer",
@@ -136,6 +140,7 @@ __all__ = [
     "build_timeline",
     "build_timelines",
     "compute_bounds",
+    "explain_slide",
     "extract_stroke_points",
     "group_timeline",
     "members_of",

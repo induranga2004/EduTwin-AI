@@ -9,6 +9,7 @@ from typing import Protocol
 
 from edusync_c4.c2_mock import ComprehensionEvaluator, DifficultyPredictor
 from edusync_c4.context import ConceptMatcher, ContextConfig, build_group_context, members_of
+from edusync_c4.diagram import build_diagrams
 from edusync_c4.recognizer import ContentRecognizer, HeuristicRecognizer
 from edusync_c4.schemas import (
     AnnotationContext,
@@ -162,7 +163,15 @@ def analyze_groups(
     interpreter = interpreter or TemplateContextualInterpreter()
     results: list[GroupAnalysis] = []
     for group in groups:
-        context = build_group_context(group, speech, slide_text, concepts, config, matcher)
+        members = set(group.shape_ids)
+        sentences = [
+            s
+            for d in build_diagrams([e for e in timeline.events if e.shape_id in members])
+            for s in d.sentences
+        ]
+        context = build_group_context(
+            group, speech, slide_text, concepts, config, matcher, sentences
+        )
         recognized = recognizer.recognize(group, members_of(group, timeline))
         results.append(
             GroupAnalysis(

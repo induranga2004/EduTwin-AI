@@ -12,6 +12,8 @@ from edusync_c4.diagram import build_diagrams
 from edusync_c4.evidence import reconcile
 from edusync_c4.grouping import group_timeline
 from edusync_c4.interpreter import TemplateContextualInterpreter, analyze_groups
+from edusync_c4.local_explain import METHOD as LOCAL_METHOD
+from edusync_c4.local_explain import explain_slide
 from edusync_c4.mock_data import MOCK_COMPREHENSION, MOCK_CONCEPTS, MOCK_SLIDE_TEXT, MOCK_TRANSCRIPT
 from edusync_c4.report import SlideView, build_report_html, fullest_time
 from edusync_c4.repository import AnnotationRepository
@@ -26,6 +28,7 @@ from edusync_c4.schemas import (
     Diagram,
     EventImportRequest,
     EventImportResponse,
+    ExplainResponse,
     GroupingConfig,
     LectureSummary,
     NormalizedAnnotation,
@@ -284,8 +287,16 @@ def report(
         key=lambda v: (v.info.number if v.info and v.info.number is not None else 10**6, v.slide_id)
     )
     stored = repo.load_speech(lecture_id)
+    speech = stored[1] if stored else None
+    saved = {a.context.group_id: a for _, _, _, a in repo.load_analyses(lecture_id)}
+    for view in views:  # stored explanations win (for example AI ones); else explain live
+        view.analyses = {g.group_id: saved[g.group_id] for g in view.groups if g.group_id in saved}
+        missing = [g for g in view.groups if g.group_id not in view.analyses]
+        slide_text = view.info.text if view.info else None
+        for a in explain_slide(view.timeline, missing, speech, slide_text):
+            view.analyses[a.context.group_id] = a
     return HTMLResponse(
-        build_report_html(lecture_id, views, at, speech=stored[1] if stored else None),
+        build_report_html(lecture_id, views, at, speech=speech),
         headers={"Content-Security-Policy": REPORT_CSP},
     )
 
@@ -349,3 +360,39 @@ def get_speech(lecture_id: str, repo: RepoDep) -> SpeechResponse:
         raise HTTPException(404, f"No speech stored for lecture {lecture_id!r}.")
     info, segments = stored
     return SpeechResponse(**info.model_dump(), segments=segments)
+
+
+@router.post("/lectures/{lecture_id}/explain")
+def explain_lecture(lecture_id: str, repo: RepoDep) -> ExplainResponse:
+    """(Re)build and store the "What it means" summaries for every slide of a lecture.
+
+    Uses real inputs only: the stored speech and slide text, and no mock data. The report builds
+    the same summaries on the fly, so this is only needed to store them (for example to compare
+    interpreters later).
+    """
+    if not repo.lecture_exists(lecture_id):
+        raise HTTPException(404, f"Unknown lecture {lecture_id!r}.")
+    stored = repo.load_speech(lecture_id)
+    speech = stored[1] if stored else None
+    infos = {s.slide_id: s for s in repo.list_slides(lecture_id)}
+    slides = groups_total = 0
+    for slide_id in repo.slide_ids(lecture_id):
+        timeline = repo.timeline(lecture_id, slide_id)
+        if timeline is None:
+            continue
+        groups = group_timeline(timeline, GroupingConfig())
+        repo.replace_groups(lecture_id, slide_id, groups, GroupingConfig())
+        info = infos.get(slide_id)
+        repo.save_analyses(
+            lecture_id, explain_slide(timeline, groups, speech, info.text if info else None)
+        )
+        slides += 1
+        groups_total += len(groups)
+    return ExplainResponse(
+        lecture_id=lecture_id,
+        method=LOCAL_METHOD,
+        slide_count=slides,
+        group_count=groups_total,
+        used_speech=bool(speech),
+        used_slide_text=any(i.text for i in infos.values()),
+    )

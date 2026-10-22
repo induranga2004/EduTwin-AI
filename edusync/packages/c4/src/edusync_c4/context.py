@@ -77,6 +77,7 @@ def build_group_context(
     concepts: list[ConceptRef],
     config: ContextConfig | None = None,
     matcher: ConceptMatcher | None = None,
+    diagram_sentences: list[str] | None = None,
 ) -> AnnotationContext:
     """Collect speech, slide text and concept candidates around one group.
 
@@ -149,4 +150,5 @@ def build_group_context(
         slide_text_truncated=truncated,
         speech=speech_ev,
         concept_candidates=candidates,
+        diagram_sentences=list(diagram_sentences or []),
     )

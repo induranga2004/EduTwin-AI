@@ -15,7 +15,7 @@ base64 data URI inside an SVG <image>, which browsers never execute scripts from
 import base64
 import math
 import textwrap
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from html import escape
 from typing import Any
@@ -25,6 +25,7 @@ from edusync_c4.schemas import (
     AnnotationGroup,
     AnnotationTimeline,
     Diagram,
+    GroupAnalysis,
     NormalizedAnnotation,
     ShapeType,
     SlideInfo,
@@ -88,6 +89,7 @@ class SlideView:
     svg: str | None
     timeline: AnnotationTimeline
     groups: list[AnnotationGroup]
+    analyses: dict[str, GroupAnalysis] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------- helpers
@@ -513,6 +515,63 @@ def _diagram_rows(diagrams: list[Diagram], speech: list[SpeechSegment] | None = 
     return '<ul class="groups">' + "".join(items) + "</ul>" if items else ""
 
 
+def _badge(method: str) -> str:
+    if method.startswith("llm:"):
+        return f"AI-generated ({escape(method[4:])})"
+    return "Rule-based summary (not AI)"
+
+
+def _meaning_title(a: GroupAnalysis) -> str:
+    ctx = a.context
+    if ctx.diagram_sentences:
+        return "Diagram: " + ctx.diagram_sentences[0]
+    if ctx.native_text:
+        return ctx.native_text if len(ctx.native_text) <= 70 else ctx.native_text[:69] + "\u2026"
+    return {
+        "unrecognized_freehand": "Freehand drawing",
+        "shapes_only": "Shapes",
+    }.get(a.recognized.kind, "Annotation")
+
+
+def _evidence_html(a: GroupAnalysis) -> str:
+    ctx, cited = a.context, set(a.interpretation.cited_evidence_ids)
+    items: list[str] = []
+    if f"annotation:{ctx.group_id}" in cited and ctx.native_text:
+        items.append(f"<li>Written: <q>{escape(ctx.native_text)}</q></li>")
+    items.extend(
+        f"<li>Diagram: {escape(sentence)}</li>"
+        for i, sentence in enumerate(ctx.diagram_sentences)
+        if f"diagram:{i}" in cited
+    )
+    items.extend(
+        f"<li>Said at {clock(sp.start)}: <q>{escape(' '.join(sp.text.split()))}</q></li>"
+        for sp in ctx.speech
+        if sp.evidence_id in cited
+    )
+    if ctx.slide_evidence_id in cited:
+        items.append(
+            "<li>A line of the slide text (shown in full under &ldquo;Slide text&rdquo;)</li>"
+        )
+    items.extend(f'<li class="muted">{escape(text)}</li>' for text in a.interpretation.limitations)
+    return "<details><summary>Evidence</summary><ul>" + "".join(items) + "</ul></details>"
+
+
+def _meaning_html(view: SlideView) -> str:
+    blocks = []
+    for group in sorted(view.groups, key=lambda g: (g.start_seconds, g.group_id)):
+        a = view.analyses.get(group.group_id)
+        if a is None:
+            continue
+        span = f"{clock(group.start_seconds)}&ndash;{clock(group.end_seconds)}"
+        blocks.append(
+            f'<div class="mean"><div><span class="t">{span}</span> '
+            f"<b>{escape(_meaning_title(a))}</b> "
+            f'<span class="badge">{_badge(a.interpretation.method)}</span></div>'
+            f"<p>{escape(a.interpretation.summary)}</p>{_evidence_html(a)}</div>"
+        )
+    return "".join(blocks)
+
+
 def _slide_title(view: SlideView) -> str:
     number = view.info.number if view.info and view.info.number is not None else None
     heading = f"Slide {number}" if number is not None else "Slide"
@@ -536,6 +595,11 @@ svg.board{width:100%;height:auto;display:block;border:1px solid #d1d5db}
 .t{display:inline-block;min-width:64px;font-variant-numeric:tabular-nums;color:#374151;
   font-weight:bold}
 .dg{display:inline-block;vertical-align:top}
+.mean{border-left:3px solid #6b7280;background:#f9fafb;padding:8px 12px;margin:0 0 10px}
+.mean p{margin:6px 0}
+.badge{font-size:12px;color:#92400e;background:#fef3c7;border-radius:4px;
+  padding:1px 6px;margin-left:6px}
+.mean ul{margin:4px 0 0 18px;padding:0;font-size:13px}
 .said{margin:4px 0 0 64px;color:#374151;font-size:14px}
 figure{margin:0 0 14px}figcaption{font-size:13px;color:#374151;margin:0 0 4px}
 q{color:#111}details{margin-top:12px}summary{cursor:pointer;color:#374151}
@@ -596,9 +660,11 @@ def build_report_html(
                 "</pre></details>"
             )
         diagram_html = _diagram_rows(list(diagrams.values()), speech)
+        meaning_html = _meaning_html(view)
         sections.append(
             f'<section class="slide"><h2>{_slide_title(view)}</h2>{"".join(figures)}'
             f"{'<h3>Diagrams</h3>' + diagram_html if diagrams else ''}"
+            f"{'<h3>What it means</h3>' + meaning_html if meaning_html else ''}"
             f"<h3>What was written and drawn</h3>{_timeline_rows(view, visible_ids, speech)}"
             f"{'<h3>Grouped items</h3>' + _groups_rows(view) if view.groups else ''}"
             f"{slide_text}</section>"
