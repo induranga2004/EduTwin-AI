@@ -37,7 +37,9 @@ from edusync_c2.difficulty.synthetic import (
 STATUSES = tuple(s.value for s in FeatureStatus)
 
 
-def collect(seed: int, lectures: int, concepts: int) -> tuple[list[dict], int]:
+def collect(
+    seed: int, lectures: int, concepts: int, vary_layout: bool = False
+) -> tuple[list[dict], int]:
     """Run the pipeline on every deck; return per-feature stats in registry order and the count."""
     values: dict[str, list[float]] = {s.name: [] for s in FEATURE_SPECS}
     counts: dict[str, dict[str, int]] = {s.name: dict.fromkeys(STATUSES, 0) for s in FEATURE_SPECS}
@@ -46,7 +48,10 @@ def collect(seed: int, lectures: int, concepts: int) -> tuple[list[dict], int]:
         lecture_id = f"synthetic-lecture-{k}"
         spec = make_deck_spec(seed + k, concepts, lecture_id=lecture_id)
         graph = C1GraphResponse.model_validate(build_c1_graph(spec, "v1"))
-        for kind, data in (("pptx", build_pptx(spec)), ("pdf", build_pdf(spec))):
+        for kind, data in (
+            ("pptx", build_pptx(spec, vary_layout=vary_layout)),
+            ("pdf", build_pdf(spec)),
+        ):
             response = DifficultyPipeline().run(data, f"{lecture_id}.{kind}", graph)
             for prediction in response.predictions:
                 predictions += 1
@@ -147,6 +152,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--lectures", type=int, default=3)
     parser.add_argument("--concepts", type=int, default=8)
+    parser.add_argument(
+        "--vary-layout", action="store_true", help="Build PPTX decks with varied slide layouts"
+    )
     parser.add_argument("--json", action="store_true", help="Print a machine-readable report")
     parser.add_argument("--write-snapshot", metavar="PATH", help="Write the registry snapshot")
     try:
@@ -166,7 +174,7 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         return 0
 
-    rows, predictions = collect(args.seed, args.lectures, args.concepts)
+    rows, predictions = collect(args.seed, args.lectures, args.concepts, args.vary_layout)
     if args.json:
         payload = {
             "version": FEATURE_SCHEMA_VERSION,
