@@ -4,6 +4,7 @@ Deterministic: no timings, ids or clocks in the response.
 """
 
 import time
+from collections.abc import Callable
 
 from edusync_c2.difficulty.concepts import (
     ConceptFilter,
@@ -62,7 +63,11 @@ class DifficultyPipeline:
         use_mocked_features: bool = False,
         selected_model: str = "baseline",
         vocab: VocabularyAnalyzer | None = None,
+        graph_provider_factory: Callable[[bytes, str], GraphProvider] | None = None,
+        graph_provider_name: str | None = None,
     ) -> None:
+        self.graph_provider_factory = graph_provider_factory
+        self.graph_provider_name = graph_provider_name
         self.selected_model = selected_model
         self.vocab = vocab
         self.model: DifficultyModel = model or RuleBaselineModel()
@@ -76,7 +81,7 @@ class DifficultyPipeline:
     def info(self) -> DifficultyInfo:
         return DifficultyInfo(
             model=self.model.info,
-            graph_provider=self.mock_provider.name,
+            graph_provider=self.graph_provider_name or self.mock_provider.name,
             concept_filter=self.concept_filter.name,
             features=list(FEATURE_SPECS),
             todo=list(PHASE1_TODO),
@@ -101,9 +106,14 @@ class DifficultyPipeline:
             materials.slide_count,
             len(materials.warnings),
         )
-        provider: GraphProvider = (
-            PayloadGraphProvider(c1_graph) if c1_graph is not None else self.mock_provider
-        )
+        # A posted graph always wins; then the configured factory; else the slide-title mock.
+        provider: GraphProvider
+        if c1_graph is not None:
+            provider = PayloadGraphProvider(c1_graph)
+        elif self.graph_provider_factory is not None:
+            provider = self.graph_provider_factory(data, filename)
+        else:
+            provider = self.mock_provider
         ctx = provider.build(materials)
         raw_view = GraphView(ctx.response)
         graph = ctx.response.graph
@@ -253,8 +263,16 @@ class DifficultyPipeline:
             round((time.perf_counter() - started) * 1000),
         )
 
+        # Caller payload: echo its id. Configured file/c1_api provider: the provider's own
+        # (deterministic) id. Default mock: none, as before.
+        if c1_graph is not None:
+            lecture_id = c1_graph.lecture_id
+        elif self.graph_provider_factory is not None:
+            lecture_id = ctx.response.lecture_id
+        else:
+            lecture_id = None
         return DifficultyResponse(
-            lecture_id=c1_graph.lecture_id if c1_graph is not None else None,
+            lecture_id=lecture_id,
             filename=materials.filename,
             file_type=materials.file_type,
             slide_count=materials.slide_count,

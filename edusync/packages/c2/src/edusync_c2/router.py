@@ -1,6 +1,7 @@
 """C2 HTTP routes."""
 
 import json
+from collections.abc import Callable
 from functools import lru_cache
 from typing import Annotated
 
@@ -9,11 +10,17 @@ from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
 from edusync_c2.comprehension import flag_for_clarification
+from edusync_c2.difficulty.c1_client import UrllibTransport
 from edusync_c2.difficulty.concepts import create_concept_filter
-from edusync_c2.difficulty.errors import ModelArtifactError, ModelNotAvailableError
+from edusync_c2.difficulty.errors import (
+    GraphProviderError,
+    ModelArtifactError,
+    ModelNotAvailableError,
+)
 from edusync_c2.difficulty.materials import MaterialsError
 from edusync_c2.difficulty.models import create_model
 from edusync_c2.difficulty.pipeline import DifficultyPipeline
+from edusync_c2.difficulty.providers import C1ApiGraphProvider, FileGraphProvider, GraphProvider
 from edusync_c2.difficulty.schemas import C1GraphResponse, DifficultyInfo, DifficultyResponse
 from edusync_c2.logger import (
     configure_logging,
@@ -23,7 +30,7 @@ from edusync_c2.logger import (
     set_request_id,
 )
 from edusync_c2.schemas import ComprehensionRequest, ComprehensionResponse
-from edusync_c2.settings import get_c2_settings
+from edusync_c2.settings import C2Settings, get_c2_settings
 from edusync_core.settings import CoreSettings, get_settings
 
 logger = get_logger(__name__)
@@ -32,9 +39,22 @@ router = APIRouter()
 MAX_UPLOAD_MB_CAP = 100
 
 
+def _graph_provider_factory(settings: C2Settings) -> Callable[[bytes, str], GraphProvider] | None:
+    """The per-request provider for uploads without a posted graph (None = slide-title mock)."""
+    if settings.graph_provider == "file":
+        file_provider = FileGraphProvider(settings.graph_file)
+        return lambda data, filename: file_provider
+    if settings.graph_provider == "c1_api":
+        base_url, timeout_s = settings.c1_base_url, settings.c1_timeout_s
+        return lambda data, filename: C1ApiGraphProvider(
+            data, filename, UrllibTransport(base_url, timeout_s)
+        )
+    return None
+
+
 @lru_cache
 def get_pipeline() -> DifficultyPipeline:
-    """FastAPI dependency: the pipeline for the configured model (mock graph provider).
+    """FastAPI dependency: the pipeline for the configured model and graph provider.
 
     Failures raise and are therefore not cached by ``lru_cache``.
     """
@@ -54,7 +74,11 @@ def get_pipeline() -> DifficultyPipeline:
         raise HTTPException(501, str(exc)) from exc
     logger.info("pipeline_ready model=%s", settings.model)
     return DifficultyPipeline(
-        model=model, concept_filter=concept_filter, selected_model=settings.model
+        model=model,
+        concept_filter=concept_filter,
+        selected_model=settings.model,
+        graph_provider_factory=_graph_provider_factory(settings),
+        graph_provider_name=None if settings.graph_provider == "mock" else settings.graph_provider,
     )
 
 
@@ -107,6 +131,9 @@ async def difficulty(
             return await run_in_threadpool(pipeline.run, data, file.filename or "", graph)
         except MaterialsError as exc:
             logger.warning("rejected status=%d reason=%s", exc.status_code, exc.message)
+            raise HTTPException(exc.status_code, exc.message) from exc
+        except GraphProviderError as exc:
+            logger.warning("rejected status=%d reason=graph_provider", exc.status_code)
             raise HTTPException(exc.status_code, exc.message) from exc
         except NotImplementedError as exc:
             logger.warning("rejected status=501 reason=model_not_implemented")
