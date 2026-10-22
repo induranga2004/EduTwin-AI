@@ -356,7 +356,8 @@
     }
 
     async function handleFileUpload(event) {
-      const file = event.target.files[0];
+      const file = (event.target && event.target.files && event.target.files[0]) ||
+                   (event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]);
       if (!file) return;
 
       document.getElementById("file-name-label").innerText = `📄 Uploading ${file.name}...`;
@@ -365,7 +366,7 @@
 
       try {
         const response = await fetch("/api/c1/lectures/graph", { method: "POST", body: formData });
-        if (!response.ok) throw new Error("Upload failed");
+        if (!response.ok) throw new Error("Upload failed: " + response.statusText);
         const data = await response.json();
         
         document.getElementById("file-name-label").innerText = `📄 ${file.name} (Active)`;
@@ -375,7 +376,8 @@
           nodes: data.graph.nodes.map(n => ({
             id: n.id,
             label: n.label,
-            description: n.description,
+            description: n.description || "Prerequisite concept extracted from uploaded document.",
+            depth: n.depth !== undefined ? n.depth : 1,
             status: "not_yet_observed"
           })),
           edges: data.graph.edges.map(e => ({
@@ -385,8 +387,8 @@
         };
         initGraph(graphData);
       } catch (err) {
-        alert("Could not process file. Loading IISA default curriculum graph.");
-        loadSampleIISAGraph();
+        alert("Could not process file: " + err.message);
+        document.getElementById("file-name-label").innerText = "📄 Drag & Drop PDF / PPTX Slide Deck";
       }
     }
 
@@ -524,9 +526,31 @@
       document.getElementById("metrics-modal").style.display = "none";
     }
 
-    // Initialize with IISA curriculum by default
+    // Initialize with IISA curriculum by default and wire up drag & drop
     window.onload = function() {
       loadSampleIISAGraph();
+
+      const dropZone = document.getElementById("drop-zone");
+      if (dropZone) {
+        dropZone.addEventListener("dragover", function(e) {
+          e.preventDefault();
+          dropZone.style.borderColor = "#38bdf8";
+          dropZone.style.background = "rgba(56, 189, 248, 0.1)";
+        });
+        dropZone.addEventListener("dragleave", function(e) {
+          e.preventDefault();
+          dropZone.style.borderColor = "var(--border)";
+          dropZone.style.background = "rgba(15, 23, 42, 0.4)";
+        });
+        dropZone.addEventListener("drop", function(e) {
+          e.preventDefault();
+          dropZone.style.borderColor = "var(--border)";
+          dropZone.style.background = "rgba(15, 23, 42, 0.4)";
+          if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleFileUpload(e);
+          }
+        });
+      }
     };
   </script>
 </body>
