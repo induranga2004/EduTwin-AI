@@ -364,8 +364,9 @@
       const formData = new FormData();
       formData.append("file", file);
 
+      const apiPrefix = window.location.pathname.startsWith("/edusync") ? "/edusync/api/c1" : "/api/c1";
       try {
-        const response = await fetch("/api/c1/lectures/graph", { method: "POST", body: formData });
+        const response = await fetch(`${apiPrefix}/lectures/graph`, { method: "POST", body: formData });
         if (!response.ok) throw new Error("Upload failed: " + response.statusText);
         const data = await response.json();
         
