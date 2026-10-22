@@ -125,6 +125,281 @@ def _check_linguistic_dependency(
     return None
 
 
+DISCARD_TITLE_PATTERNS = [
+    re.compile(
+        r"\b(?:examples?|cont|cont\.|syntax|code|step\s*\d+|slide\s*\d+|references?|key references|bibliography|thank\s*you|questions?|agenda|outline|table of contents|contents)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"^dbms_", re.IGNORECASE),
+]
+
+SQL_KEYWORDS = frozenset(
+    {
+        "grant", "revoke", "select", "insert", "update", "delete", "create",
+        "alter", "drop", "exec", "execute", "begin", "declare", "commit", "rollback",
+    }
+)
+
+GENERIC_DISCARD = frozenset(
+    {
+        "process", "active", "data", "user", "system", "point", "case", "table",
+        "file", "cpu", "type", "part", "way", "time", "level", "year", "order",
+        "value", "values", "item", "items", "number", "best practices", "best practice",
+        "examples cont", "examples cont.", "example", "examples", "syntax",
+        "add redaction policy", "drop redaction policy", "add redaction", "drop redaction",
+        "redaction policy", "step 1", "step 2",
+    }
+)
+
+
+def _clean_slide_title(title: str) -> str:
+    """Format and clean slide titles for use as curriculum pillar nodes."""
+    t = title.strip()
+    if re.search(r"best practices?:", t, flags=re.IGNORECASE):
+        sub = re.sub(r"^best practices?:\s*", "", t, flags=re.IGNORECASE).strip()
+        return f"{sub} Best Practices"
+    if re.search(r"^what is\s+", t, flags=re.IGNORECASE):
+        sub = re.sub(r"^what is\s+", "", t, flags=re.IGNORECASE).rstrip("?")
+        return f"{sub} Fundamentals"
+    t = re.sub(r"^(?:overview of|introduction to|understanding)\s+", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"\s+in oracle$", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"\s+with oracle$", "", t, flags=re.IGNORECASE)
+    t = t.strip(" -:•▪●|")
+    if t.endswith("?"):
+        t = t[:-1].strip()
+    return t
+
+
+def extract_structured_curriculum(pages: list[Page], main_title: str) -> list[dict[str, Any]]:
+    """Extract substantive slide topics and key bullet points from lecture slides."""
+    topics: list[dict[str, Any]] = []
+    seen: set[str] = {main_title.casefold()}
+
+    for p in pages[1:]:
+        raw_lines = [l.strip() for l in p.text.splitlines() if l.strip()]
+        if not raw_lines:
+            continue
+
+        # 1. Slide Title Detection
+        title = None
+        for l in raw_lines[:4]:
+            if re.match(r"^\d{1,2}$", l):
+                continue
+            first_w = l.split()[0].lower() if l.split() else ""
+            if first_w in SQL_KEYWORDS:
+                continue
+            if 4 <= len(l) <= 75:
+                title = l
+                break
+        if not title:
+            continue
+
+        # Discard boilerplate, syntax, code examples, continuation slides
+        if any(pat.search(title) for pat in DISCARD_TITLE_PATTERNS):
+            continue
+
+        c_title = _clean_slide_title(title)
+        if len(c_title) < 3 or c_title.casefold() in seen or c_title.casefold() in GENERIC_DISCARD:
+            continue
+
+        # 2. Extract bullet items / important points
+        bullet_items: list[str] = []
+        current_bullet: str | None = None
+        for l in raw_lines:
+            if l == title:
+                continue
+            is_bullet_start = bool(
+                re.match(r"^[▪●•\-*–\d\.]+\s+", l) or re.match(r"^[A-Z][a-zA-Z\s]{2,25}:", l)
+            )
+            if is_bullet_start:
+                if current_bullet:
+                    bullet_items.append(current_bullet)
+                current_bullet = re.sub(r"^[▪●•\-*–\d\.]+\s*", "", l).strip()
+            elif current_bullet:
+                current_bullet += " " + l.strip()
+        if current_bullet:
+            bullet_items.append(current_bullet)
+
+        points: list[tuple[str, str]] = []
+        for item in bullet_items:
+            item_clean = item.strip()
+            if not item_clean or len(item_clean) < 4:
+                continue
+            first_w = item_clean.split()[0].lower() if item_clean.split() else ""
+            if first_w in SQL_KEYWORDS:
+                continue
+            if any(
+                disc in item_clean.lower()
+                for disc in ("example", "cont.", "syntax", "create user", "insert into", "quota")
+            ):
+                continue
+
+            point_name: str | None = None
+            point_desc: str = item_clean
+            if ":" in item_clean and not item_clean.lower().startswith("http"):
+                parts = item_clean.split(":", 1)
+                term = parts[0].strip()
+                if (
+                    3 <= len(term) <= 35
+                    and term.lower() not in GENERIC_DISCARD
+                    and not any(term.lower().startswith(pfx) for pfx in SQL_KEYWORDS)
+                ):
+                    point_name = term
+                    point_desc = parts[1].strip()
+
+            if not point_name and len(item_clean) <= 45:
+                point_name = item_clean
+
+            if point_name:
+                p_key = point_name.casefold()
+                if p_key not in seen and p_key not in GENERIC_DISCARD:
+                    seen.add(p_key)
+                    points.append((point_name, point_desc[:200]))
+                    if len(points) >= 2:
+                        break
+
+        seen.add(c_title.casefold())
+        first_desc = bullet_items[0] if bullet_items else f"Core curriculum topic covering {c_title}."
+        topics.append(
+            {
+                "page": p.page or 1,
+                "title": c_title,
+                "desc": first_desc[:250],
+                "points": points,
+            }
+        )
+
+    return topics
+
+
+def _build_structured_curriculum_graph(
+    main_concept_title: str,
+    structured_topics: list[dict[str, Any]],
+    max_edges: int = 200,
+    matcher: SemanticMatcher | None = None,
+) -> KnowledgeGraph:
+    """Construct an educational curriculum DAG rooted at the Main Concept."""
+    root_id = main_concept_title.casefold()
+    nodes: list[ConceptNode] = [
+        ConceptNode(
+            id=root_id,
+            label=main_concept_title,
+            frequency=100,
+            description=f"Overarching lecture curriculum topic: {main_concept_title}",
+            depth=0,
+            is_main_concept=True,
+        )
+    ]
+
+    edges: list[ConceptEdge] = []
+    prev_topic_id: str | None = None
+
+    for t in structured_topics:
+        t_id = t["title"].casefold()
+        t_desc = t["desc"]
+        if matcher is not None:
+            t_desc = extract_concept_description(t["title"], [t_desc], matcher=matcher) or t_desc
+
+        nodes.append(
+            ConceptNode(
+                id=t_id,
+                label=t["title"],
+                frequency=25,
+                description=t_desc,
+                depth=1,
+                is_main_concept=False,
+            )
+        )
+        # Root -> Pillar edge
+        edges.append(
+            ConceptEdge(
+                source=root_id,
+                target=t_id,
+                relation_type="prerequisite",
+                direction="source_is_prerequisite_of_target",
+                confidence=1.0,
+                source_type="main_topic_hierarchy",
+                evidence_count=1,
+                evidence=[EdgeEvidence(page=1, sentence=f"Core curriculum pillar branching directly from {main_concept_title}.")],
+            )
+        )
+        # Sequential prerequisite flow between consecutive curriculum topics
+        if prev_topic_id is not None:
+            edges.append(
+                ConceptEdge(
+                    source=prev_topic_id,
+                    target=t_id,
+                    relation_type="prerequisite",
+                    direction="source_is_prerequisite_of_target",
+                    confidence=0.85,
+                    source_type="curriculum_sequential_flow",
+                    evidence_count=1,
+                    evidence=[EdgeEvidence(page=t["page"], sentence=f"Curriculum sequence: {t['title']} follows {prev_topic_id}.")],
+                )
+            )
+        prev_topic_id = t_id
+
+        # Sub-points under pillar
+        for pt_name, pt_desc in t["points"]:
+            pt_id = pt_name.casefold()
+            nodes.append(
+                ConceptNode(
+                    id=pt_id,
+                    label=pt_name,
+                    frequency=15,
+                    description=pt_desc,
+                    depth=2,
+                    is_main_concept=False,
+                )
+            )
+            edges.append(
+                ConceptEdge(
+                    source=t_id,
+                    target=pt_id,
+                    relation_type="prerequisite",
+                    direction="source_is_prerequisite_of_target",
+                    confidence=0.90,
+                    source_type="topic_subconcept_hierarchy",
+                    evidence_count=1,
+                    evidence=[EdgeEvidence(page=t["page"], sentence=pt_desc)],
+                )
+            )
+
+    # Eliminate any cycles and verify DAG
+    di_graph = nx.DiGraph()
+    for n in nodes:
+        di_graph.add_node(n.id)
+    for e in edges:
+        di_graph.add_edge(e.source, e.target, confidence=e.confidence, edge_obj=e)
+
+    while not nx.is_directed_acyclic_graph(di_graph):
+        cycles = list(nx.simple_cycles(di_graph))
+        if not cycles:
+            break
+        cycle = cycles[0]
+        cycle_edges = list(zip(cycle, cycle[1:] + [cycle[0]]))
+        min_u, min_v = min(
+            cycle_edges,
+            key=lambda edg: di_graph[edg[0]][edg[1]].get("confidence", 0.0),
+        )
+        di_graph.remove_edge(min_u, min_v)
+
+    surviving_edges = [data["edge_obj"] for _, _, data in di_graph.edges(data=True)]
+    if max_edges >= 0:
+        surviving_edges = surviving_edges[:max_edges]
+    else:
+        surviving_edges = []
+
+    return KnowledgeGraph(
+        node_count=len(nodes),
+        edge_count=len(surviving_edges),
+        nodes=nodes,
+        edges=surviving_edges,
+        note=DAG_NOTE,
+        main_concept=root_id,
+    )
+
+
 def build_knowledge_graph(
     pages: list[Page],
     concepts: list[Concept],
@@ -140,6 +415,23 @@ def build_knowledge_graph(
     and linguistic cues, computes MiniLM semantic relatedness, and eliminates cycles to guarantee
     an acyclic Directed Acyclic Graph (DAG).
     """
+    if not concepts and not pages:
+        return KnowledgeGraph(node_count=0, edge_count=0, nodes=[], edges=[], note=GRAPH_NOTE)
+
+    main_concept_title = extract_main_concept(pages, concepts)
+    main_key = main_concept_title.casefold() if main_concept_title else None
+
+    # Check if lecture presentation has structured slide topics
+    if pages and len(pages) > 1 and main_concept_title:
+        structured_topics = extract_structured_curriculum(pages, main_concept_title)
+        if len(structured_topics) >= 3:
+            return _build_structured_curriculum_graph(
+                main_concept_title=main_concept_title,
+                structured_topics=structured_topics,
+                max_edges=max_edges,
+                matcher=matcher,
+            )
+
     if not concepts:
         return KnowledgeGraph(node_count=0, edge_count=0, nodes=[], edges=[], note=GRAPH_NOTE)
 
@@ -162,9 +454,9 @@ def build_knowledge_graph(
     for concept in concepts:
         name = concept.name.strip()
         key = name.casefold()
-        if main_key and key != main_key and key in main_key and len(key) < 25:
+        if not name:
             continue
-        if name and key not in patterns:
+        if key not in patterns:
             patterns[key] = re.compile(r"(?<!\w)" + re.escape(key) + r"(?!\w)")
             canonical_labels[key] = name
             concept_frequencies[key] = concept.frequency

@@ -39,11 +39,32 @@ ACADEMIC_DISCARD = frozenset(
     }
 )
 
+# SQL statements, code commands, and syntax boilerplate to discard
+SQL_DISCARD = frozenset(
+    {
+        "grant", "revoke", "select", "insert", "update", "delete", "create",
+        "alter", "drop", "exec", "execute", "declare", "dbms_redact", "dbms_crypto",
+        "sys_context", "tablespace", "redact123", "quota unlimited", "cascade",
+    }
+)
+
+# Continuation headers, slide artifacts, and generic non-concept noise
+GENERIC_NOISE = frozenset(
+    {
+        "process", "active", "data", "user", "system", "point", "case", "table",
+        "file", "cpu", "type", "part", "way", "time", "level", "year", "order",
+        "value", "values", "item", "items", "number", "best practices", "best practice",
+        "examples cont", "examples cont.", "example", "examples", "syntax",
+        "add redaction policy", "drop redaction policy", "add redaction", "drop redaction",
+        "redaction policy", "step 1", "step 2",
+    }
+)
+
 _PATTERNS = tuple(
     re.compile(p)
     for p in (
-        # Capitalised phrases, e.g. "Binary Search Tree", "Smart Grids"
-        r"\b[A-Z][a-zA-Z0-9]+(?:[-'][A-Za-z0-9]+)*(?:\s+[a-zA-Z][a-zA-Z0-9]+){0,3}\b",
+        # Capitalised phrases, e.g. "Binary Search Tree"
+        r"\b[A-Z][a-zA-Z0-9]+(?:[-'][A-Za-z0-9]+)*(?:\s+[A-Z][a-zA-Z0-9]+(?:[-'][A-Za-z0-9]+)*){0,3}\b",
         # Acronyms, e.g. "TCP-IP", "DER", "SCADA"
         r"\b[A-Z]{2,}(?:[- ][A-Z0-9]{2,}){0,2}\b",
         # Lower-case multi-word phrases, e.g. "gradient descent"
@@ -80,7 +101,11 @@ def extract_concepts(text: str, max_concepts: int = 30) -> list[Concept]:
                 continue
                 
             key = clean_phrase.casefold()
-            if key in ACADEMIC_DISCARD or any(d in key for d in ("liyanage", "acm csur", "page et al", "prisma 2020", "ieee tsg")):
+            if key in ACADEMIC_DISCARD or key in GENERIC_NOISE:
+                continue
+            if any(w in SQL_DISCARD for w in key.split()):
+                continue
+            if any(d in key for d in ("liyanage", "acm csur", "page et al", "prisma 2020", "ieee tsg", "examples cont", "redaction policy")):
                 continue
                 
             counts[key] += 1
@@ -88,6 +113,11 @@ def extract_concepts(text: str, max_concepts: int = 30) -> list[Concept]:
 
     ranked = sorted(counts, key=lambda key: (-counts[key], key))
     return [Concept(name=display[key], frequency=counts[key]) for key in ranked[:max_concepts]]
+
+
+_CONNECTING_WORDS = frozenset(
+    {"with", "in", "of", "for", "and", "to", "on", "at", "by", "the", "a", "an", "from", "into", "as"}
+)
 
 
 def extract_main_concept(pages: list[Page] | None = None, concepts: list[Concept] | None = None) -> str | None:
@@ -98,10 +128,13 @@ def extract_main_concept(pages: list[Page] | None = None, concepts: list[Concept
         candidate_parts: list[str] = []
         for line in lines[:8]:
             lower = line.casefold()
-            # Skip author, affiliation, course code, single numbers, emails
-            if any(term in lower for term in ("it4041", "email", "@", "faculty", "department", "university", "malabe", "liyanage", "student", "lecturer", "sliit")):
-                continue
+            # Stop if course code, instructor, or administration line is reached
+            if re.search(r"\b[a-z]{2,4}\d{4}\b", lower) or "–" in line or " - " in line or any(m in lower for m in ("administration", "storage", "course", "unit", "it4011", "it4041", "indika", "alahapperuma", "liyanage", "department", "faculty", "university")):
+                break
             if re.match(r"^\d{1,2}$", line):
+                continue
+            # If the line ends with a period, it is body text, not a slide title
+            if line.endswith(".") and not line.endswith("etc."):
                 continue
             if lower.startswith("course:"):
                 raw = line.split(":", 1)[1].strip()
@@ -111,7 +144,11 @@ def extract_main_concept(pages: list[Page] | None = None, concepts: list[Concept
                 return _format_title(raw)
             candidate_parts.append(line)
             if len(candidate_parts) >= 2:
-                break
+                last_word = candidate_parts[-1].split()[-1].casefold() if candidate_parts[-1].split() else ""
+                if last_word not in _CONNECTING_WORDS:
+                    break
+                if len(candidate_parts) >= 4:
+                    break
         
         if candidate_parts:
             combined = " ".join(candidate_parts)
