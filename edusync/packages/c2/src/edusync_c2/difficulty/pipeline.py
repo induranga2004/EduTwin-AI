@@ -105,11 +105,11 @@ class DifficultyPipeline:
             PayloadGraphProvider(c1_graph) if c1_graph is not None else self.mock_provider
         )
         ctx = provider.build(materials)
-        view = GraphView(ctx.response)
+        raw_view = GraphView(ctx.response)
         graph = ctx.response.graph
         node_ids = {n.id for n in graph.nodes}
         prereq_total = sum(1 for e in graph.edges if e.relation_type == "prerequisite")
-        prereq_valid = sum(len(view.prerequisites_of(i)) for i in node_ids)
+        prereq_valid = sum(len(raw_view.prerequisites_of(i)) for i in node_ids)
         logger.info(
             "graph source=%s nodes=%d edges=%d prerequisite_edges=%d ignored=%d",
             ctx.source.kind,
@@ -118,20 +118,29 @@ class DifficultyPipeline:
             prereq_valid,
             prereq_total - prereq_valid,
         )
-        if view.warnings:  # the texts name concept ids, so they are DEBUG only
-            logger.warning("graph_warning count=%d", len(view.warnings))
-            for w in view.warnings:
+        if raw_view.warnings:  # the texts name concept ids, so they are DEBUG only
+            logger.warning("graph_warning count=%d", len(raw_view.warnings))
+            for w in raw_view.warnings:
                 logger.debug("graph_warning_detail %s", w)
         all_found = build_concepts(ctx, materials, self.concept_filter)
         concepts = [c for c in all_found if c.filter_status == "kept"]
         n_aligned = sum(1 for c in concepts if c.alignment_status is AlignmentStatus.ALIGNED)
+        aliases = {a: c.id for c in all_found for a in c.merged_from}
+        dropped = {c.id for c in all_found if c.filter_status == "dropped"}
+        view = (
+            GraphView(ctx.response, aliases=aliases, dropped=dropped)
+            if aliases or dropped
+            else raw_view
+        )
+        merged_note = f" merged={len(aliases)}" if aliases else ""
         logger.info(
-            "concepts total=%d aligned=%d not_found=%d filter=%s dropped=%d",
+            "concepts total=%d aligned=%d not_found=%d filter=%s dropped=%d%s",
             len(concepts),
             n_aligned,
             len(concepts) - n_aligned,
             self.concept_filter.name,
             len(all_found) - len(concepts),
+            merged_note,
         )
         logger.debug("concepts_detail ids=%s", [c.id for c in concepts])
         slides_by_index = {s.index: s for s in materials.slides}
@@ -222,7 +231,8 @@ class DifficultyPipeline:
             )
 
         mock_graph = ctx.source.kind == "mock"
-        warnings = list(materials.warnings) + list(view.warnings)
+        warnings = list(materials.warnings) + list(raw_view.warnings)
+        warnings += [w for w in view.warnings if w not in raw_view.warnings]
         if mock_graph:
             warnings.append(MOCK_GRAPH_WARNING)
         if not view.has_prerequisite_edges:
@@ -254,7 +264,14 @@ class DifficultyPipeline:
                 ctx.source,
             ],
             stages=self._stages(
-                materials, ctx.source, view, concepts, all_features, predictions, len(cyclic_ids)
+                materials,
+                ctx.source,
+                view,
+                concepts,
+                all_features,
+                predictions,
+                len(cyclic_ids),
+                merged=(view is not raw_view, len(aliases), len(dropped)),
             ),
             model=self.model.info,
             predictions=predictions,
@@ -263,7 +280,15 @@ class DifficultyPipeline:
         )
 
     def _stages(
-        self, materials, source: InputSource, view, concepts, all_features, predictions, n_cycles=0
+        self,
+        materials,
+        source: InputSource,
+        view,
+        concepts,
+        all_features,
+        predictions,
+        n_cycles=0,
+        merged=(False, 0, 0),
     ):
         mock_graph = source.kind == "mock"
         graph_detail = source.detail
@@ -271,10 +296,25 @@ class DifficultyPipeline:
             graph_detail += "; " + "; ".join(view.warnings)
         if n_cycles:
             graph_detail += f"; {n_cycles} concept(s) with a prerequisite cycle"
+        if merged[0]:
+            parts = [
+                f"{n} {word}"
+                for n, word in (
+                    (view.merged_aliases, "aliases merged"),
+                    (view.rewritten_edges, "edges rewritten"),
+                    (view.dropped_edges, "edges dropped"),
+                )
+                if n
+            ]
+            if parts:
+                graph_detail += "; " + ", ".join(parts)
         aligned = sum(1 for c in concepts if c.alignment_status is AlignmentStatus.ALIGNED)
         concept_detail = f"{len(concepts)} concepts, {aligned} aligned, "
         concept_detail += f"{len(concepts) - aligned} not found in materials"
         mock_filter = bool(getattr(self.concept_filter, "is_mock", False))
+        if not mock_filter and (merged[1] or merged[2]):
+            concept_detail += f"; filter {self.concept_filter.name}: "
+            concept_detail += f"{merged[1]} merged, {merged[2]} dropped"
         degraded = any(f.status is not FeatureStatus.COMPUTED for fs in all_features for f in fs)
         n_failed = sum(1 for p in predictions if p.status == "failed")
         kind = self.model.info.kind

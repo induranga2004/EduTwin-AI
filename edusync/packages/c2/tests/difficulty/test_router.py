@@ -257,3 +257,13 @@ def test_unavailable_filter_is_501_and_not_cached(real_app, monkeypatch):
     get_c2_settings.cache_clear()
     r = c.get("/difficulty/info")
     assert (r.status_code, r.json()["concept_filter"]) == (200, "mock_keep_all")
+
+
+def test_heuristic_filter_setting_reaches_the_pipeline(real_app, monkeypatch):
+    monkeypatch.setenv("EDUSYNC_C2_CONCEPT_FILTER", "heuristic")
+    monkeypatch.setattr(RT, "configure_logging", lambda level: None)
+    c = TestClient(real_app)
+    assert c.get("/difficulty/info").json()["concept_filter"] == "heuristic"
+    r = post(c, graph=json.dumps(build_c1_graph(SPEC, "v1")))
+    assert r.status_code == 200
+    assert len(r.json()["predictions"]) == 5

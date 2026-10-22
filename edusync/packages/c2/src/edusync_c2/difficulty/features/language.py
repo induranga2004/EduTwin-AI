@@ -112,6 +112,15 @@ def _vocab_features(text: str, vocab: VocabularyAnalyzer | None) -> list[Feature
     ]
 
 
+def _count_mentions(text: str, labels: list[str]) -> int:
+    """Mentions of any label, each occurrence once (distinct terms, longest first)."""
+    terms = sorted({" ".join(t.split()) for t in labels if t.strip()}, key=lambda t: (-len(t), t))
+    if not terms:
+        return 0
+    body = "|".join(r"\s+".join(re.escape(w) for w in t.split()) for t in terms)
+    return len(re.findall(r"(?<!\w)(?:" + body + r")(?!\w)", text, re.IGNORECASE))
+
+
 def language_features(
     concept: ConceptRecord, slides: list[SlideRecord], vocab: VocabularyAnalyzer | None = None
 ) -> list[FeatureValue]:
@@ -133,7 +142,9 @@ def language_features(
     long_share = sum(len(w) >= LONG_WORD_LEN for w in words) / n_words
     label = concept.label.strip()
     mentions = 0
-    if label:
+    if concept.alias_labels:
+        mentions = _count_mentions(text, [label, *concept.alias_labels])
+    elif label:
         mentions = len(re.findall(r"(?<!\w)" + re.escape(label) + r"(?!\w)", text, re.IGNORECASE))
     produced = {
         f.name: f
