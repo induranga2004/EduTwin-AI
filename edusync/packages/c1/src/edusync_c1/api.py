@@ -3,10 +3,12 @@
 import json
 import logging
 from functools import lru_cache
+from pathlib import Path
 from typing import Annotated, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import HTMLResponse
 from starlette.concurrency import run_in_threadpool
 
 from edusync_c1.catchup import LateJoinerCatchupEngine, LateJoinerCatchupPack
@@ -286,3 +288,14 @@ async def generate_lecture_catchup(
     return engine.generate_catchup_pack(
         delivered_mentions, join_seconds, lecture_id=transcribe_res.recording_id
     )
+
+
+@router.get("/dashboard", response_class=HTMLResponse)
+@router.get("", response_class=HTMLResponse)
+def get_viva_dashboard() -> HTMLResponse:
+    """Serve the interactive C1 Viva Visual Live Demonstration Dashboard."""
+    template_path = Path(__file__).resolve().parent / "templates" / "viva_dashboard.html"
+    if not template_path.is_file():
+        raise HTTPException(status_code=404, detail="Dashboard template not found.")
+    return HTMLResponse(content=template_path.read_text(encoding="utf-8"))
+

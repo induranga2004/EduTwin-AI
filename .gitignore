@@ -47,3 +47,8 @@ edusync/data/*
 edusync/packages/blueprint_model/data/*
 !edusync/packages/blueprint_model/data/sample.csv
 !edusync/packages/blueprint_model/data/README.md
+
+
+# Runtime local directories
+data/
+models/

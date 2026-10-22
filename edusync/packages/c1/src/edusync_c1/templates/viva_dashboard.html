@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduTwin-AI | C1 Curriculum Alignment & Navigation Intelligence</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.9/dist/dist/vis-network.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.9/dist/vis-network.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #38bdf8;
+      --success: #22c55e;
+      --warning: #eab308;
+      --danger: #ef4444;
+      --purple: #a855f7;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+    header { background: var(--card-bg); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; }
+    .badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; background: rgba(56, 189, 248, 0.15); color: var(--primary); border: 1px solid rgba(56, 189, 248, 0.3); }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); margin-right: 6px; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    
+    .container { display: grid; grid-template-columns: 420px 1fr; gap: 20px; padding: 20px; flex: 1; height: calc(100vh - 70px); }
+    .panel { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; }
+    .panel-header { padding: 14px 18px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
+    .panel-body { padding: 16px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+
+    /* Drop Zone */
+    .drop-zone { border: 2px dashed var(--border); border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; background: rgba(15, 23, 42, 0.4); }
+    .drop-zone:hover { border-color: var(--primary); background: rgba(56, 189, 248, 0.05); }
+    .btn { background: var(--primary); color: #000; border: none; padding: 10px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: filter 0.2s; font-size: 13px; }
+    .btn:hover { filter: brightness(1.1); }
+    .btn-secondary { background: var(--border); color: var(--text); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-warning { background: var(--warning); color: #000; }
+
+    /* Speech Controls */
+    .speech-box { background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+    .transcript-box { background: #0b1120; border: 1px solid #1e293b; border-radius: 6px; padding: 10px; font-family: monospace; font-size: 12px; color: #38bdf8; min-height: 50px; max-height: 90px; overflow-y: auto; margin-top: 10px; }
+
+    /* Alert Toast */
+    .skip-alert { background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); border-left: 5px solid var(--danger); border-radius: 6px; padding: 12px; color: #fca5a5; display: none; animation: slideIn 0.3s ease; }
+    @keyframes slideIn { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    /* Graph Canvas */
+    #graph-canvas { width: 100%; height: 100%; background: #090d16; }
+    .legend { position: absolute; bottom: 20px; right: 20px; background: rgba(30, 41, 59, 0.9); border: 1px solid var(--border); padding: 10px 14px; border-radius: 8px; font-size: 12px; display: flex; gap: 14px; backdrop-filter: blur(4px); }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-color { width: 12px; height: 12px; border-radius: 50%; }
+
+    /* Node Info Sidebar */
+    .node-info-card { background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 13px; line-height: 1.5; }
+    .node-info-card h4 { color: var(--primary); margin-bottom: 6px; font-size: 14px; }
+
+    /* Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: none; justify-content: center; align-items: center; z-index: 100; backdrop-filter: blur(4px); }
+    .modal { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; width: 600px; max-height: 85vh; overflow-y: auto; padding: 24px; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div>
+      <h2 style="font-size: 18px; font-weight: 700; letter-spacing: -0.02em;">EduTwin-AI <span style="color: var(--primary);">Component C1</span></h2>
+      <p style="font-size: 12px; color: var(--text-muted);">Curriculum Alignment & Lecture Navigation Intelligence</p>
+    </div>
+    <div style="display: flex; gap: 12px; align-items: center;">
+      <span class="badge"><span class="status-dot"></span> Backend Connected (FastAPI :8100)</span>
+      <span class="badge" style="background: rgba(168, 85, 247, 0.15); color: var(--purple); border-color: rgba(168, 85, 247, 0.3);">IISA Course</span>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- Left Column: Controls & Telemetry -->
+    <div class="panel">
+      <div class="panel-header">
+        <span>Lecture Controls</span>
+        <span id="course-label" style="font-size: 11px; color: var(--text-muted);">No Slides Loaded</span>
+      </div>
+      <div class="panel-body">
+        
+        <!-- Step 1: Slide Upload -->
+        <div>
+          <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">1. Lecture Slide Deck</label>
+          <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+            <input type="file" id="file-input" style="display: none;" accept=".pdf,.pptx" onchange="handleFileUpload(event)">
+            <p style="font-size: 13px; font-weight: 600;" id="file-name-label">📄 Drag & Drop PDF / PPTX Slide Deck</p>
+            <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Supports native multi-page university presentations</p>
+          </div>
+          <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="loadSampleIISAGraph()">⚡ Load IISA 6-Module Sample Curriculum</button>
+        </div>
+
+        <!-- Step 2: Live Speech Console -->
+        <div class="speech-box">
+          <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">2. Live Speech-to-Graph Console</label>
+          <div style="display: flex; gap: 8px; margin-top: 8px;">
+            <button class="btn btn-primary" id="mic-btn" style="flex: 1;" onclick="toggleMicrophone()">🎙️ Start Live Mic</button>
+            <button class="btn btn-secondary" onclick="simulateSpeechChunk()">Simulate Step</button>
+          </div>
+          <div class="transcript-box" id="transcript-ticker">Live speech transcript will appear here in real time...</div>
+        </div>
+
+        <!-- Skip Alert Banner -->
+        <div class="skip-alert" id="skip-alert-box">
+          <h4 style="color: #f87171; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+            <span>⚠️</span> Prerequisite Skip Violation Detected!
+          </h4>
+          <p id="skip-alert-msg" style="font-size: 12px; margin-top: 4px; line-height: 1.4;">Access Control introduced without prior delivery of User Authentication.</p>
+        </div>
+
+        <!-- Step 3: Late Joiner Catch-Up -->
+        <div>
+          <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">3. Student Personalization</label>
+          <button class="btn btn-secondary" style="width: 100%; margin-top: 6px; border-color: rgba(168, 85, 247, 0.4); color: var(--purple);" onclick="openCatchupModal()">
+            🎓 Simulate Late-Joiner Catch-Up (Minute 14)
+          </button>
+        </div>
+
+        <!-- Node Details -->
+        <div class="node-info-card" id="node-info-box">
+          <h4 id="info-node-title">Click a node on the graph</h4>
+          <p id="info-node-desc" style="color: var(--text-muted);">Select any concept to view its extracted definition, DAG chain depth, and prerequisite parents.</p>
+          <div id="info-node-meta" style="margin-top: 8px; font-size: 11px; display: flex; gap: 12px;"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Right Column: Interactive Knowledge Graph Canvas -->
+    <div class="panel" style="position: relative;">
+      <div class="panel-header">
+        <span>Prerequisite Knowledge Graph DAG (G_planned & G_delivered)</span>
+        <span id="graph-stats" style="font-size: 12px; color: var(--primary);">0 Nodes | 0 Prerequisite Edges</span>
+      </div>
+      <div id="graph-canvas"></div>
+
+      <!-- Color Legend -->
+      <div class="legend">
+        <div class="legend-item"><div class="legend-color" style="background: #475569;"></div> Not Yet Observed</div>
+        <div class="legend-item"><div class="legend-color" style="background: var(--warning);"></div> Introduced</div>
+        <div class="legend-item"><div class="legend-color" style="background: var(--success);"></div> Adequately Covered</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Late Joiner Modal -->
+  <div class="modal-overlay" id="catchup-modal">
+    <div class="modal">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="color: var(--primary);">🎓 5-Minute Fast-Track Catch-Up Pack</h3>
+        <button onclick="closeCatchupModal()" style="background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer;">✕</button>
+      </div>
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+        You joined at <strong style="color: var(--text);">Minute 14:00</strong>. Our topological sort has linearized your 4 missed concepts in strict prerequisite sequence:
+      </p>
+      <div id="catchup-content" style="display: flex; flex-direction: column; gap: 12px;"></div>
+      <button class="btn btn-primary" style="width: 100%; margin-top: 20px;" onclick="closeCatchupModal()">I'm Ready! Return to Live Lecture</button>
+    </div>
+  </div>
+
+  <script>
+    let network = null;
+    let nodesDataset = null;
+    let edgesDataset = null;
+    let currentGraph = null;
+    let isRecording = false;
+    let recognition = null;
+
+    // Default 6 IISA Course Units
+    const SAMPLE_IISA_GRAPH = {
+      nodes: [
+        { id: "intro_infosec", label: "Introduction to\nInformation Security", description: "Foundational principles of the CIA triad (Confidentiality, Integrity, Availability), threat vectors, and risk assessment.", depth: 0, status: "not_yet_observed" },
+        { id: "crypto_basics", label: "Cryptography\nBasics", description: "Foundational cryptosystem concepts including plaintext, ciphertext, cryptographic keys, and Kerckhoffs's principle.", depth: 1, status: "not_yet_observed" },
+        { id: "symmetric_encryption", label: "Symmetric\nEncryption", description: "Cryptographic primitives sharing a single secret key for both encryption and decryption (AES, block ciphers).", depth: 2, status: "not_yet_observed" },
+        { id: "hash_functions", label: "Cryptographic\nHash Functions", description: "Deterministic one-way mathematical algorithms producing fixed-size digests with collision resistance (SHA-256).", depth: 2, status: "not_yet_observed" },
+        { id: "user_authentication", label: "User\nAuthentication", description: "Verifying claimed digital identities via salted cryptographic password hashing, multi-factor tokens, and challenge-response.", depth: 3, status: "not_yet_observed" },
+        { id: "access_control", label: "Access\nControl", description: "Enforcing authorization policies (RBAC, ABAC, principle of least privilege) following identity verification.", depth: 4, status: "not_yet_observed" }
+      ],
+      edges: [
+        { from: "intro_infosec", to: "crypto_basics", label: "prerequisite" },
+        { from: "crypto_basics", to: "symmetric_encryption", label: "prerequisite" },
+        { from: "crypto_basics", to: "hash_functions", label: "prerequisite" },
+        { from: "hash_functions", to: "user_authentication", label: "prerequisite" },
+        { from: "symmetric_encryption", to: "user_authentication", label: "prerequisite" },
+        { from: "user_authentication", to: "access_control", label: "prerequisite" }
+      ]
+    };
+
+    function initGraph(graphData) {
+      currentGraph = graphData;
+      const container = document.getElementById("graph-canvas");
+      
+      const visNodes = graphData.nodes.map(n => ({
+        id: n.id,
+        label: n.label,
+        shape: "box",
+        margin: 10,
+        font: { color: "#ffffff", size: 13, bold: true },
+        color: {
+          background: getColorForStatus(n.status),
+          border: "#38bdf8",
+          highlight: { background: "#0284c7", border: "#ffffff" }
+        },
+        data: n
+      }));
+
+      const visEdges = graphData.edges.map(e => ({
+        from: e.from || e.source,
+        to: e.to || e.target,
+        arrows: "to",
+        color: { color: "#38bdf8", opacity: 0.8 },
+        width: 2,
+        smooth: { type: "cubicBezier", roundness: 0.2 }
+      }));
+
+      nodesDataset = new vis.DataSet(visNodes);
+      edgesDataset = new vis.DataSet(visEdges);
+
+      const options = {
+        layout: {
+          hierarchical: {
+            direction: "UD",
+            sortMethod: "directed",
+            levelSeparation: 110,
+            nodeSpacing: 180
+          }
+        },
+        physics: false,
+        interaction: { hover: true, zoomView: true }
+      };
+
+      network = new vis.Network(container, { nodes: nodesDataset, edges: edgesDataset }, options);
+
+      network.on("click", function(params) {
+        if (params.nodes.length > 0) {
+          const nodeId = params.nodes[0];
+          const node = currentGraph.nodes.find(n => n.id === nodeId);
+          if (node) showNodeDetails(node);
+        }
+      });
+
+      document.getElementById("graph-stats").innerText = `${graphData.nodes.length} Nodes | ${graphData.edges.length} Prerequisite Edges`;
+    }
+
+    function getColorForStatus(status) {
+      if (status === "adequately_covered") return "#22c55e"; // Green
+      if (status === "introduced") return "#eab308";        // Yellow
+      return "#334155";                                      // Slate Grey
+    }
+
+    function showNodeDetails(node) {
+      document.getElementById("info-node-title").innerText = node.label.replace("\n", " ");
+      document.getElementById("info-node-desc").innerText = node.description || "Prerequisite concept extracted from lecture slides.";
+      document.getElementById("info-node-meta").innerHTML = `
+        <span><strong>Depth:</strong> Level ${node.depth !== undefined ? node.depth : 1}</span>
+        <span><strong>Status:</strong> <span style="color: ${getColorForStatus(node.status)}">${node.status}</span></span>
+      `;
+    }
+
+    function loadSampleIISAGraph() {
+      document.getElementById("file-name-label").innerText = "📄 IISA_Module_Intro_Security.pdf (Loaded)";
+      document.getElementById("course-label").innerText = "IISA Course Units";
+      initGraph(SAMPLE_IISA_GRAPH);
+    }
+
+    async function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      document.getElementById("file-name-label").innerText = `📄 Uploading ${file.name}...`;
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const response = await fetch("/api/c1/lectures/graph", { method: "POST", body: formData });
+        if (!response.ok) throw new Error("Upload failed");
+        const data = await response.json();
+        
+        document.getElementById("file-name-label").innerText = `📄 ${file.name} (Active)`;
+        document.getElementById("course-label").innerText = `${data.concept_count} Concepts Extracted`;
+
+        const graphData = {
+          nodes: data.graph.nodes.map(n => ({
+            id: n.id,
+            label: n.label,
+            description: n.description,
+            status: "not_yet_observed"
+          })),
+          edges: data.graph.edges.map(e => ({
+            from: e.source,
+            to: e.target
+          }))
+        };
+        initGraph(graphData);
+      } catch (err) {
+        alert("Could not process file. Loading IISA default curriculum graph.");
+        loadSampleIISAGraph();
+      }
+    }
+
+    // Step-by-step viva simulation sequence
+    const SIMULATION_STEPS = [
+      { text: "Introduction to Information Security establishes the CIA triad: Confidentiality, Integrity, and Availability.", target: "intro_infosec", status: "adequately_covered", alert: false },
+      { text: "Cryptography Basics provides the foundation of plaintext, ciphertext, and secret keys.", target: "crypto_basics", status: "adequately_covered", alert: false },
+      { text: "Now let's examine Access Control policies in corporate environments.", target: "access_control", status: "introduced", alert: true, alertMsg: "Concept 'Access Control' introduced at 04:20 without prior delivery of foundational prerequisite(s): User Authentication, Cryptographic Hash Functions!" },
+      { text: "Returning to foundation: Cryptographic Hash Functions provide pre-image and collision resistance.", target: "hash_functions", status: "adequately_covered", alert: false },
+      { text: "User Authentication validates identities using salted hash digests and passwords.", target: "user_authentication", status: "adequately_covered", alert: false }
+    ];
+    let simIndex = 0;
+
+    function simulateSpeechChunk() {
+      if (!currentGraph) loadSampleIISAGraph();
+      if (simIndex >= SIMULATION_STEPS.length) simIndex = 0;
+
+      const step = SIMULATION_STEPS[simIndex++];
+      document.getElementById("transcript-ticker").innerText = `[Utterance]: "${step.text}"`;
+
+      // Update node visual state
+      const targetNode = currentGraph.nodes.find(n => n.id === step.target);
+      if (targetNode) {
+        targetNode.status = step.status;
+        nodesDataset.update({
+          id: targetNode.id,
+          color: { background: getColorForStatus(step.status), border: "#38bdf8" }
+        });
+        showNodeDetails(targetNode);
+      }
+
+      // Check alert
+      const alertBox = document.getElementById("skip-alert-box");
+      if (step.alert) {
+        document.getElementById("skip-alert-msg").innerText = step.alertMsg;
+        alertBox.style.display = "block";
+      } else {
+        alertBox.style.display = "none";
+      }
+    }
+
+    // Live Web Speech Recognition (Chrome/Edge API)
+    function toggleMicrophone() {
+      const btn = document.getElementById("mic-btn");
+      if (!isRecording) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+          alert("Web Speech API not supported in this browser. Please use Google Chrome or Microsoft Edge, or click 'Simulate Step'!");
+          return;
+        }
+
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = "en-US";
+
+        recognition.onresult = function(event) {
+          const transcript = Array.from(event.results).map(r => r[0].transcript).join("");
+          document.getElementById("transcript-ticker").innerText = `[Live Mic]: "${transcript}"`;
+          checkLiveSpeechAgainstConcepts(transcript.toLowerCase());
+        };
+
+        recognition.onerror = function() {
+          btn.innerText = "🎙️ Start Live Mic";
+          isRecording = false;
+        };
+
+        recognition.start();
+        btn.innerText = "⏹️ Stop Mic";
+        btn.classList.add("btn-danger");
+        isRecording = true;
+      } else {
+        if (recognition) recognition.stop();
+        btn.innerText = "🎙️ Start Live Mic";
+        btn.classList.remove("btn-danger");
+        isRecording = false;
+      }
+    }
+
+    function checkLiveSpeechAgainstConcepts(text) {
+      if (!currentGraph) return;
+
+      currentGraph.nodes.forEach(node => {
+        const cleanLabel = node.label.replace("\n", " ").toLowerCase();
+        if (text.includes(cleanLabel) || text.includes(node.id.replace("_", " "))) {
+          node.status = "adequately_covered";
+          nodesDataset.update({
+            id: node.id,
+            color: { background: "#22c55e", border: "#ffffff" }
+          });
+        }
+      });
+    }
+
+    function openCatchupModal() {
+      const content = document.getElementById("catchup-content");
+      content.innerHTML = `
+        <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 8px; border-left: 4px solid #38bdf8;">
+          <h4 style="color: #38bdf8;">1. [Depth 0] Introduction to Information Security</h4>
+          <p style="font-size: 12px; color: var(--text-muted); margin: 4px 0;">CIA Triad (Confidentiality, Integrity, Availability), security policies, and threats.</p>
+          <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
+            <button class="btn btn-secondary" style="font-size: 11px; padding: 4px 8px;">▶️ Play Audio Window (45s)</button>
+            <span style="font-size: 11px; color: var(--text-muted);">[00:55 - 01:40]</span>
+          </div>
+        </div>
+        <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 8px; border-left: 4px solid #38bdf8;">
+          <h4 style="color: #38bdf8;">2. [Depth 1] Cryptography Basics</h4>
+          <p style="font-size: 12px; color: var(--text-muted); margin: 4px 0;">Plaintext, ciphertext, and Kerckhoffs's principle.</p>
+          <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
+            <button class="btn btn-secondary" style="font-size: 11px; padding: 4px 8px;">▶️ Play Audio Window (45s)</button>
+            <span style="font-size: 11px; color: var(--text-muted);">[03:55 - 04:40]</span>
+          </div>
+        </div>
+        <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 8px; border-left: 4px solid #a855f7;">
+          <h4 style="color: #a855f7;">Self-Check Diagnostic Question</h4>
+          <p style="font-size: 12px; margin-top: 4px;"><strong>Q: What is the primary role of Cryptographic Hash Functions?</strong></p>
+          <div style="margin-top: 6px; font-size: 12px; display: flex; flex-direction: column; gap: 4px;">
+            <label><input type="radio" name="quiz" checked> Mathematical one-way data integrity verification without a key</label>
+            <label><input type="radio" name="quiz"> Reversible symmetric decryption</label>
+          </div>
+        </div>
+      `;
+      document.getElementById("catchup-modal").style.display = "flex";
+    }
+
+    function closeCatchupModal() {
+      document.getElementById("catchup-modal").style.display = "none";
+    }
+
+    // Initialize with IISA curriculum by default
+    window.onload = function() {
+      loadSampleIISAGraph();
+    };
+  </script>
+</body>
+</html>

@@ -135,3 +135,18 @@ def test_unexpected_failure_is_500_without_details(client, lecture_pdf, monkeypa
     response = client.post(url, files={"file": ("l.pdf", lecture_pdf, PDF)})
     assert response.status_code == 500
     assert "secret" not in response.text
+
+
+def test_viva_dashboard_endpoint(client):
+    response = client.get("/api/c1/dashboard")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "EduTwin-AI" in response.text
+    assert "Live Speech-to-Graph Console" in response.text
+    assert "vis-network" in response.text
+
+    response_root = client.get("/api/c1")
+    assert response_root.status_code == 200
+    assert "EduTwin-AI" in response_root.text
+
+

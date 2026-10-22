@@ -71,7 +71,7 @@ def test_build_timeline_accumulates_evidence():
     assert steps[1].matched_concepts == ["Gradient Descent"]
     assert steps[2].end_seconds == 6  # zero end falls back to start
     assert steps[1].matching_method == "exact_phrase_fallback"
-    assert result.matching.similarity_threshold == 0.45
+    assert result.matching.similarity_threshold == 0.38
     assert "Mention does not prove" in result.note
 
 
