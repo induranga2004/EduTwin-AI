@@ -366,6 +366,7 @@ def normalize_event(
         timestamp_valid=timestamp_valid,
         user_id=user_id,
         raw_payload=raw,
+        shape_state=copy.deepcopy(shape_payload) if not is_deleted else {},
     )
 
 

@@ -3,6 +3,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
+from fastapi.responses import HTMLResponse
 
 from edusync_c4.c2_mock import DeterministicDifficultyPredictor, StaticComprehensionEvaluator
 from edusync_c4.context import ContextConfig
@@ -10,6 +11,7 @@ from edusync_c4.evidence import reconcile
 from edusync_c4.grouping import group_timeline
 from edusync_c4.interpreter import TemplateContextualInterpreter, analyze_groups
 from edusync_c4.mock_data import MOCK_COMPREHENSION, MOCK_CONCEPTS, MOCK_SLIDE_TEXT, MOCK_TRANSCRIPT
+from edusync_c4.report import SlideView, build_report_html
 from edusync_c4.repository import AnnotationRepository
 from edusync_c4.schemas import (
     AnalyzeRequest,
@@ -34,6 +36,7 @@ from edusync_core import CoreSettings, get_settings
 
 router = APIRouter()
 
+REPORT_CSP = "default-src 'none'; img-src data:; style-src 'unsafe-inline'"
 CATCHUP_NOTE = (
     "Items are ordered by time only. Concept candidates and quiz signals come from mock data; "
     "prerequisite ordering needs the C1 concept graph and is not implemented."
@@ -55,7 +58,7 @@ def _scrub(ann: NormalizedAnnotation, include_raw: bool) -> NormalizedAnnotation
     """Hide the raw payload and author id unless explicitly requested."""
     if include_raw:
         return ann
-    return ann.model_copy(update={"raw_payload": {}, "user_id": HIDDEN})
+    return ann.model_copy(update={"raw_payload": {}, "shape_state": {}, "user_id": HIDDEN})
 
 
 def _timeline_or_404(
@@ -242,3 +245,36 @@ def put_slide(lecture_id: str, slide_id: str, slide: SlideUpsert, repo: RepoDep)
 def delete_lecture(lecture_id: str, repo: RepoDep) -> dict[str, int]:
     """Remove all stored data for a lecture (for example rehearsal data)."""
     return repo.delete_lecture(lecture_id)
+
+
+@router.get("/lectures/{lecture_id}/report", response_class=HTMLResponse)
+def report(
+    lecture_id: str,
+    repo: RepoDep,
+    at: Annotated[float | None, Query(ge=0, description="Show the board at this second")] = None,
+) -> HTMLResponse:
+    """Printable lecture report: slides with the lecturer's drawings, times and text."""
+    if not repo.lecture_exists(lecture_id):
+        raise HTTPException(404, f"Unknown lecture {lecture_id!r}.")
+    infos = {s.slide_id: s for s in repo.list_slides(lecture_id)}
+    views: list[SlideView] = []
+    for slide_id in repo.slide_ids(lecture_id):
+        timeline = repo.timeline(lecture_id, slide_id)
+        if timeline is None:
+            continue
+        views.append(
+            SlideView(
+                slide_id=slide_id,
+                info=infos.get(slide_id),
+                svg=repo.get_slide_svg(lecture_id, slide_id),
+                timeline=timeline,
+                groups=group_timeline(timeline, GroupingConfig()),
+            )
+        )
+    views.sort(
+        key=lambda v: (v.info.number if v.info and v.info.number is not None else 10**6, v.slide_id)
+    )
+    return HTMLResponse(
+        build_report_html(lecture_id, views, at),
+        headers={"Content-Security-Policy": REPORT_CSP},
+    )

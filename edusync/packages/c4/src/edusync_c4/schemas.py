@@ -69,6 +69,9 @@ class NormalizedAnnotation(BaseModel):
     timestamp_valid: bool = True
     user_id: str = "unknown"
     raw_payload: dict[str, Any] = Field(default_factory=dict)
+    # Full shape after merging all deltas up to this version (style, arrow ends, ...). Contains
+    # author metadata, so API responses hide it unless include_raw is requested.
+    shape_state: dict[str, Any] = Field(default_factory=dict)
 
 
 MAX_IMPORT_EVENTS = 5000
