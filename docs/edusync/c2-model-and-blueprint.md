@@ -88,6 +88,8 @@ version=<v>
 ` followed by `name|group` lines in registry order (maturity, requires and description are not hashed). Adding, removing, renaming or
 reordering a feature, or moving it to another group, changes the hash and invalidates every trained artifact.
 
+Label collection protocol, validators and `scripts/write_feature_schema.py`: [c2-label-collection.md](c2-label-collection.md).
+
 Phase 3 hand-off checklist: the trained package must export
 1. the ONNX graph (int8 and/or fp32) whose inputs include the feature vector in registry order;
 2. `labels.json` as a bare ordinal list (the blueprint writes `{"labels": [...]}` sorted alphabetically, so this

@@ -1112,6 +1112,7 @@ What remains before Phase 1 can be called fully closed: merge PR #19 and these c
 
 **Phase 3 - dataset and model.**
 
+- Labelling protocol, sheet exporter and validator: [c2-label-collection.md](c2-label-collection.md).
 - Labelling rubric that states **"difficult for which student level"** explicitly (the label is meaningless without it).
 - Two raters per lecture and agreement measured before training.
 - Lecturer labels are private data and are never committed (datasets are never committed; see architecture).
