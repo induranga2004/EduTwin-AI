@@ -7,6 +7,12 @@ from fastapi.testclient import TestClient
 from edusync_c4 import COMPONENT
 from edusync_c4.annotations import parse_annotation_text
 from edusync_c4.evidence import merge_evidence, reconcile
+from edusync_c4.grouping import (
+    SpatioTemporalClusterer,
+    box_distance,
+    group_timeline,
+    time_gap,
+)
 from edusync_c4.normalizer import (
     apply_delta,
     normalize_event,
@@ -14,6 +20,7 @@ from edusync_c4.normalizer import (
 )
 from edusync_c4.schemas import (
     BoundingBox,
+    GroupingConfig,
     ShapeType,
 )
 from edusync_c4.timeline import (
@@ -647,3 +654,112 @@ def test_same_millisecond_update_and_delete_have_distinct_event_ids():
     a = normalize_event(_txt("s", 1))
     b = normalize_event(_del("s", 1))
     assert a.event_id != b.event_id
+
+
+# --- Phase 3: candidate grouping (SYNTHETIC fixtures) ---
+
+
+def _geo(shape, ts, x, y, w=40, h=20, **extra):
+    return {
+        "id": shape,
+        "type": "geo",
+        "x": x,
+        "y": y,
+        "timestamp": ts,
+        "props": {"w": w, "h": h},
+        **extra,
+    }
+
+
+def _groups(events, **cfg):
+    tl = build_timeline(events, lecture_id="lec", slide_id="sl")
+    return group_timeline(tl, GroupingConfig(**cfg) if cfg else None)
+
+
+def test_box_distance_and_time_gap():
+    a = BoundingBox(x=0, y=0, width=10, height=10)
+    assert box_distance(a, BoundingBox(x=5, y=5, width=10, height=10)) == 0.0
+    assert box_distance(a, BoundingBox(x=13, y=14, width=1, height=1)) == 5.0
+    assert time_gap((0, 5), (3, 9)) == 0.0
+    assert time_gap((0, 5), (8, 9)) == 3.0
+
+
+def test_separate_regions_on_same_slide_form_separate_groups():
+    events = [
+        _geo("a", 1, 0, 0),
+        _geo("b", 2, 60, 0),  # 20 units from a -> same group
+        _geo("c", 3, 800, 600),  # far away -> own group
+    ]
+    groups = _groups(events)
+    assert [g.shape_ids for g in groups] == [["a", "b"], ["c"]]
+    assert groups[0].member_count == 2
+    assert groups[0].bounds == BoundingBox(x=0, y=0, width=100, height=20)
+
+
+def test_same_place_but_far_apart_in_time_is_split():
+    events = [_geo("a", 1, 0, 0), _geo("b", 100, 10, 0)]
+    assert len(_groups(events)) == 2
+    assert len(_groups(events, max_gap_seconds=200)) == 1
+
+
+def test_thresholds_are_configurable():
+    events = [_geo("a", 1, 0, 0), _geo("b", 2, 100, 0)]  # 60 units apart
+    assert len(_groups(events)) == 2
+    assert len(_groups(events, max_distance=60)) == 1
+
+
+def test_group_preserves_event_ids_and_native_text():
+    events = [
+        _txt("t1", 1, "Force", x=0, y=0, props={"text": "Force", "w": 40, "h": 20}),
+        _txt("t1", 2, "Force = ma", x=0, y=0),
+    ]
+    tl = build_timeline(events, slide_id="sl")
+    (g,) = group_timeline(tl)
+    assert sorted(g.event_ids) == sorted(e.event_id for e in tl.events)
+    assert g.native_text == "Force / Force = ma"
+    assert g.primary_type == ShapeType.TEXT
+
+
+def test_retracted_shapes_kept_by_default_and_optionally_excluded():
+    events = [_geo("a", 1, 0, 0), _geo("b", 2, 10, 0), _del("b", 5)]
+    (g,) = _groups(events)
+    assert g.retracted_shape_ids == ["b"]
+    assert g.shape_ids == ["a", "b"]
+    (g2,) = _groups(events, include_retracted=False)
+    assert g2.shape_ids == ["a"]
+
+
+def test_clear_and_delete_records_are_not_members():
+    events = [_geo("a", 1, 0, 0), {"eventName": "ClearWhiteboardEvent", "timestamp": 4}]
+    (g,) = _groups(events)
+    assert g.shape_ids == ["a"]
+
+
+def test_grouping_is_deterministic_and_input_order_independent():
+    events = [_geo("a", 1, 0, 0), _geo("b", 2, 30, 0), _geo("c", 3, 700, 700)]
+    g1 = _groups(events)
+    g2 = _groups(list(reversed(events)))
+    assert [g.model_dump() for g in g1] == [g.model_dump() for g in g2]
+
+
+def test_empty_timeline_and_custom_clusterer_protocol():
+    tl = build_timeline([], lecture_id="l", slide_id="s")
+    assert group_timeline(tl) == []
+
+    class OneBlob:
+        def group(self, timeline, config=None):
+            return SpatioTemporalClusterer().group(timeline, GroupingConfig(max_distance=1e9))
+
+    tl2 = build_timeline([_geo("a", 1, 0, 0), _geo("b", 2, 900, 900)])
+    assert len(group_timeline(tl2, clusterer=OneBlob())) == 1
+
+
+def test_single_linkage_chaining_limitation_is_real():
+    # a~b and b~c but a and c are 120 apart: single linkage still merges all three
+    events = [_geo("a", 1, 0, 0), _geo("b", 2, 60, 0), _geo("c", 3, 120, 0)]
+    assert len(_groups(events)) == 1
+
+
+def test_invalid_config_rejected():
+    with pytest.raises(ValueError, match="greater than or equal"):
+        GroupingConfig(max_distance=-1)

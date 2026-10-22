@@ -132,3 +132,33 @@ class AnnotationTimeline(BaseModel):
             if ann.timestamp_undo is not None:
                 stamps.add(ann.timestamp_undo)
         return sorted(stamps)
+
+
+class GroupingConfig(BaseModel):
+    """Thresholds for rule-based candidate grouping (virtual slide units / seconds)."""
+
+    max_distance: float = Field(default=50.0, ge=0.0)
+    max_gap_seconds: float = Field(default=15.0, ge=0.0)
+    include_retracted: bool = True
+
+
+class AnnotationGroup(BaseModel):
+    """A *candidate* set of annotations that are close in space and time on one slide.
+
+    This is raw structural evidence only. It carries no claim about what the group means
+    (equation, diagram, underline...); any interpretation belongs to a later, separate layer.
+    """
+
+    group_id: str
+    lecture_id: str
+    slide_id: str
+    method: str
+    shape_ids: list[str]
+    event_ids: list[str]
+    retracted_shape_ids: list[str] = Field(default_factory=list)
+    member_count: int
+    primary_type: ShapeType
+    bounds: BoundingBox
+    start_seconds: float
+    end_seconds: float
+    native_text: str | None = None
