@@ -1,6 +1,7 @@
 """Pure-Python BERT WordPiece (uncased) matching the MiniLM tokenizer, without special tokens."""
 
 import unicodedata
+from collections.abc import Sequence
 from importlib import resources
 
 UNK = "[UNK]"
@@ -96,6 +97,10 @@ class WordPieceTokenizer:
         )
         entries = ref.read_bytes().decode("utf-8").split("\n")
         return cls(entries[:-1] if entries[-1] == "" else entries)
+
+    def ids(self, tokens: Sequence[str]) -> list[int]:
+        """Vocabulary ids of tokens (pieces or special tokens); KeyError for an unknown token."""
+        return [self._vocab[token] for token in tokens]
 
     def normalize(self, text: str) -> list[str]:
         """BERT basic tokenization: clean, pad CJK, lowercase, strip accents, split punctuation."""
