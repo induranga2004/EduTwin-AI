@@ -240,8 +240,9 @@ Nodes: 4   Edges: 8 (prerequisite 3, co_mentioned 4)
 Summary: 2 error(s), 1 warning(s) - FAILED
 ```
 
-Note: the generator in `difficulty/synthetic.py` and the `graph_v1` test fixture still use ids with spaces (for example
-`gradient descent`) for v1 graphs, which C1-018 reports as errors; the examples above use hyphenated slugs.
+Note: the synthetic generator (`difficulty/synthetic.py`) emits hyphenated slug ids for v1 graphs and casefolded ids for
+v0 graphs, so its output passes. The hand-written `graph_v1` test fixture still uses ids with spaces (for example
+`gradient descent`), which C1-018 reports as errors; the tests convert them to slugs first.
 
 ## 10. Message for the C1 developer
 

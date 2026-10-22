@@ -64,16 +64,18 @@ def test_valid_v0_and_v1(v0: dict, v1: dict) -> None:
 def test_synthetic_graphs_are_valid(version: str) -> None:
     for seed in (1, 2, 3):
         data = build_c1_graph(make_deck_spec(seed, 8), version)
-        report = check_c1_graph(slugify_ids(data) if version == "v1" else data)
+        report = check_c1_graph(data)
         assert report.ok, report.findings
         assert report.version == version
 
 
-def test_raw_synthetic_v1_ids_are_not_slugs() -> None:
-    report = check_c1_graph(build_c1_graph(make_deck_spec(1, 8), "v1"))
-    assert report.version == "v1"
-    assert rules_of(report) == {"C1-018"}
-    assert not report.ok
+def test_synthetic_v1_uses_slug_ids_and_v0_casefolded_ids() -> None:
+    spec = make_deck_spec(1, 8)
+    v1_ids = [n["id"] for n in build_c1_graph(spec, "v1")["graph"]["nodes"]]
+    v0_ids = [n["id"] for n in build_c1_graph(spec, "v0")["graph"]["nodes"]]
+    assert v1_ids == [c.slug for c in spec.concepts]
+    assert v0_ids == [c.concept_id for c in spec.concepts]
+    assert "C1-018" not in rules_of(check_c1_graph(build_c1_graph(spec, "v1")))
 
 
 Mutation = Callable[[dict], None]

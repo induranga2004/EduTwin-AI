@@ -11,6 +11,7 @@ needs no font encoding.
 
 import csv
 import random
+import re
 import struct
 import zlib
 from io import BytesIO, StringIO
@@ -21,6 +22,12 @@ from pptx.util import Inches, Pt
 from pydantic import BaseModel, Field
 
 from edusync_c2.difficulty.schemas import DifficultyLabel
+
+
+def slugify(text: str) -> str:
+    """C1 v1 id rule: lowercase letters/digits joined by single hyphens (ASCII labels)."""
+    return re.sub(r"[^a-z0-9]+", "-", text.casefold()).strip("-")
+
 
 _ADJECTIVES = [
     "Linear", "Cyclic", "Sparse", "Dense", "Static", "Dynamic",
@@ -66,6 +73,11 @@ class ConceptSpec(BaseModel):
     def concept_id(self) -> str:
         """C1 v0 id convention: the casefolded, stripped label."""
         return self.label.strip().casefold()
+
+    @property
+    def slug(self) -> str:
+        """C1 v1 id convention: lowercase letters and digits joined by single hyphens."""
+        return slugify(self.label)
 
 
 class DeckSpec(BaseModel):
@@ -228,26 +240,38 @@ def build_pdf(spec: DeckSpec) -> bytes:
 # -------------------------------------------------------------------------------------- graph
 
 
-def _pairs(spec: DeckSpec) -> list[tuple[str, str, int]]:
+def _pairs(spec: DeckSpec, use_slug: bool = False) -> list[tuple[str, str, int]]:
     """Co-mentioned (source_id, target_id, page) triples: neighbours and prerequisite pairs."""
-    ids = {c.label: c.concept_id for c in spec.concepts}
+
+    def ident(c: ConceptSpec) -> str:
+        return c.slug if use_slug else c.concept_id
+
+    ids = {c.label: ident(c) for c in spec.concepts}
     found: dict[tuple[str, str], int] = {}
     for i, c in enumerate(spec.concepts):
         page = i + 2  # slide 1 is the title slide
         related = [ids[p] for p in c.prerequisites]
         if i:
-            related.append(spec.concepts[i - 1].concept_id)
+            related.append(ident(spec.concepts[i - 1]))
         for other in related:
-            found.setdefault(tuple(sorted((c.concept_id, other))), page)
+            found.setdefault(tuple(sorted((ident(c), other))), page)
     return [(a, b, page) for (a, b), page in sorted(found.items())]
 
 
 def build_c1_graph(spec: DeckSpec, version: Literal["v0", "v1"] = "v1") -> dict:
-    """C1 response shape. v0: co-mention edges only; v1 adds directed prerequisite edges."""
-    labels = {c.concept_id: c.label for c in spec.concepts}
+    """C1 response shape. v0: co-mention edges only; v1 adds directed prerequisite edges.
+
+    Ids follow the C1 convention of each version: v0 casefolded labels, v1 hyphenated slugs.
+    """
+    use_slug = version == "v1"
+
+    def ident(c: ConceptSpec) -> str:
+        return c.slug if use_slug else c.concept_id
+
+    labels = {ident(c): c.label for c in spec.concepts}
     nodes = []
     for c in spec.concepts:
-        node = {"id": c.concept_id, "label": c.label}
+        node = {"id": ident(c), "label": c.label}
         if version == "v1":
             node["description"] = f"{c.label}: synthetic concept used for pipeline testing."
         node["frequency"] = 1 + c.examples + c.steps
@@ -262,17 +286,17 @@ def build_c1_graph(spec: DeckSpec, version: Literal["v0", "v1"] = "v1") -> dict:
                 {"page": page, "sentence": f"{labels[a]} and {labels[b]} appear together."}
             ],
         }
-        for a, b, page in _pairs(spec)
+        for a, b, page in _pairs(spec, use_slug)
     ]
     if version == "v1":
         for i, c in enumerate(spec.concepts):
             for prerequisite in c.prerequisites:
-                source = prerequisite.strip().casefold()
-                rng = random.Random(f"{spec.lecture_id}:{source}->{c.concept_id}")
+                source = slugify(prerequisite)
+                rng = random.Random(f"{spec.lecture_id}:{source}->{ident(c)}")
                 edges.append(
                     {
                         "source": source,
-                        "target": c.concept_id,
+                        "target": ident(c),
                         "relation_type": "prerequisite",
                         "direction": "source_is_prerequisite_of_target",
                         "confidence": round(0.5 + 0.5 * rng.random(), 2),
@@ -337,9 +361,19 @@ def build_labels_csv(specs: list[DeckSpec]) -> str:
     """CSV of rule labels; the ``synthetic`` column is always ``true``."""
     buf = StringIO()
     writer = csv.writer(buf, lineterminator="\n")
-    writer.writerow(["lecture_id", "concept_id", "concept_label", "difficulty_label", "synthetic"])
+    writer.writerow(
+        [
+            "lecture_id",
+            "concept_id",
+            "concept_slug",
+            "concept_label",
+            "difficulty_label",
+            "synthetic",
+        ]
+    )
     for spec in specs:
         for c in spec.concepts:
             label = synthetic_label(c, len(c.prerequisites))
-            writer.writerow([spec.lecture_id, c.concept_id, c.label, label.value, "true"])
+            row = [spec.lecture_id, c.concept_id, c.slug, c.label, label.value, "true"]
+            writer.writerow(row)
     return buf.getvalue()

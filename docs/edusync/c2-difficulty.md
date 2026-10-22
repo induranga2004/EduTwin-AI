@@ -260,7 +260,7 @@ from synthetic text and say nothing about real lectures.
   "model": {"name": "rule_baseline", "version": "0.1", "kind": "baseline", "trained_on": null, "...": "..."},
   "predictions": [
     {
-      "concept_id": "linear tensor",
+      "concept_id": "linear-tensor",
       "label": "Linear Tensor",
       "difficulty": "Medium",
       "score": 0.1582,
@@ -293,7 +293,7 @@ from synthetic text and say nothing about real lectures.
       ],
       "warnings": []
     },
-    {"concept_id": "sparse matrix", "label": "Sparse Matrix", "difficulty": "Low", "score": 0.0322, "...": "..."}
+    {"concept_id": "sparse-matrix", "label": "Sparse Matrix", "difficulty": "Low", "score": 0.0322, "...": "..."}
   ],
   "todo": ["..."],
   "warnings": [],

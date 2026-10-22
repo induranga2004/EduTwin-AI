@@ -111,7 +111,8 @@ def test_graph_shape(version: str) -> None:
     spec = make_deck_spec(4, 9)
     response = C1GraphResponse.model_validate(build_c1_graph(spec, version))  # type: ignore[arg-type]
     ids = {n.id for n in response.graph.nodes}
-    assert ids == {c.label.strip().casefold() for c in spec.concepts}
+    expected = {c.slug if version == "v1" else c.concept_id for c in spec.concepts}
+    assert ids == expected
     assert response.graph.node_count == len(ids)
     assert response.concept_count == len(ids)
     assert response.graph.edge_count == len(response.graph.edges) > 0
@@ -161,7 +162,15 @@ def test_label_rule_covers_all_classes() -> None:
 def test_labels_csv() -> None:
     specs = [make_deck_spec(1, 4), make_deck_spec(2, 4)]
     rows = list(csv.reader(io.StringIO(build_labels_csv(specs))))
-    assert rows[0] == ["lecture_id", "concept_id", "concept_label", "difficulty_label", "synthetic"]
+    assert rows[0] == [
+        "lecture_id",
+        "concept_id",
+        "concept_slug",
+        "concept_label",
+        "difficulty_label",
+        "synthetic",
+    ]
     assert len(rows) == 9
-    assert {r[4] for r in rows[1:]} == {"true"}
-    assert {r[3] for r in rows[1:]} <= {"Low", "Medium", "High"}
+    assert {r[5] for r in rows[1:]} == {"true"}
+    assert {r[4] for r in rows[1:]} <= {"Low", "Medium", "High"}
+    assert all(r[2] == r[2].lower() and " " not in r[2] for r in rows[1:])

@@ -42,49 +42,49 @@
     "edge_count": 22,
     "nodes": [
       {
-        "id": "stable sampler",
+        "id": "stable-sampler",
         "label": "Stable Sampler",
         "description": "Stable Sampler: synthetic concept used for pipeline testing.",
         "frequency": 1
       },
       {
-        "id": "ordered filter",
+        "id": "ordered-filter",
         "label": "Ordered Filter",
         "description": "Ordered Filter: synthetic concept used for pipeline testing.",
         "frequency": 5
       },
       {
-        "id": "ordered tensor",
+        "id": "ordered-tensor",
         "label": "Ordered Tensor",
         "description": "Ordered Tensor: synthetic concept used for pipeline testing.",
         "frequency": 3
       },
       {
-        "id": "sparse queue",
+        "id": "sparse-queue",
         "label": "Sparse Queue",
         "description": "Sparse Queue: synthetic concept used for pipeline testing.",
         "frequency": 2
       },
       {
-        "id": "dense encoder",
+        "id": "dense-encoder",
         "label": "Dense Encoder",
         "description": "Dense Encoder: synthetic concept used for pipeline testing.",
         "frequency": 7
       },
       {
-        "id": "stable filter",
+        "id": "stable-filter",
         "label": "Stable Filter",
         "description": "Stable Filter: synthetic concept used for pipeline testing.",
         "frequency": 2
       },
       {
-        "id": "static encoder",
+        "id": "static-encoder",
         "label": "Static Encoder",
         "description": "Static Encoder: synthetic concept used for pipeline testing.",
         "frequency": 5
       },
       {
-        "id": "modular buffer",
+        "id": "modular-buffer",
         "label": "Modular Buffer",
         "description": "Modular Buffer: synthetic concept used for pipeline testing.",
         "frequency": 2
@@ -92,8 +92,8 @@
     ],
     "edges": [
       {
-        "source": "dense encoder",
-        "target": "sparse queue",
+        "source": "dense-encoder",
+        "target": "sparse-queue",
         "relation_type": "co_mentioned",
         "evidence_count": 1,
         "evidence": [
@@ -104,8 +104,8 @@
         ]
       },
       {
-        "source": "dense encoder",
-        "target": "stable filter",
+        "source": "dense-encoder",
+        "target": "stable-filter",
         "relation_type": "co_mentioned",
         "evidence_count": 1,
         "evidence": [
@@ -116,8 +116,8 @@
         ]
       },
       {
-        "source": "dense encoder",
-        "target": "stable sampler",
+        "source": "dense-encoder",
+        "target": "stable-sampler",
         "relation_type": "co_mentioned",
         "evidence_count": 1,
         "evidence": [
@@ -128,8 +128,8 @@
         ]
       },
       {
-        "source": "modular buffer",
-        "target": "ordered tensor",
+        "source": "modular-buffer",
+        "target": "ordered-tensor",
         "relation_type": "co_mentioned",
         "evidence_count": 1,
         "evidence": [
@@ -140,8 +140,8 @@
         ]
       },
       {
-        "source": "modular buffer",
-        "target": "stable filter",
+        "source": "modular-buffer",
+        "target": "stable-filter",
         "relation_type": "co_mentioned",
         "evidence_count": 1,
         "evidence": [
@@ -152,8 +152,8 @@
         ]
       },
       {
-        "source": "modular buffer",
-        "target": "stable sampler",
+        "source": "modular-buffer",
+        "target": "stable-sampler",
         "relation_type": "co_mentioned",
         "evidence_count": 1,
         "evidence": [
@@ -164,8 +164,8 @@
         ]
       },
       {
-        "source": "modular buffer",
-        "target": "static encoder",
+        "source": "modular-buffer",
+        "target": "static-encoder",
         "relation_type": "co_mentioned",
         "evidence_count": 1,
         "evidence": [
@@ -176,8 +176,8 @@
         ]
       },
       {
-        "source": "ordered filter",
-        "target": "ordered tensor",
+        "source": "ordered-filter",
+        "target": "ordered-tensor",
         "relation_type": "co_mentioned",
         "evidence_count": 1,
         "evidence": [
@@ -188,8 +188,8 @@
         ]
       },
       {
-        "source": "ordered filter",
-        "target": "stable sampler",
+        "source": "ordered-filter",
+        "target": "stable-sampler",
         "relation_type": "co_mentioned",
         "evidence_count": 1,
         "evidence": [
@@ -200,8 +200,8 @@
         ]
       },
       {
-        "source": "ordered tensor",
-        "target": "sparse queue",
+        "source": "ordered-tensor",
+        "target": "sparse-queue",
         "relation_type": "co_mentioned",
         "evidence_count": 1,
         "evidence": [
@@ -212,8 +212,8 @@
         ]
       },
       {
-        "source": "ordered tensor",
-        "target": "stable sampler",
+        "source": "ordered-tensor",
+        "target": "stable-sampler",
         "relation_type": "co_mentioned",
         "evidence_count": 1,
         "evidence": [
@@ -224,8 +224,8 @@
         ]
       },
       {
-        "source": "stable filter",
-        "target": "static encoder",
+        "source": "stable-filter",
+        "target": "static-encoder",
         "relation_type": "co_mentioned",
         "evidence_count": 1,
         "evidence": [
@@ -236,8 +236,8 @@
         ]
       },
       {
-        "source": "stable sampler",
-        "target": "static encoder",
+        "source": "stable-sampler",
+        "target": "static-encoder",
         "relation_type": "co_mentioned",
         "evidence_count": 1,
         "evidence": [
@@ -248,11 +248,11 @@
         ]
       },
       {
-        "source": "stable sampler",
-        "target": "ordered filter",
+        "source": "stable-sampler",
+        "target": "ordered-filter",
         "relation_type": "prerequisite",
         "direction": "source_is_prerequisite_of_target",
-        "confidence": 0.66,
+        "confidence": 0.5,
         "source_type": "inferred",
         "evidence_count": 1,
         "evidence": [
@@ -263,12 +263,12 @@
         ]
       },
       {
-        "source": "stable sampler",
-        "target": "ordered tensor",
+        "source": "stable-sampler",
+        "target": "ordered-tensor",
         "relation_type": "prerequisite",
         "direction": "source_is_prerequisite_of_target",
-        "confidence": 0.51,
-        "source_type": "curriculum_defined",
+        "confidence": 0.74,
+        "source_type": "inferred",
         "evidence_count": 1,
         "evidence": [
           {
@@ -278,11 +278,11 @@
         ]
       },
       {
-        "source": "ordered tensor",
-        "target": "sparse queue",
+        "source": "ordered-tensor",
+        "target": "sparse-queue",
         "relation_type": "prerequisite",
         "direction": "source_is_prerequisite_of_target",
-        "confidence": 0.87,
+        "confidence": 0.75,
         "source_type": "curriculum_defined",
         "evidence_count": 1,
         "evidence": [
@@ -293,12 +293,12 @@
         ]
       },
       {
-        "source": "stable sampler",
-        "target": "dense encoder",
+        "source": "stable-sampler",
+        "target": "dense-encoder",
         "relation_type": "prerequisite",
         "direction": "source_is_prerequisite_of_target",
-        "confidence": 0.51,
-        "source_type": "curriculum_defined",
+        "confidence": 0.67,
+        "source_type": "inferred",
         "evidence_count": 1,
         "evidence": [
           {
@@ -308,12 +308,12 @@
         ]
       },
       {
-        "source": "dense encoder",
-        "target": "stable filter",
+        "source": "dense-encoder",
+        "target": "stable-filter",
         "relation_type": "prerequisite",
         "direction": "source_is_prerequisite_of_target",
-        "confidence": 0.55,
-        "source_type": "curriculum_defined",
+        "confidence": 0.81,
+        "source_type": "inferred",
         "evidence_count": 1,
         "evidence": [
           {
@@ -323,11 +323,11 @@
         ]
       },
       {
-        "source": "stable sampler",
-        "target": "static encoder",
+        "source": "stable-sampler",
+        "target": "static-encoder",
         "relation_type": "prerequisite",
         "direction": "source_is_prerequisite_of_target",
-        "confidence": 0.56,
+        "confidence": 0.69,
         "source_type": "curriculum_defined",
         "evidence_count": 1,
         "evidence": [
@@ -338,11 +338,11 @@
         ]
       },
       {
-        "source": "ordered tensor",
-        "target": "modular buffer",
+        "source": "ordered-tensor",
+        "target": "modular-buffer",
         "relation_type": "prerequisite",
         "direction": "source_is_prerequisite_of_target",
-        "confidence": 0.72,
+        "confidence": 0.68,
         "source_type": "inferred",
         "evidence_count": 1,
         "evidence": [
@@ -353,11 +353,11 @@
         ]
       },
       {
-        "source": "stable sampler",
-        "target": "modular buffer",
+        "source": "stable-sampler",
+        "target": "modular-buffer",
         "relation_type": "prerequisite",
         "direction": "source_is_prerequisite_of_target",
-        "confidence": 0.74,
+        "confidence": 0.96,
         "source_type": "inferred",
         "evidence_count": 1,
         "evidence": [
@@ -368,12 +368,12 @@
         ]
       },
       {
-        "source": "stable filter",
-        "target": "modular buffer",
+        "source": "stable-filter",
+        "target": "modular-buffer",
         "relation_type": "prerequisite",
         "direction": "source_is_prerequisite_of_target",
-        "confidence": 0.91,
-        "source_type": "curriculum_defined",
+        "confidence": 0.81,
+        "source_type": "inferred",
         "evidence_count": 1,
         "evidence": [
           {
