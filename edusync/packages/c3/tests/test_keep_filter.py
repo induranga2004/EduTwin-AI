@@ -137,6 +137,32 @@ def test_filter_endpoint_validation(client):
     assert client.post("/filter", json={"text": "a", "threshold": 1.5}).status_code == 422
 
 
+def test_filter_text_endpoint_takes_a_raw_multiline_body(client):
+    body = 'Hello.\nThis sentence "teaches" something.\n\tOk.'
+    r = client.post("/filter-text", content=body, headers={"content-type": "text/plain"})
+    assert r.status_code == 200
+    out = r.json()
+    assert out["kept"] == ['This sentence "teaches" something.']
+    assert (out["total"], out["kept_count"], out["threshold"]) == (3, 1, 0.4)
+    assert out["items"] is None
+
+
+def test_filter_text_endpoint_options_and_validation(client):
+    text = "Hello. This is teaching."
+    r = client.post("/filter-text?threshold=0.95&include_dropped=true", content=text)
+    assert r.json()["kept"] == []
+    assert [i["keep"] for i in r.json()["items"]] == [False, False]
+    assert client.post("/filter-text", content="  \n ").status_code == 422
+    assert client.post("/filter-text", content=b"\xff\xfe").status_code == 422
+    assert client.post("/filter-text?threshold=1.5", content=text).status_code == 422
+
+
+def test_filter_text_endpoint_is_documented_as_plain_text(client):
+    spec = client.app.openapi()
+    content = spec["paths"]["/filter-text"]["post"]["requestBody"]["content"]
+    assert "text/plain" in content
+
+
 def test_filter_endpoint_503_without_model(monkeypatch, tmp_path):
     router_module.get_keep_filter.cache_clear()
     monkeypatch.setenv("EDUSYNC_C3_MODEL_DIR", str(tmp_path))
