@@ -52,3 +52,9 @@ def make_entry(tmp_path: Path) -> Callable[..., ManifestEntry]:
         return ManifestEntry(lecture_id, course, file, graph_path)
 
     return make
+
+
+@pytest.fixture(scope="session")
+def toy() -> ModuleType:
+    """The ``toydata`` helpers (toy Examples and the hash-based fake embedder)."""
+    return load_script(Path(__file__).resolve().parent / "toydata.py", "toydata")
