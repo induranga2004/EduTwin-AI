@@ -361,8 +361,11 @@
           </div>
         </div>
 
+        <!-- Live Curriculum Notification Banner (Covered / Skipped) -->
+        <div id="live-notification-banner" style="display: none; margin-bottom: 10px; border-radius: 8px; font-size: 11.5px; transition: all 0.3s ease;"></div>
+
         <!-- Skip Alert Banner -->
-        <div class="skip-alert" id="skip-alert-box">
+        <div class="skip-alert" id="skip-alert-box" style="display: none;">
           <h4 style="color: #f87171; font-size: 12.5px; display: flex; align-items: center; gap: 6px;">
             <span>⚠️</span> Prerequisite Skip Violation Detected!
           </h4>
@@ -425,9 +428,12 @@
     <!-- Right Column: Interactive Sequential Knowledge Graph Canvas -->
     <div class="panel" style="position: relative;">
       <div class="panel-header">
-        <span>Sequential Prerequisite Curriculum DAG (PDF Lecture Order)</span>
+        <span>Sequential Prerequisite Curriculum DAG (Main Topics &amp; Sub-Topics)</span>
         <span id="graph-stats" style="font-size: 12px; color: var(--primary);">0 Nodes | 0 Prerequisite Edges</span>
       </div>
+
+      <!-- Floating notification over SVG Canvas -->
+      <div id="graph-floating-notification" style="position: absolute; top: 58px; left: 50%; transform: translateX(-50%); z-index: 100; pointer-events: none; transition: all 0.35s ease; opacity: 0; display: none; width: auto; max-width: 90%;"></div>
       
       <!-- Canvas Controls Toolbar -->
       <div class="canvas-toolbar" id="canvas-toolbar">
@@ -574,10 +580,12 @@
     let orderedSlideTopics = [];
     let currentSlideStepIndex = -1;
     let deliveredConceptIds = new Set();
+    let deliveredSubtopicIds = new Set();
     let skippedConceptIds = new Set();
     let rootConceptNode = null;
     let lectureStartTime = null;
     let transcriptEntryCount = 0;
+    let floatingNotificationTimeout = null;
 
     function getFormattedTimestamp() {
       if (!lectureStartTime) lectureStartTime = Date.now();
@@ -585,6 +593,90 @@
       const m = Math.floor(elapsedSec / 60);
       const s = elapsedSec % 60;
       return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function notifyCurriculumEvent(type, title, message) {
+      // 1. Update left panel banner
+      const banner = document.getElementById("live-notification-banner");
+      if (banner) {
+        let bg = "rgba(6, 78, 59, 0.9)";
+        let border = "#22c55e";
+        let icon = "🎉";
+        let badgeBg = "rgba(34, 197, 94, 0.3)";
+        let badgeColor = "#22c55e";
+        let badgeText = "COVERED ✅";
+
+        if (type === "skipped") {
+          bg = "rgba(127, 29, 29, 0.9)";
+          border = "#ef4444";
+          icon = "⚠️";
+          badgeBg = "rgba(239, 68, 68, 0.3)";
+          badgeColor = "#f87171";
+          badgeText = "SKIPPED ⚠️";
+        } else if (type === "subtopic") {
+          bg = "rgba(15, 23, 42, 0.9)";
+          border = "#38bdf8";
+          icon = "📌";
+          badgeBg = "rgba(56, 189, 248, 0.3)";
+          badgeColor = "#38bdf8";
+          badgeText = "SUB-TOPIC 🔹";
+        }
+
+        banner.style.display = "block";
+        banner.innerHTML = `
+          <div style="background: ${bg}; border: 1.5px solid ${border}; border-radius: 8px; padding: 10px 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.4);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+              <span style="font-weight: 800; color: ${border}; font-size: 11px; display: flex; align-items: center; gap: 4px;">
+                <span>${icon}</span> ${escapeXml(title)}
+              </span>
+              <span style="background: ${badgeBg}; color: ${badgeColor}; padding: 1px 6px; border-radius: 4px; font-weight: 700; font-size: 10px;">${badgeText}</span>
+            </div>
+            <div style="color: #f1f5f9; font-size: 11px; line-height: 1.4;">${escapeXml(message)}</div>
+          </div>
+        `;
+      }
+
+      // 2. Update floating banner on SVG canvas
+      const floatEl = document.getElementById("graph-floating-notification");
+      if (floatEl) {
+        let border = type === "skipped" ? "#ef4444" : (type === "covered" ? "#22c55e" : "#38bdf8");
+        let bg = type === "skipped" ? "rgba(127, 29, 29, 0.95)" : (type === "covered" ? "rgba(6, 78, 59, 0.95)" : "rgba(15, 23, 42, 0.95)");
+        let icon = type === "skipped" ? "⚠️" : (type === "covered" ? "🎉" : "📌");
+
+        floatEl.style.display = "block";
+        floatEl.style.opacity = "1";
+        floatEl.innerHTML = `
+          <div style="background: ${bg}; border: 1.5px solid ${border}; border-radius: 20px; padding: 7px 18px; box-shadow: 0 6px 20px rgba(0,0,0,0.6); display: flex; align-items: center; gap: 8px; color: #ffffff; font-size: 12px; font-weight: 600;">
+            <span style="font-size: 15px;">${icon}</span>
+            <span><strong>${escapeXml(title)}:</strong> ${escapeXml(message)}</span>
+          </div>
+        `;
+        if (floatingNotificationTimeout) clearTimeout(floatingNotificationTimeout);
+        floatingNotificationTimeout = setTimeout(() => {
+          floatEl.style.opacity = "0";
+          setTimeout(() => { floatEl.style.display = "none"; }, 400);
+        }, 4500);
+      }
+
+      // 3. Log notification to live transcript feed
+      const logEl = document.getElementById("transcript-log");
+      if (logEl) {
+        const itemEl = document.createElement("div");
+        itemEl.className = `transcript-item ${type === 'skipped' ? 'skipped' : 'matched'}`;
+        const border = type === 'skipped' ? '#ef4444' : (type === 'covered' ? '#22c55e' : '#38bdf8');
+        const icon = type === 'skipped' ? '⚠️' : (type === 'covered' ? '🎉' : '📌');
+        itemEl.innerHTML = `
+          <div class="transcript-meta">
+            <span style="color: ${border}; font-weight: 700;">${icon} SYSTEM NOTIFICATION</span>
+            <span style="font-family: monospace;">⏱️ ${getFormattedTimestamp()}</span>
+          </div>
+          <div class="transcript-text" style="color: #f8fafc; font-weight: 600;">
+            ${escapeXml(title)}: ${escapeXml(message)}
+          </div>
+        `;
+        logEl.appendChild(itemEl);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
     }
 
     function addTranscriptEntry(speaker, text, matchedTopic = null, modelTelemetry = null) {
@@ -763,7 +855,13 @@
           slideNum: t.slideNum,
           index: t.index,
           points: t.points || [],
-          description: t.rawNode ? (t.rawNode.description || "") : ""
+          description: t.rawNode ? (t.rawNode.description || "") : "",
+          subtopics: (t.subtopics || []).map(s => ({
+            id: s.id,
+            title: s.title,
+            parent_topic_id: t.id,
+            description: s.desc || ""
+          }))
         })),
         main_concept_id: (currentGraph && currentGraph.main_concept) || (rootConceptNode ? rootConceptNode.id : null)
       };
@@ -777,9 +875,19 @@
 
         if (response.ok) {
           const data = await response.json();
-          if (data.matched_concept_id) {
+          if (data.matched_subtopic_id && data.parent_topic_id) {
+            deliverSubtopic(data.matched_subtopic_id, data.parent_topic_id, data.notification_message);
+            if (data.main_topic_skipped && data.skipped_prerequisites && data.skipped_prerequisites.length > 0) {
+              data.skipped_prerequisites.forEach(skipName => {
+                notifyCurriculumEvent("skipped", skipName, `⚠️ Main Topic Skipped: Prerequisite '${skipName}' was skipped!`);
+              });
+            }
+            const parent = orderedSlideTopics.find(t => t.id === data.parent_topic_id);
+            addTranscriptEntry(speakerName, clean, parent || { title: data.matched_subtopic_title, slideNum: data.matched_slide_num }, data);
+            return;
+          } else if (data.matched_concept_id) {
             const topic = orderedSlideTopics.find(t => t.id === data.matched_concept_id);
-            deliverTopicNode(data.matched_concept_id, clean, false);
+            deliverTopicNode(data.matched_concept_id, clean, false, data.notification_message);
 
             if (data.main_concept_synthesized && payload.main_concept_id) {
               deliverTopicNode(payload.main_concept_id, "[Synthesized from slide topics] " + clean, false);
@@ -873,9 +981,15 @@
       currentGraph = null;
       orderedSlideTopics = [];
       deliveredConceptIds.clear();
+      deliveredSubtopicIds.clear();
       skippedConceptIds.clear();
       currentSlideStepIndex = -1;
       rootConceptNode = null;
+
+      const notifBanner = document.getElementById("live-notification-banner");
+      if (notifBanner) notifBanner.style.display = "none";
+      const floatNotif = document.getElementById("graph-floating-notification");
+      if (floatNotif) floatNotif.style.display = "none";
 
       const fi = document.getElementById("file-input");
       if (fi) fi.value = "";
@@ -995,6 +1109,8 @@
           description: n.description || "Prerequisite concept extracted from uploaded document.",
           depth: n.depth !== undefined ? n.depth : 1,
           is_main_concept: Boolean(n.is_main_concept),
+          parent_id: n.parent_id || null,
+          is_subtopic: Boolean(n.is_subtopic),
           status: "not_yet_observed"
         })),
         edges: data.graph.edges.map(e => ({
@@ -1008,6 +1124,7 @@
 
       currentGraph = graphData;
       deliveredConceptIds.clear();
+      deliveredSubtopicIds.clear();
       skippedConceptIds.clear();
       currentSlideStepIndex = -1;
 
@@ -1059,24 +1176,74 @@
         if (slideMatch) slideNum = parseInt(slideMatch[1], 10);
         
         const cleanTitle = n.label.replace(/^\[Slide\s*\d+\]\s*/i, "");
-        const points = (childPointsMap[n.id] || []).slice(0, 2);
-        
+        const points = (childPointsMap[n.id] || []).slice(0, 3);
+
+        // Find child subtopic nodes in graphData
+        const subtopics = [];
+        graphData.nodes.forEach(child => {
+          if (child.parent_id === n.id || (child.is_subtopic && child.id.startsWith(n.id + "__sub__"))) {
+            subtopics.push({
+              id: child.id,
+              parentId: n.id,
+              title: child.label.replace(/^\[Slide\s*\d+\]\s*/i, ""),
+              desc: child.description || "",
+              status: child.status || "not_yet_observed"
+            });
+          }
+        });
+
+        // Fallback: create subtopics from points or title
+        if (subtopics.length === 0) {
+          if (points.length > 0) {
+            points.forEach((pt, pIdx) => {
+              const cleanPt = typeof pt === 'string' ? pt : (pt[0] || `Point ${pIdx+1}`);
+              const subId = `${n.id}__sub__${sanitizeId(cleanPt).toLowerCase()}`;
+              subtopics.push({
+                id: subId,
+                parentId: n.id,
+                title: cleanPt,
+                desc: `Constituent sub-topic of ${cleanTitle}`,
+                status: "not_yet_observed"
+              });
+            });
+          } else {
+            subtopics.push({
+              id: `${n.id}__sub__core_principles`,
+              parentId: n.id,
+              title: `${cleanTitle} Principles`,
+              desc: `Core concepts of ${cleanTitle}`,
+              status: "not_yet_observed"
+            });
+            subtopics.push({
+              id: `${n.id}__sub__practical_app`,
+              parentId: n.id,
+              title: `${cleanTitle} Application`,
+              desc: `Application rules for ${cleanTitle}`,
+              status: "not_yet_observed"
+            });
+          }
+        }
+
         return {
           id: n.id,
           rawNode: n,
           slideNum: slideNum,
           title: cleanTitle,
           points: points,
+          subtopics: subtopics,
           index: idx,
           status: n.status || "not_yet_observed"
         };
       });
 
       // Layout Geometry
-      const cardW = 265;
-      const cardH = 105;
+      const cardW = 275;
+      const mainCardH = 76;
+      const subCardW = 255;
+      const subCardH = 32;
+      const subGapY = 8;
       const gapX = 45;
-      const gapY = 65;
+      const gapY = 55;
       const cardsPerRow = 4;
 
       const totalCols = Math.min(Math.max(orderedSlideTopics.length, 1), cardsPerRow);
@@ -1100,28 +1267,51 @@
         node: rootConceptNode
       };
 
+      // Calculate dynamic row heights to avoid vertical overlap with subtopics
+      const totalRows = Math.ceil(orderedSlideTopics.length / cardsPerRow);
+      const rowHeights = [];
+      for (let r = 0; r < totalRows; r++) {
+        let maxColH = mainCardH;
+        for (let c = 0; c < cardsPerRow; c++) {
+          const idx = r * cardsPerRow + c;
+          if (idx < orderedSlideTopics.length) {
+            const subs = orderedSlideTopics[idx].subtopics || [];
+            const colH = mainCardH + 14 + subs.length * (subCardH + subGapY);
+            if (colH > maxColH) maxRowH = colH;
+          }
+        }
+        rowHeights.push(maxRowH);
+      }
+
+      const rowYPositions = [];
+      let currentY = rootY + rootH + 65;
+      for (let r = 0; r < totalRows; r++) {
+        rowYPositions.push(currentY);
+        currentY += rowHeights[r] + gapY;
+      }
+      const totalH = currentY + 60;
+
       // Position Slide Cards in Chronological Rows
       const rowStartX = centerX - rowWidth / 2;
-      let currentY = rootY + rootH + 65;
 
       orderedSlideTopics.forEach((t, idx) => {
         const col = idx % cardsPerRow;
         const row = Math.floor(idx / cardsPerRow);
         const x = rowStartX + col * (cardW + gapX);
-        const y = currentY + row * (cardH + gapY);
+        const y = rowYPositions[row];
+        const subs = t.subtopics || [];
+        const colH = mainCardH + 14 + subs.length * (subCardH + subGapY);
 
         nodeLayoutMap[t.id] = {
           x: x,
           y: y,
           w: cardW,
-          h: cardH,
+          h: mainCardH,
+          colH: colH,
           isRoot: false,
           topic: t
         };
       });
-
-      const totalRows = Math.ceil(orderedSlideTopics.length / cardsPerRow);
-      const totalH = currentY + totalRows * (cardH + gapY) + 60;
 
       // Fit scale & pan
       const scaleX = (cw - 40) / contentW;
@@ -1217,12 +1407,14 @@
       </g>
       `;
 
-      // 4. Render Sequential Slide Topic Cards
+      // 4. Render Sequential Slide Topic Cards and Sub-Topics
       orderedSlideTopics.forEach(t => {
         const coords = nodeLayoutMap[t.id];
         const safeId = sanitizeId(t.id);
         const isCovered = t.status === "adequately_covered" || deliveredConceptIds.has(t.id);
         const isSkipped = t.status === "skipped" || skippedConceptIds.has(t.id);
+        const subs = t.subtopics || [];
+        const coveredSubs = subs.filter(s => deliveredSubtopicIds.has(s.id));
         
         let strokeColor = "#38bdf8";
         let statusBadge = "PENDING";
@@ -1234,7 +1426,7 @@
           strokeColor = "#22c55e";
           statusBadge = "COVERED ✅";
           statusColor = "#22c55e";
-          filterEffect = "drop-shadow(0 0 12px rgba(34, 197, 94, 0.4))";
+          filterEffect = "drop-shadow(0 0 14px rgba(34, 197, 94, 0.45))";
         } else if (isSkipped) {
           strokeColor = "#ef4444";
           statusBadge = "⚠️ SKIPPED";
@@ -1243,36 +1435,82 @@
           filterEffect = "drop-shadow(0 0 14px rgba(239, 68, 68, 0.6))";
         }
 
-        const displayTitle = escapeXml(t.title.length > 30 ? t.title.substring(0, 28) + '...' : t.title);
-        const pt1 = t.points[0] ? escapeXml(t.points[0].length > 34 ? t.points[0].substring(0, 32) + '...' : t.points[0]) : "";
-        const pt2 = t.points[1] ? escapeXml(t.points[1].length > 34 ? t.points[1].substring(0, 32) + '...' : t.points[1]) : "";
+        const displayTitle = escapeXml(t.title.length > 28 ? t.title.substring(0, 26) + '...' : t.title);
 
+        // 4a. Main Topic Card
         svgHtml += `
-        <g class="concept-node" id="concept-node-${safeId}" data-node-id="${escapeXml(t.id)}" transform="translate(${coords.x}, ${coords.y})" style="cursor: pointer;">
-          <rect id="rect-${safeId}" width="${coords.w}" height="${coords.h}" rx="9" fill="url(#cardGrad)" stroke="${strokeColor}" stroke-width="1.8" ${strokeDash} style="filter: ${filterEffect}; transition: all 0.25s;" />
+        <g class="concept-node main-topic-node" id="concept-node-${safeId}" data-node-id="${escapeXml(t.id)}" transform="translate(${coords.x}, ${coords.y})" style="cursor: pointer;">
+          <rect id="rect-${safeId}" width="${coords.w}" height="${mainCardH}" rx="9" fill="url(#cardGrad)" stroke="${strokeColor}" stroke-width="1.8" ${strokeDash} style="filter: ${filterEffect}; transition: all 0.25s;" />
           
           <!-- Header Bar -->
-          <rect x="12" y="10" width="60" height="18" rx="4" fill="rgba(56, 189, 248, 0.15)" stroke="rgba(56, 189, 248, 0.3)" stroke-width="0.8" />
-          <text x="42" y="23" text-anchor="middle" fill="#38bdf8" font-size="9.5" font-weight="700">SLIDE ${String(t.slideNum).padStart(2, '0')}</text>
+          <rect x="12" y="9" width="60" height="17" rx="4" fill="rgba(56, 189, 248, 0.15)" stroke="rgba(56, 189, 248, 0.3)" stroke-width="0.8" />
+          <text x="42" y="21.5" text-anchor="middle" fill="#38bdf8" font-size="9" font-weight="700">SLIDE ${String(t.slideNum).padStart(2, '0')}</text>
           
-          <text id="badge-${safeId}" x="${coords.w - 12}" y="23" text-anchor="end" fill="${statusColor}" font-size="10" font-weight="700" letter-spacing="0.5">${statusBadge}</text>
+          <text id="badge-${safeId}" x="${coords.w - 12}" y="21.5" text-anchor="end" fill="${statusColor}" font-size="9.5" font-weight="700" letter-spacing="0.5">${statusBadge}</text>
           
           <!-- Title -->
-          <text id="title-${safeId}" x="12" y="47" fill="#f8fafc" font-size="12" font-weight="700">${displayTitle}</text>
+          <text id="title-${safeId}" x="12" y="44" fill="#f8fafc" font-size="12" font-weight="700">${displayTitle}</text>
           
-          <!-- Sub points remembered from PDF -->
-          <g font-size="9.5" fill="#94a3b8">
-            ${pt1 ? `<text x="12" y="69">• ${pt1}</text>` : `<text x="12" y="69" fill="#64748b">• Core principles &amp; slide concepts</text>`}
-            ${pt2 ? `<text x="12" y="87">• ${pt2}</text>` : ""}
-          </g>
+          <!-- Sub-topic completion indicator -->
+          <text id="sub-counter-${safeId}" x="12" y="63" fill="#94a3b8" font-size="9.5" font-weight="600">Sub-topics: ${coveredSubs.length}/${subs.length} Covered</text>
         </g>
         `;
+
+        // 4b. Render Connected Sub-Topics Directly Beneath
+        subs.forEach((sub, sIdx) => {
+          const subSafeId = sanitizeId(sub.id);
+          const subX = coords.x + 10;
+          const subY = coords.y + mainCardH + 12 + sIdx * (subCardH + subGapY);
+          const isSubCovered = deliveredSubtopicIds.has(sub.id);
+          const isParentSkipped = isSkipped;
+          
+          let subStroke = "rgba(56, 189, 248, 0.35)";
+          let subBadge = "PENDING";
+          let subStatusColor = "#38bdf8";
+          let subDotColor = "#38bdf8";
+          let subDash = "";
+          let subFilter = "none";
+          let branchStroke = "rgba(56, 189, 248, 0.35)";
+
+          if (isSubCovered) {
+            subStroke = "#22c55e";
+            subBadge = "COVERED ✅";
+            subStatusColor = "#22c55e";
+            subDotColor = "#22c55e";
+            subFilter = "drop-shadow(0 0 10px rgba(34, 197, 94, 0.45))";
+            branchStroke = "#22c55e";
+          } else if (isParentSkipped) {
+            subStroke = "#ef4444";
+            subBadge = "SKIPPED ⚠️";
+            subStatusColor = "#ef4444";
+            subDotColor = "#ef4444";
+            subDash = 'stroke-dasharray="4 2"';
+            subFilter = "drop-shadow(0 0 8px rgba(239, 68, 68, 0.4))";
+            branchStroke = "#ef4444";
+          }
+
+          const subDisplayTitle = escapeXml(sub.title.length > 25 ? sub.title.substring(0, 23) + '...' : sub.title);
+
+          // Connecting branch line
+          svgHtml += `<path id="branch-${subSafeId}" d="M ${coords.x + 20} ${coords.y + mainCardH} L ${coords.x + 20} ${subY + subCardH / 2} L ${subX} ${subY + subCardH / 2}" fill="none" stroke="${branchStroke}" stroke-width="1.3" />`;
+
+          // Sub-topic Card
+          svgHtml += `
+          <g class="subtopic-node concept-node" id="subtopic-node-${subSafeId}" data-node-id="${escapeXml(sub.id)}" data-parent-id="${escapeXml(t.id)}" transform="translate(${subX}, ${subY})" style="cursor: pointer;">
+            <rect id="rect-sub-${subSafeId}" width="${subCardW}" height="${subCardH}" rx="6" fill="rgba(15, 23, 42, 0.85)" stroke="${subStroke}" stroke-width="1.3" ${subDash} style="filter: ${subFilter}; transition: all 0.25s;" />
+            <circle id="dot-sub-${subSafeId}" cx="14" cy="${subCardH / 2}" r="3.5" fill="${subDotColor}" />
+            <text id="title-sub-${subSafeId}" x="25" y="${subCardH / 2 + 3.5}" fill="#e2e8f0" font-size="10" font-weight="600">${subDisplayTitle}</text>
+            <text id="badge-sub-${subSafeId}" x="${subCardW - 10}" y="${subCardH / 2 + 3.5}" text-anchor="end" fill="${subStatusColor}" font-size="9" font-weight="700">${subBadge}</text>
+          </g>
+          `;
+        });
       });
 
       svgHtml += `</g></svg>`;
       container.innerHTML = svgHtml;
 
-      document.getElementById("graph-stats").innerText = `${orderedSlideTopics.length + 1} Curriculum Nodes | ${orderedSlideTopics.length} Prerequisite Sequence Edges`;
+      const totalSubs = orderedSlideTopics.reduce((acc, t) => acc + (t.subtopics || []).length, 0);
+      document.getElementById("graph-stats").innerText = `${orderedSlideTopics.length + 1} Main Topics | ${totalSubs} Sub-Topics | ${orderedSlideTopics.length} Prerequisite Edges`;
       setupSvgInteractions();
     }
 
@@ -1313,7 +1551,7 @@
     }
 
     // Core skip detection and delivery handler
-    function deliverTopicNode(topicId, utteranceText, logToTranscript = true) {
+    function deliverTopicNode(topicId, utteranceText, logToTranscript = true, customNotificationMsg = null) {
       const topicIndex = orderedSlideTopics.findIndex(t => t.id === topicId);
       if (topicIndex === -1) return;
 
@@ -1326,7 +1564,7 @@
         addTranscriptEntry("Lecturer", fullUtterance, currentTopic);
       }
 
-      // 1. Evaluate Upstream Prerequisite Compliance
+      // 1. Evaluate Upstream Prerequisite Compliance & Detect Skips
       const missingPrereqs = [];
       for (let i = 0; i < topicIndex; i++) {
         const prev = orderedSlideTopics[i];
@@ -1334,42 +1572,155 @@
           missingPrereqs.push(prev);
           skippedConceptIds.add(prev.id);
           prev.status = "skipped";
+          notifyCurriculumEvent(
+            "skipped",
+            `[Slide ${String(prev.slideNum).padStart(2, '0')}] ${prev.title}`,
+            `⚠️ Main topic "${prev.title}" was SKIPPED without presenting its prerequisite content!`
+          );
         }
       }
 
-      // Mark current as delivered
+      // Mark current main topic and all its constituent sub-topics as delivered
       deliveredConceptIds.add(topicId);
       skippedConceptIds.delete(topicId);
       currentTopic.status = "adequately_covered";
+      currentSlideStepIndex = topicIndex;
+
+      if (currentTopic.subtopics) {
+        currentTopic.subtopics.forEach(s => deliveredSubtopicIds.add(s.id));
+      }
+
+      // Trigger Main Topic Covered Notification
+      notifyCurriculumEvent(
+        "covered",
+        `[Slide ${String(currentTopic.slideNum).padStart(2, '0')}] ${currentTopic.title}`,
+        customNotificationMsg || `🎉 Main topic "[Slide ${String(currentTopic.slideNum).padStart(2, '0')}] ${currentTopic.title}" and all its constituent sub-topics are now ADEQUATELY COVERED.`
+      );
 
       // 2. Trigger or Clear Skip Alert
       const alertBox = document.getElementById("skip-alert-box");
       const alertMsg = document.getElementById("skip-alert-msg");
-      if (missingPrereqs.length > 0) {
-        const skippedLabels = missingPrereqs.map(p => `[Slide ${String(p.slideNum).padStart(2, '0')}] ${p.title}`).join(", ");
-        alertMsg.innerHTML = `<strong>Prerequisite Skip Alert (CRITICAL):</strong> Concept '<strong>[Slide ${String(currentTopic.slideNum).padStart(2, '0')}] ${escapeXml(currentTopic.title)}</strong>' was introduced without prior delivery of foundational prerequisite slide(s): <span style="color: #fca5a5;">${escapeXml(skippedLabels)}</span>.`;
-        alertBox.style.display = "block";
-      } else {
-        alertBox.style.display = "none";
+      if (alertBox && alertMsg) {
+        if (missingPrereqs.length > 0) {
+          const skippedLabels = missingPrereqs.map(p => `[Slide ${String(p.slideNum).padStart(2, '0')}] ${p.title}`).join(", ");
+          alertMsg.innerHTML = `<strong>Prerequisite Skip Alert (CRITICAL):</strong> Concept '<strong>[Slide ${String(currentTopic.slideNum).padStart(2, '0')}] ${escapeXml(currentTopic.title)}</strong>' was introduced without prior delivery of foundational prerequisite slide(s): <span style="color: #fca5a5;">${escapeXml(skippedLabels)}</span>.`;
+          alertBox.style.display = "block";
+        } else {
+          alertBox.style.display = "none";
+        }
       }
 
       // 3. Synthesize Main Lecture Topic Coverage
-      // The main topic is covered once underlying slide content is completed (>= 50% or >= 3 slides)
       const coveredCount = deliveredConceptIds.size;
       const totalTopics = orderedSlideTopics.length;
       const coverageRatio = coveredCount / (totalTopics || 1);
       
       if (rootConceptNode && (coverageRatio >= 0.45 || (totalTopics >= 4 && coveredCount >= 3))) {
-        rootConceptNode.status = "adequately_covered";
+        if (rootConceptNode.status !== "adequately_covered") {
+          rootConceptNode.status = "adequately_covered";
+          notifyCurriculumEvent(
+            "covered",
+            rootConceptNode.label.replace(/^\[Slide\s*\d+\]\s*/i, ""),
+            `👑 Overarching Lecture Main Concept "${rootConceptNode.label.replace(/^\[Slide\s*\d+\]\s*/i, "")}" is now ADEQUATELY COVERED (synthesized from slide topics)!`
+          );
+        }
       }
 
       // 4. Update Visual Nodes on Canvas
       updateCanvasVisuals();
       updateProgressionUI();
-      showNodeDetails(currentTopic.rawNode);
+      showNodeDetails(currentTopic.rawNode || currentTopic);
     }
 
-    // Refresh visual card styles (borders, glows, badges)
+    // Deliver an individual Sub-Topic and aggregate up to Main Topic
+    function deliverSubtopic(subtopicId, parentTopicId, customNotificationMsg = null) {
+      deliveredSubtopicIds.add(subtopicId);
+
+      let parentTopic = orderedSlideTopics.find(t => t.id === parentTopicId);
+      if (!parentTopic) {
+        parentTopic = orderedSlideTopics.find(t => (t.subtopics || []).some(s => s.id === subtopicId));
+      }
+      if (!parentTopic) return;
+
+      const subtopicObj = (parentTopic.subtopics || []).find(s => s.id === subtopicId);
+      const subTitle = subtopicObj ? subtopicObj.title : subtopicId;
+
+      const subs = parentTopic.subtopics || [];
+      const coveredSubs = subs.filter(s => deliveredSubtopicIds.has(s.id));
+      const isAllSubtopicsCovered = subs.length > 0 && coveredSubs.length >= subs.length;
+      const isThresholdCovered = subs.length >= 2 && coveredSubs.length >= Math.ceil(subs.length * 0.66);
+
+      // Detect skipped upstream main topics whenever downstream content is introduced
+      const topicIndex = parentTopic.index;
+      const missingPrereqs = [];
+      for (let i = 0; i < topicIndex; i++) {
+        const prev = orderedSlideTopics[i];
+        if (!deliveredConceptIds.has(prev.id) && !skippedConceptIds.has(prev.id)) {
+          missingPrereqs.push(prev);
+          skippedConceptIds.add(prev.id);
+          prev.status = "skipped";
+          notifyCurriculumEvent(
+            "skipped",
+            `[Slide ${String(prev.slideNum).padStart(2, '0')}] ${prev.title}`,
+            `⚠️ Main topic "${prev.title}" was SKIPPED without presenting its prerequisite content!`
+          );
+        }
+      }
+
+      // Update skip alert box
+      const alertBox = document.getElementById("skip-alert-box");
+      const alertMsg = document.getElementById("skip-alert-msg");
+      if (alertBox && alertMsg) {
+        if (missingPrereqs.length > 0 || skippedConceptIds.size > 0) {
+          const allSkippedTopics = orderedSlideTopics.filter(t => skippedConceptIds.has(t.id));
+          const skippedLabels = allSkippedTopics.map(p => `[Slide ${String(p.slideNum).padStart(2, '0')}] ${p.title}`).join(", ");
+          alertMsg.innerHTML = `<strong>Prerequisite Skip Alert (CRITICAL):</strong> Concept '<strong>[Slide ${String(parentTopic.slideNum).padStart(2, '0')}] ${escapeXml(parentTopic.title)}</strong>' was reached without prior delivery of foundational prerequisite slide(s): <span style="color: #fca5a5;">${escapeXml(skippedLabels)}</span>.`;
+          alertBox.style.display = "block";
+        }
+      }
+
+      const backendMainCovered = Boolean(customNotificationMsg && customNotificationMsg.includes("Main Topic Covered"));
+
+      // If threshold reached or backend verified completion and parent main topic not yet marked covered
+      if ((backendMainCovered || isAllSubtopicsCovered || isThresholdCovered) && !deliveredConceptIds.has(parentTopic.id)) {
+        deliveredConceptIds.add(parentTopic.id);
+        skippedConceptIds.delete(parentTopic.id);
+        parentTopic.status = "adequately_covered";
+        currentSlideStepIndex = topicIndex;
+
+        notifyCurriculumEvent(
+          "covered",
+          `[Slide ${String(parentTopic.slideNum).padStart(2, '0')}] ${parentTopic.title}`,
+          customNotificationMsg || `🎉 All constituent sub-topics covered (${coveredSubs.length}/${subs.length})! Main topic "${parentTopic.title}" is now ADEQUATELY COVERED.`
+        );
+      } else {
+        notifyCurriculumEvent(
+          "subtopic",
+          `Sub-Topic: ${subTitle}`,
+          customNotificationMsg || `📌 Sub-topic "${subTitle}" covered (${coveredSubs.length}/${subs.length}) under [Slide ${String(parentTopic.slideNum).padStart(2, '0')}] ${parentTopic.title}.`
+        );
+      }
+
+      // Synthesize main topic coverage if enough slide topics covered
+      const coveredCount = deliveredConceptIds.size;
+      const totalTopics = orderedSlideTopics.length;
+      const coverageRatio = coveredCount / (totalTopics || 1);
+      if (rootConceptNode && (coverageRatio >= 0.45 || (totalTopics >= 4 && coveredCount >= 3))) {
+        if (rootConceptNode.status !== "adequately_covered") {
+          rootConceptNode.status = "adequately_covered";
+          notifyCurriculumEvent(
+            "covered",
+            rootConceptNode.label.replace(/^\[Slide\s*\d+\]\s*/i, ""),
+            `👑 Overarching Lecture Main Concept "${rootConceptNode.label.replace(/^\[Slide\s*\d+\]\s*/i, "")}" is now ADEQUATELY COVERED (synthesized from slides)!`
+          );
+        }
+      }
+
+      updateCanvasVisuals();
+      updateProgressionUI();
+    }
+
+    // Refresh visual card styles (borders, glows, badges, sub-topics)
     function updateCanvasVisuals() {
       // Update Root Main Concept Card
       if (rootConceptNode) {
@@ -1394,35 +1745,102 @@
         }
       }
 
-      // Update Slide Cards
+      // Update Slide Cards and their Sub-Topics
       orderedSlideTopics.forEach(t => {
         const safeId = sanitizeId(t.id);
         const rect = document.getElementById(`rect-${safeId}`);
         const badge = document.getElementById(`badge-${safeId}`);
-        if (!rect || !badge) return;
+        const subCounter = document.getElementById(`sub-counter-${safeId}`);
+        const isCovered = deliveredConceptIds.has(t.id);
+        const isSkipped = skippedConceptIds.has(t.id);
+        const subs = t.subtopics || [];
+        const coveredSubs = subs.filter(s => deliveredSubtopicIds.has(s.id));
 
-        if (deliveredConceptIds.has(t.id)) {
-          rect.setAttribute("stroke", "#22c55e");
-          rect.setAttribute("stroke-width", "2.2");
-          rect.removeAttribute("stroke-dasharray");
-          rect.style.filter = "drop-shadow(0 0 14px rgba(34, 197, 94, 0.45))";
-          badge.setAttribute("fill", "#22c55e");
-          badge.textContent = "COVERED ✅";
-        } else if (skippedConceptIds.has(t.id)) {
-          rect.setAttribute("stroke", "#ef4444");
-          rect.setAttribute("stroke-width", "2.5");
-          rect.setAttribute("stroke-dasharray", "6 3");
-          rect.style.filter = "drop-shadow(0 0 16px rgba(239, 68, 68, 0.65))";
-          badge.setAttribute("fill", "#ef4444");
-          badge.textContent = "⚠️ SKIPPED";
-        } else {
-          rect.setAttribute("stroke", "#38bdf8");
-          rect.setAttribute("stroke-width", "1.8");
-          rect.removeAttribute("stroke-dasharray");
-          rect.style.filter = "drop-shadow(0 4px 10px rgba(0,0,0,0.5))";
-          badge.setAttribute("fill", "#38bdf8");
-          badge.textContent = "PENDING";
+        if (rect && badge) {
+          if (isCovered) {
+            rect.setAttribute("stroke", "#22c55e");
+            rect.setAttribute("stroke-width", "2.2");
+            rect.removeAttribute("stroke-dasharray");
+            rect.style.filter = "drop-shadow(0 0 14px rgba(34, 197, 94, 0.45))";
+            badge.setAttribute("fill", "#22c55e");
+            badge.textContent = "COVERED ✅";
+          } else if (isSkipped) {
+            rect.setAttribute("stroke", "#ef4444");
+            rect.setAttribute("stroke-width", "2.5");
+            rect.setAttribute("stroke-dasharray", "6 3");
+            rect.style.filter = "drop-shadow(0 0 16px rgba(239, 68, 68, 0.65))";
+            badge.setAttribute("fill", "#ef4444");
+            badge.textContent = "⚠️ SKIPPED";
+          } else {
+            rect.setAttribute("stroke", "#38bdf8");
+            rect.setAttribute("stroke-width", "1.8");
+            rect.removeAttribute("stroke-dasharray");
+            rect.style.filter = "drop-shadow(0 4px 10px rgba(0,0,0,0.5))";
+            badge.setAttribute("fill", "#38bdf8");
+            badge.textContent = "PENDING";
+          }
         }
+
+        if (subCounter) {
+          subCounter.textContent = `Sub-topics: ${coveredSubs.length}/${subs.length} Covered`;
+          if (isCovered || (subs.length > 0 && coveredSubs.length === subs.length)) {
+            subCounter.setAttribute("fill", "#22c55e");
+          } else if (isSkipped) {
+            subCounter.setAttribute("fill", "#ef4444");
+          } else {
+            subCounter.setAttribute("fill", "#94a3b8");
+          }
+        }
+
+        // Update each constituent sub-topic visual
+        subs.forEach(s => {
+          const subSafeId = sanitizeId(s.id);
+          const subRect = document.getElementById(`rect-sub-${subSafeId}`);
+          const subBadge = document.getElementById(`badge-sub-${subSafeId}`);
+          const subDot = document.getElementById(`dot-sub-${subSafeId}`);
+          const branch = document.getElementById(`branch-${subSafeId}`);
+          const isSubCovered = deliveredSubtopicIds.has(s.id);
+
+          if (subRect && subBadge && subDot) {
+            if (isSubCovered) {
+              subRect.setAttribute("stroke", "#22c55e");
+              subRect.removeAttribute("stroke-dasharray");
+              subRect.setAttribute("fill", "rgba(6, 78, 59, 0.5)");
+              subRect.style.filter = "drop-shadow(0 0 10px rgba(34, 197, 94, 0.45))";
+              subBadge.setAttribute("fill", "#22c55e");
+              subBadge.textContent = "COVERED ✅";
+              subDot.setAttribute("fill", "#22c55e");
+              if (branch) {
+                branch.setAttribute("stroke", "#22c55e");
+                branch.setAttribute("stroke-width", "1.6");
+              }
+            } else if (isSkipped) {
+              subRect.setAttribute("stroke", "#ef4444");
+              subRect.setAttribute("stroke-dasharray", "4 2");
+              subRect.setAttribute("fill", "rgba(127, 29, 29, 0.3)");
+              subRect.style.filter = "drop-shadow(0 0 8px rgba(239, 68, 68, 0.4))";
+              subBadge.setAttribute("fill", "#ef4444");
+              subBadge.textContent = "SKIPPED ⚠️";
+              subDot.setAttribute("fill", "#ef4444");
+              if (branch) {
+                branch.setAttribute("stroke", "#ef4444");
+                branch.setAttribute("stroke-width", "1.3");
+              }
+            } else {
+              subRect.setAttribute("stroke", "rgba(56, 189, 248, 0.35)");
+              subRect.removeAttribute("stroke-dasharray");
+              subRect.setAttribute("fill", "rgba(15, 23, 42, 0.85)");
+              subRect.style.filter = "none";
+              subBadge.setAttribute("fill", "#38bdf8");
+              subBadge.textContent = "PENDING";
+              subDot.setAttribute("fill", "#38bdf8");
+              if (branch) {
+                branch.setAttribute("stroke", "rgba(56, 189, 248, 0.35)");
+                branch.setAttribute("stroke-width", "1.3");
+              }
+            }
+          }
+        });
       });
     }
 
@@ -1453,12 +1871,21 @@
 
     function resetLectureProgression() {
       deliveredConceptIds.clear();
+      deliveredSubtopicIds.clear();
       skippedConceptIds.clear();
       currentSlideStepIndex = -1;
       if (rootConceptNode) rootConceptNode.status = "not_yet_observed";
-      orderedSlideTopics.forEach(t => t.status = "not_yet_observed");
+      orderedSlideTopics.forEach(t => {
+        t.status = "not_yet_observed";
+        (t.subtopics || []).forEach(s => s.status = "not_yet_observed");
+      });
 
       document.getElementById("skip-alert-box").style.display = "none";
+      const liveBanner = document.getElementById("live-notification-banner");
+      if (liveBanner) liveBanner.style.display = "none";
+      const floatBanner = document.getElementById("graph-floating-notification");
+      if (floatBanner) floatBanner.style.display = "none";
+
       lectureStartTime = Date.now();
       clearLiveTranscript();
       
@@ -1484,21 +1911,122 @@
 
     function onNodeClicked(nodeId) {
       if (!currentGraph) return;
-      const node = currentGraph.nodes.find(n => n.id === nodeId);
-      if (!node) return;
 
       document.querySelectorAll(".concept-node rect").forEach(r => {
         if (r.id !== "rect-root") r.removeAttribute("stroke-dasharray");
       });
 
-      const safeId = sanitizeId(nodeId);
-      const selectedRect = document.getElementById(`rect-${safeId}`);
-      if (selectedRect) {
-        selectedRect.setAttribute("stroke-dasharray", "4 2");
-        selectedRect.setAttribute("stroke-width", "2.8");
+      // Check if it's a slide main topic
+      const topicObj = orderedSlideTopics.find(t => t.id === nodeId);
+      if (topicObj) {
+        const safeId = sanitizeId(nodeId);
+        const selectedRect = document.getElementById(`rect-${safeId}`);
+        if (selectedRect) {
+          selectedRect.setAttribute("stroke-dasharray", "4 2");
+          selectedRect.setAttribute("stroke-width", "2.8");
+        }
+        showNodeDetails(topicObj.rawNode || topicObj);
+        return;
       }
 
-      showNodeDetails(node);
+      // Check if it's a sub-topic
+      let foundSub = null;
+      let parentOfSub = null;
+      for (const t of orderedSlideTopics) {
+        const s = (t.subtopics || []).find(sub => sub.id === nodeId);
+        if (s) {
+          foundSub = s;
+          parentOfSub = t;
+          break;
+        }
+      }
+
+      if (foundSub) {
+        const subSafeId = sanitizeId(nodeId);
+        const selectedRect = document.getElementById(`rect-sub-${subSafeId}`);
+        if (selectedRect) {
+          selectedRect.setAttribute("stroke-dasharray", "3 2");
+          selectedRect.setAttribute("stroke-width", "2.2");
+        }
+        showSubtopicDetails(foundSub, parentOfSub);
+        return;
+      }
+
+      // Root main node
+      if (rootConceptNode && rootConceptNode.id === nodeId) {
+        showNodeDetails(rootConceptNode);
+      }
+    }
+
+    function showSubtopicDetails(subtopic, parentTopic) {
+      const isDelivered = deliveredSubtopicIds.has(subtopic.id);
+      const isParentSkipped = skippedConceptIds.has(parentTopic.id);
+      let statusStr = '<span style="color: #38bdf8; font-weight: 600;">Pending (Not Yet Delivered)</span>';
+      if (isDelivered) {
+        statusStr = '<span style="color: #22c55e; font-weight: 600;">Sub-Topic Covered in Lecture ✅</span>';
+      } else if (isParentSkipped) {
+        statusStr = '<span style="color: #ef4444; font-weight: 600;">⚠️ SKIPPED (Parent Topic Bypassed)</span>';
+      }
+
+      document.getElementById("info-node-title").innerText = `Sub-Topic: ${subtopic.title}`;
+      document.getElementById("info-node-desc").innerText = subtopic.desc || `Constituent sub-topic under [Slide ${String(parentTopic.slideNum).padStart(2, '0')}] ${parentTopic.title}.`;
+      
+      document.getElementById("info-node-meta").innerHTML = `
+        <div><strong>Status:</strong> ${statusStr}</div>
+        <div><strong>Parent Main Topic:</strong> [Slide ${String(parentTopic.slideNum).padStart(2, '0')}] ${escapeXml(parentTopic.title)}</div>
+        <div style="margin-top: 10px;">
+          <button class="btn btn-secondary btn-sm" onclick="deliverSubtopic('${escapeXml(subtopic.id)}', '${escapeXml(parentTopic.id)}')">
+            ✅ Mark Sub-Topic Covered
+          </button>
+        </div>
+      `;
+    }
+
+    function showNodeDetails(node) {
+      if (!node) return;
+      const topicObj = orderedSlideTopics.find(t => t.id === node.id);
+      const isDelivered = deliveredConceptIds.has(node.id);
+      const isSkipped = skippedConceptIds.has(node.id);
+      let statusStr = '<span style="color: #38bdf8; font-weight: 600;">Pending (Not Yet Delivered)</span>';
+      if (isDelivered) statusStr = '<span style="color: #22c55e; font-weight: 600;">Covered in Lecture ✅</span>';
+      else if (isSkipped) statusStr = '<span style="color: #ef4444; font-weight: 600;">⚠️ SKIPPED (Prerequisite Missing!)</span>';
+
+      document.getElementById("info-node-title").innerText = (node.label || node.title || "").replace(/\r?\n/g, " ");
+      document.getElementById("info-node-desc").innerText = node.description || "Substantive curriculum concept extracted from lecture deck.";
+      
+      let pointsHtml = "";
+      if (topicObj && topicObj.subtopics && topicObj.subtopics.length > 0) {
+        pointsHtml = `
+          <div style="margin-top: 8px; padding: 8px 10px; background: rgba(15, 23, 42, 0.6); border-radius: 6px; border-left: 3px solid #38bdf8;">
+            <div style="font-weight: 700; color: #38bdf8; font-size: 11px; margin-bottom: 4px;">Constituent Sub-Topics:</div>
+            ${topicObj.subtopics.map(s => {
+              const isSubCov = deliveredSubtopicIds.has(s.id);
+              const subIcon = isSubCov ? '✅' : '⚪';
+              const subCol = isSubCov ? '#22c55e' : 'var(--text-muted)';
+              return `<div style="color: ${subCol}; font-size: 11px; margin: 2px 0;">${subIcon} ${escapeXml(s.title)}</div>`;
+            }).join("")}
+          </div>
+        `;
+      } else if (topicObj && topicObj.points.length > 0) {
+        pointsHtml = `
+          <div style="margin-top: 6px; padding: 6px 8px; background: rgba(15, 23, 42, 0.5); border-radius: 6px;">
+            <div style="font-weight: 700; color: #38bdf8; font-size: 11px;">Important Points from PDF:</div>
+            ${topicObj.points.map(pt => `<div style="color: var(--text-muted); font-size: 11px;">• ${escapeXml(pt)}</div>`).join("")}
+          </div>
+        `;
+      }
+
+      const prereqIdx = topicObj ? topicObj.index : -1;
+      const prevTopic = prereqIdx > 0 ? orderedSlideTopics[prereqIdx - 1] : null;
+      const nextTopic = prereqIdx >= 0 && prereqIdx < orderedSlideTopics.length - 1 ? orderedSlideTopics[prereqIdx + 1] : null;
+
+      document.getElementById("info-node-meta").innerHTML = `
+        <div><strong>Status:</strong> ${statusStr}</div>
+        <div><strong>Curriculum Position:</strong> ${topicObj ? `Slide ${String(topicObj.slideNum).padStart(2, '0')} (Step ${topicObj.index + 1} of ${orderedSlideTopics.length})` : 'Root Main Topic'}</div>
+        ${prevTopic ? `<div style="color: var(--text-muted);"><strong>Sequential Prerequisite:</strong> [Slide ${String(prevTopic.slideNum).padStart(2, '0')}] ${escapeXml(prevTopic.title)}</div>` : ''}
+        ${nextTopic ? `<div style="color: var(--text-muted);"><strong>Downstream Target:</strong> [Slide ${String(nextTopic.slideNum).padStart(2, '0')}] ${escapeXml(nextTopic.title)}</div>` : ''}
+        ${pointsHtml}
+      `;
     }
 
     function setupSvgInteractions() {
@@ -1506,6 +2034,11 @@
       if (!svg) return;
 
       svg.addEventListener("click", (e) => {
+        const subNodeEl = e.target.closest(".subtopic-node");
+        if (subNodeEl && subNodeEl.dataset.nodeId) {
+          onNodeClicked(subNodeEl.dataset.nodeId);
+          return;
+        }
         const nodeEl = e.target.closest(".concept-node");
         if (nodeEl && nodeEl.dataset.nodeId) {
           onNodeClicked(nodeEl.dataset.nodeId);
@@ -1564,40 +2097,6 @@
     function zoomOutGraph() {
       currentScale = Math.max(currentScale * 0.8, 0.25);
       applyTransform();
-    }
-
-    function showNodeDetails(node) {
-      const topicObj = orderedSlideTopics.find(t => t.id === node.id);
-      const isDelivered = deliveredConceptIds.has(node.id);
-      const isSkipped = skippedConceptIds.has(node.id);
-      let statusStr = '<span style="color: #38bdf8; font-weight: 600;">Pending (Not Yet Delivered)</span>';
-      if (isDelivered) statusStr = '<span style="color: #22c55e; font-weight: 600;">Covered in Lecture ✅</span>';
-      else if (isSkipped) statusStr = '<span style="color: #ef4444; font-weight: 600;">⚠️ SKIPPED (Prerequisite Missing!)</span>';
-
-      document.getElementById("info-node-title").innerText = node.label.replace(/\r?\n/g, " ");
-      document.getElementById("info-node-desc").innerText = node.description || "Substantive curriculum concept extracted from lecture deck.";
-      
-      let pointsHtml = "";
-      if (topicObj && topicObj.points.length > 0) {
-        pointsHtml = `
-          <div style="margin-top: 6px; padding: 6px 8px; background: rgba(15, 23, 42, 0.5); border-radius: 6px;">
-            <div style="font-weight: 700; color: #38bdf8; font-size: 11px;">Important Points from PDF:</div>
-            ${topicObj.points.map(pt => `<div style="color: var(--text-muted); font-size: 11px;">• ${escapeXml(pt)}</div>`).join("")}
-          </div>
-        `;
-      }
-
-      const prereqIdx = topicObj ? topicObj.index : -1;
-      const prevTopic = prereqIdx > 0 ? orderedSlideTopics[prereqIdx - 1] : null;
-      const nextTopic = prereqIdx >= 0 && prereqIdx < orderedSlideTopics.length - 1 ? orderedSlideTopics[prereqIdx + 1] : null;
-
-      document.getElementById("info-node-meta").innerHTML = `
-        <div><strong>Status:</strong> ${statusStr}</div>
-        <div><strong>Curriculum Position:</strong> ${topicObj ? `Slide ${String(topicObj.slideNum).padStart(2, '0')} (Step ${topicObj.index + 1} of ${orderedSlideTopics.length})` : 'Root Main Topic'}</div>
-        ${prevTopic ? `<div style="color: var(--text-muted);"><strong>Sequential Prerequisite:</strong> [Slide ${String(prevTopic.slideNum).padStart(2, '0')}] ${escapeXml(prevTopic.title)}</div>` : ''}
-        ${nextTopic ? `<div style="color: var(--text-muted);"><strong>Downstream Target:</strong> [Slide ${String(nextTopic.slideNum).padStart(2, '0')}] ${escapeXml(nextTopic.title)}</div>` : ''}
-        ${pointsHtml}
-      `;
     }
 
     // Persistent Continuous Live Web Speech Recognition (Auto-Keepalive)

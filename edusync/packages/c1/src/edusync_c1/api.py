@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any
@@ -345,22 +346,30 @@ async def evaluate_live_utterance(
             explanation="Empty utterance or no concepts provided."
         )
 
-    # 1. Concept Candidate Scoring with MiniLM Semantic Bi-Encoder
-    candidate_scores: list[tuple[LiveEvalConceptInput, float, str]] = []
+    # 1. Concept & Sub-Topic Candidate Scoring with MiniLM Semantic Bi-Encoder
+    candidate_scores: list[tuple[LiveEvalConceptInput, float, str, str | None, str | None]] = []
 
     for concept in payload.concepts:
         c_title = concept.title
-        c_points = concept.points or []
+        c_points = list(concept.points or [])
         c_desc = concept.description or ""
+        sub_list = concept.subtopics or []
 
-        # Pool of texts representing this concept (title, points, description)
+        # Pool of texts representing this concept (title, points, subtopics, description)
         candidates = [c_title]
         candidates.extend(c_points)
-        if c_desc:
+        for sub in sub_list:
+            if sub.title not in candidates:
+                candidates.append(sub.title)
+            if sub.description and sub.description not in candidates:
+                candidates.append(sub.description)
+        if c_desc and c_desc not in candidates:
             candidates.append(c_desc)
 
         best_score = 0.0
         best_term = c_title
+        matched_sub_id: str | None = None
+        matched_sub_title: str | None = None
 
         # Check semantic similarity using MiniLM
         try:
@@ -369,24 +378,62 @@ async def evaluate_live_utterance(
                 top_m = max(match_res.matches, key=lambda m: m.similarity)
                 best_score = float(top_m.similarity)
                 best_term = top_m.name
+                for sub in sub_list:
+                    if top_m.name == sub.title or top_m.name == sub.description:
+                        matched_sub_id = sub.id
+                        matched_sub_title = sub.title
+                        break
+                if not matched_sub_id and top_m.name != c_title and top_m.name in c_points:
+                    clean_sub_id = re.sub(r"[^a-zA-Z0-9]+", "_", top_m.name.casefold()).strip("_")
+                    matched_sub_id = f"{concept.id}__sub__{clean_sub_id}"
+                    matched_sub_title = top_m.name
         except Exception:
             pass
 
-        # Also evaluate lexical overlap with title or points
+        # Also evaluate lexical overlap with title or points or constituent subtopics
         lower_text = text.casefold()
-        lower_title = c_title.casefold()
-        lower_id = concept.id.replace("_", " ").casefold()
+        norm_text = re.sub(r"\s+", " ", lower_text.replace("&", " and "))
 
-        lexical_match = (
-            lower_title in lower_text
-            or lower_id in lower_text
-            or any(pt.casefold() in lower_text for pt in c_points if len(pt) >= 4)
-        )
-        if lexical_match:
-            best_score = max(best_score, 0.85)
+        clean_title = re.sub(r"^\[slide\s*\d+\]\s*", "", c_title, flags=re.IGNORECASE).casefold()
+        norm_title = re.sub(r"\s+", " ", clean_title.replace("&", " and "))
+        norm_id = re.sub(r"\s+", " ", concept.id.replace("_", " ").casefold().replace("&", " and "))
+
+        if (len(norm_title) >= 5 and norm_title in norm_text) or (len(norm_id) >= 5 and norm_id in norm_text):
+            best_score = max(best_score, 0.95)
+            best_term = c_title
+
+        for sub in sub_list:
+            sub_id = sub.id
+            sub_title = sub.title
+            sub_desc = sub.description or ""
+            if len(sub_title) >= 3 and sub_title.casefold() in lower_text:
+                if 0.92 > best_score:
+                    best_score = 0.92
+                    best_term = sub_title
+                    matched_sub_id = sub_id
+                    matched_sub_title = sub_title
+            if sub_desc:
+                words = [w for w in re.findall(r"[a-zA-Z]{4,}", sub_desc.casefold())]
+                matches = [w for w in set(words) if w in lower_text]
+                if len(matches) >= 2:
+                    lex_score = min(0.96, 0.72 + 0.08 * len(matches))
+                    if lex_score > best_score:
+                        best_score = lex_score
+                        best_term = sub_title
+                        matched_sub_id = sub_id
+                        matched_sub_title = sub_title
+
+        for pt in c_points:
+            if len(pt) >= 4 and pt.casefold() in lower_text:
+                if 0.88 > best_score:
+                    best_score = 0.88
+                    best_term = pt
+                    clean_sub_id = re.sub(r"[^a-zA-Z0-9]+", "_", pt.casefold()).strip("_")
+                    matched_sub_id = f"{concept.id}__sub__{clean_sub_id}"
+                    matched_sub_title = pt
 
         if best_score > 0.0:
-            candidate_scores.append((concept, best_score, best_term))
+            candidate_scores.append((concept, best_score, best_term, matched_sub_id, matched_sub_title))
 
     if not candidate_scores:
         return LiveEvalResponse(
@@ -394,7 +441,7 @@ async def evaluate_live_utterance(
         )
 
     candidate_scores.sort(key=lambda x: x[1], reverse=True)
-    best_concept, similarity, matched_term = candidate_scores[0]
+    best_concept, similarity, matched_term, matched_sub_id, matched_sub_title = candidate_scores[0]
 
     if similarity < 0.35:
         return LiveEvalResponse(
@@ -404,6 +451,10 @@ async def evaluate_live_utterance(
     cid = best_concept.id
     c_index = best_concept.index
     delivered_set = set(payload.delivered_concept_ids)
+
+    # If subtopic matched, add subtopic to delivered set
+    if matched_sub_id:
+        delivered_set.add(matched_sub_id)
 
     # 2. Sequential Prerequisite Metrics
     prev_concepts = [c for c in payload.concepts if c.index < c_index]
@@ -454,9 +505,51 @@ async def evaluate_live_utterance(
         if model_status == "adequately_covered":
             model_status = "insufficiently_covered"
 
-    newly_delivered = [cid] if cid not in delivered_set else []
+    newly_delivered: list[str] = []
+    if matched_sub_id and matched_sub_id not in payload.delivered_concept_ids:
+        newly_delivered.append(matched_sub_id)
 
-    # 4. Synthesize Main Concept Coverage
+    # Sub-topic completion logic for parent Main Topic
+    main_topic_covered = False
+    main_topic_skipped = False
+    notification_type: str | None = None
+    notification_message = ""
+
+    # Generate expected subtopic ids for this concept
+    expected_sub_ids = [s.id for s in (best_concept.subtopics or [])]
+    if not expected_sub_ids:
+        expected_sub_ids = [
+            f"{cid}__sub__{re.sub(r'[^a-zA-Z0-9]+', '_', pt.casefold()).strip('_')}"
+            for pt in (best_concept.points or [])
+        ]
+    covered_subs = [sid for sid in expected_sub_ids if sid in delivered_set]
+
+    # Main topic is considered covered if:
+    # 1. The main topic title itself was explicitly covered/matched, OR
+    # 2. All or >= 50% of its constituent sub-topics are delivered
+    sub_threshold_met = (
+        len(expected_sub_ids) == 0
+        or len(covered_subs) == len(expected_sub_ids)
+        or (len(expected_sub_ids) >= 2 and len(covered_subs) >= len(expected_sub_ids) - 1)
+    )
+
+    if (matched_term == best_concept.title or sub_threshold_met) and cid not in payload.delivered_concept_ids:
+        main_topic_covered = True
+        newly_delivered.append(cid)
+        notification_type = "main_topic_covered"
+        notification_message = f"🎉 Main Topic Covered: [Slide {best_concept.slideNum:02d}] {best_concept.title} (All sub-topics covered!)"
+    elif matched_sub_id:
+        notification_type = "subtopic_covered"
+        notification_message = f"📌 Sub-Topic Covered: {matched_sub_title} (under [Slide {best_concept.slideNum:02d}] {best_concept.title})"
+
+    # If previous main topics were skipped
+    if skipped:
+        main_topic_skipped = True
+        if not notification_type:
+            notification_type = "main_topic_skipped"
+            notification_message = f"⚠️ Main Topic Skipped: Prerequisite '{skipped[0]}' was skipped without covering its sub-topics!"
+
+    # 4. Synthesize Overarching Main Concept Coverage
     main_id = payload.main_concept_id or (payload.concepts[0].id if payload.concepts else None)
     main_synthesized = False
 
@@ -478,6 +571,14 @@ async def evaluate_live_utterance(
         matched_concept_id=cid,
         matched_concept_title=best_concept.title,
         matched_slide_num=best_concept.slideNum,
+        matched_subtopic_id=matched_sub_id,
+        matched_subtopic_title=matched_sub_title,
+        parent_topic_id=cid,
+        parent_topic_title=best_concept.title,
+        main_topic_covered=main_topic_covered,
+        main_topic_skipped=main_topic_skipped,
+        notification_type=notification_type,
+        notification_message=notification_message,
         semantic_similarity=round(similarity, 3),
         matching_method="MiniLM-L6-v2 Semantic Bi-Encoder + Model C",
         model_status=model_status,

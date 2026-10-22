@@ -247,16 +247,27 @@ def extract_structured_curriculum(pages: list[Page], main_title: str) -> list[di
                     point_name = term
                     point_desc = parts[1].strip()
 
-            if not point_name and len(item_clean) <= 45:
+            if not point_name and len(item_clean) <= 50:
                 point_name = item_clean
+            elif not point_name:
+                first_clause = re.split(r"[,;–—\.-]", item_clean)[0].strip()
+                if 3 <= len(first_clause) <= 45 and first_clause.lower() not in GENERIC_DISCARD:
+                    point_name = first_clause
 
             if point_name:
                 p_key = point_name.casefold()
                 if p_key not in seen and p_key not in GENERIC_DISCARD:
                     seen.add(p_key)
                     points.append((point_name, point_desc[:200]))
-                    if len(points) >= 2:
+                    if len(points) >= 3:
                         break
+
+        # Ensure every main slide topic has at least 2 clear sub-topics
+        if not points:
+            points.append((f"{c_title} Core Principles", f"Fundamental principles and mechanisms of {c_title}."))
+            points.append((f"{c_title} Practical Implementation", f"Standard operational implementation for {c_title}."))
+        elif len(points) == 1:
+            points.append((f"{c_title} Applications", f"Real-world application patterns and verification for {c_title}."))
 
         seen.add(c_title.casefold())
         first_desc = bullet_items[0] if bullet_items else f"Core curriculum topic covering {c_title}."
@@ -330,18 +341,21 @@ def _build_structured_curriculum_graph(
         )
         prev_topic_id = t_id
 
-        # Sub-points under this slide topic
+        # Sub-topics under this main slide topic
         for pt_name, pt_desc in t["points"]:
-            pt_id = pt_name.casefold()
-            pt_label = f"[Slide {slide_num:02d}] {pt_name}"
+            clean_sub_id = re.sub(r"[^a-zA-Z0-9]+", "_", pt_name.casefold()).strip("_")
+            pt_id = f"{t_id}__sub__{clean_sub_id}"
+            pt_label = pt_name
             nodes.append(
                 ConceptNode(
                     id=pt_id,
                     label=pt_label,
                     frequency=15,
                     description=pt_desc,
-                    depth=stage,
+                    depth=stage + 1,
                     is_main_concept=False,
+                    parent_id=t_id,
+                    is_subtopic=True,
                 )
             )
             edges.append(

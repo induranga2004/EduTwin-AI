@@ -24,6 +24,8 @@ class ConceptNode(BaseModel):
     description: str = ""
     depth: int = 1
     is_main_concept: bool = False
+    parent_id: str | None = None
+    is_subtopic: bool = False
 
 
 class EdgeEvidence(BaseModel):
@@ -166,6 +168,13 @@ class TranscribeResponse(BaseModel):
     message: str
 
 
+class LiveEvalSubTopicInput(BaseModel):
+    id: str
+    title: str
+    parent_topic_id: str
+    description: str = ""
+
+
 class LiveEvalConceptInput(BaseModel):
     id: str
     title: str
@@ -173,6 +182,7 @@ class LiveEvalConceptInput(BaseModel):
     index: int = 0
     points: list[str] = Field(default_factory=list)
     description: str = ""
+    subtopics: list[LiveEvalSubTopicInput] = Field(default_factory=list)
 
 
 class LiveEvalRequest(BaseModel):
@@ -187,6 +197,14 @@ class LiveEvalResponse(BaseModel):
     matched_concept_id: str | None = None
     matched_concept_title: str | None = None
     matched_slide_num: int | None = None
+    matched_subtopic_id: str | None = None
+    matched_subtopic_title: str | None = None
+    parent_topic_id: str | None = None
+    parent_topic_title: str | None = None
+    main_topic_covered: bool = False
+    main_topic_skipped: bool = False
+    notification_type: str | None = None
+    notification_message: str = ""
     semantic_similarity: float = 0.0
     matching_method: str = "minilm_semantic_model"
     model_status: str = "not_yet_observed"
