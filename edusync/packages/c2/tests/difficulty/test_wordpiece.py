@@ -248,3 +248,7 @@ def test_script_regenerates_committed_golden(script, tmp_path: Path) -> None:
     out = tmp_path / "golden.json"
     assert script.main(["--out", str(out)]) == 0
     assert out.read_bytes() == GOLDEN.read_bytes()
+
+
+def test_vocab_size_counts_distinct_entries(tiny: WordPieceTokenizer) -> None:
+    assert tiny.vocab_size == 7

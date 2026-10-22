@@ -44,8 +44,20 @@ FEATURE_SPECS: tuple[FeatureSpec, ...] = (
     _f(
         "lang.unfamiliar_vocab_ratio",
         G.LANGUAGE,
-        "mock",
-        "TODO: share of words outside a domain list.",
+        "real",
+        "Share of words that need 2+ MiniLM word pieces.",
+    ),
+    _f(
+        "lang.subword_fragmentation",
+        G.LANGUAGE,
+        "real",
+        "Mean MiniLM word pieces per word.",
+    ),
+    _f(
+        "lang.domain_term_ratio",
+        G.LANGUAGE,
+        "real",
+        "Share of words in the curated CS/IT lexicon.",
     ),
     # B: prerequisite and concept complexity (from the C1 graph, prerequisite edges only)
     _f("prereq.direct_count", G.PREREQUISITES, "graph", "Number of direct prerequisites."),
@@ -132,7 +144,6 @@ FEATURE_NAMES: tuple[str, ...] = tuple(s.name for s in FEATURE_SPECS)
 PHASE1_TODO: tuple[str, ...] = (
     "Real C1 connection (C1ApiGraphProvider); the graph is a mock unless supplied by the caller.",
     "Concept filter: alias merging (TDE = Transparent Data Encryption) and generic phrases.",
-    "Feature A: unfamiliar-vocabulary score from a domain word list.",
     "Feature C: semantic definition/example detection.",
     "Feature D: visual/diagram complexity analysis.",
     "MiniLMFusionModel and learned feature fusion (Phase 3, trained on lecturer labels).",

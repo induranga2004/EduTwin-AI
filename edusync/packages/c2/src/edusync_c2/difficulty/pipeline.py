@@ -7,6 +7,7 @@ import time
 
 from edusync_c2.difficulty.concepts import ConceptFilter, MockConceptFilter, build_concepts
 from edusync_c2.difficulty.features import compute_all_features
+from edusync_c2.difficulty.features.vocab import VocabularyAnalyzer
 from edusync_c2.difficulty.fusion import build_fusion_input, summarize_features
 from edusync_c2.difficulty.graph import GraphView
 from edusync_c2.difficulty.materials import MaterialsError, parse_materials
@@ -50,8 +51,10 @@ class DifficultyPipeline:
         max_mb: int = 100,
         use_mocked_features: bool = False,
         selected_model: str = "baseline",
+        vocab: VocabularyAnalyzer | None = None,
     ) -> None:
         self.selected_model = selected_model
+        self.vocab = vocab
         self.model: DifficultyModel = model or RuleBaselineModel()
         self.concept_filter: ConceptFilter = concept_filter or MockConceptFilter()
         self.mock_provider: GraphProvider = mock_provider or MockC1GraphProvider()
@@ -135,6 +138,7 @@ class DifficultyPipeline:
                 metrics=metrics,
                 graph_has_prerequisite_edges=view.has_prerequisite_edges,
                 graph_source=ctx.source,
+                vocab=self.vocab,
             )
             all_features.append(features)
             fusion_inputs.append(

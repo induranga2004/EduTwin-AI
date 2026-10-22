@@ -83,6 +83,11 @@ class WordPieceTokenizer:
         self._vocab = {token: i for i, token in enumerate(vocab)}
         self._cache: dict[str, tuple[str, ...]] = {}
 
+    @property
+    def vocab_size(self) -> int:
+        """Number of distinct vocabulary entries."""
+        return len(self._vocab)
+
     @classmethod
     def from_resources(cls) -> "WordPieceTokenizer":
         """Build from the vendored bert_uncased_vocab.txt."""

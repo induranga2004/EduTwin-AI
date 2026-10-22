@@ -186,5 +186,5 @@ def test_info():
     assert info.model.name == "rule_baseline"
     assert info.graph_provider == "mock_from_slide_titles"
     assert info.concept_filter == "mock_keep_all"
-    assert len(info.features) == 24
+    assert len(info.features) == 26
     assert info.todo

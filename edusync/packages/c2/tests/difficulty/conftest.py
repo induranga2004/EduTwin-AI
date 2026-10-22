@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 import pytest
 
+from edusync_c2.difficulty.features.vocab import reset_default_analyzer
 from edusync_c2.difficulty.schemas import (
     C1GraphResponse,
     MaterialsDoc,
@@ -12,6 +13,14 @@ from edusync_c2.difficulty.schemas import (
 )
 
 SlideFactory = Callable[..., SlideRecord]
+
+
+@pytest.fixture
+def fresh_default_analyzer():
+    """Forget the cached default vocabulary analyzer (or cached failure) around a test."""
+    reset_default_analyzer()
+    yield
+    reset_default_analyzer()
 
 
 @pytest.fixture

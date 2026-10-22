@@ -98,7 +98,7 @@ def test_old_text_body_rejected(client):
 def test_info(client):
     r = client.get("/difficulty/info")
     assert r.status_code == 200
-    assert len(r.json()["features"]) == 24
+    assert len(r.json()["features"]) == 26
     assert r.json()["model"]["kind"] == "baseline"
 
 

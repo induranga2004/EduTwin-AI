@@ -49,7 +49,7 @@ def test_order_mask_and_values(deck):
     fi = build_fusion_input(c, list(reversed(fs)), sl)
     assert [f.name for f in fi.features] == list(FEATURE_NAMES)
     vals, mask = to_vector(fi)
-    assert len(vals) == len(mask) == 24
+    assert len(vals) == len(mask) == 26
     for f, v, m in zip(fi.features, vals, mask, strict=True):
         assert m == int(f.missing)
         if f.missing:
@@ -71,7 +71,7 @@ def test_use_mocked(deck):
 def test_missing_feature_filled(deck):
     c, sl, fs = setup(deck)
     fi = build_fusion_input(c, fs[:3], sl)
-    assert len(fi.features) == 24
+    assert len(fi.features) == 26
     assert fi.features[10].status is FeatureStatus.UNAVAILABLE
     assert fi.features[10].missing
 
@@ -92,9 +92,10 @@ def test_summary(deck):
     _, _, fs = setup(deck)
     s = summarize_features(fs)
     assert set(s) == set(FeatureGroup)
-    assert sum(g.computed + g.mocked + g.unavailable for g in s.values()) == 24
+    assert sum(g.computed + g.mocked + g.unavailable for g in s.values()) == 26
     assert s[FeatureGroup.PREREQUISITES].mocked == 5
-    assert s[FeatureGroup.LANGUAGE].mocked == 1
+    assert s[FeatureGroup.LANGUAGE].mocked == 0
+    assert s[FeatureGroup.LANGUAGE].computed == 8
     assert s[FeatureGroup.DENSITY].unavailable == 1
     empty = summarize_features([])
     assert len(empty) == 4
