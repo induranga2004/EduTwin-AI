@@ -25,6 +25,17 @@ _DIRECTION = "source_is_prerequisite_of_target"
 _SAMPLE_RESOURCE = ("resources", "sample_c1_graph_v1.json")
 
 
+def is_curated(response: C1GraphResponse) -> bool:
+    """Is the graph marked as hand-made: top-level ``"curated": true`` or ``"note": "curated"``."""
+    extra = response.model_extra or {}
+    return extra.get("curated") is True or extra.get("note") == "curated"
+
+
+def curated_graph_path(directory: Path, deck_filename: str) -> Path:
+    """``<directory>/<deck stem>.graph.json`` for a deck file name (any directory part ignored)."""
+    return directory / f"{Path(deck_filename.replace(chr(92), '/')).stem}.graph.json"
+
+
 def slugify(label: str) -> str:
     """Alias of ``casefold_id``: the v0/mock/fallback id of a label (casefolded, spaces kept).
 
@@ -191,7 +202,10 @@ class FileGraphProvider:
     """Serves a C1-shaped graph from a JSON file (default: the bundled synthetic sample).
 
     Labelled ``mock``: the file is not C1 output for the uploaded deck, so the mock-graph warning
-    applies. The file's own ``lecture_id`` is kept.
+    applies. A file marked curated (``"curated": true`` at the top level, or a top-level ``note``
+    equal to ``"curated"``) was written or corrected by people: it is labelled ``curated``, which
+    features treat as real, and the response says it is hand-made. The file's own ``lecture_id``
+    is kept.
     """
 
     name = "file"
@@ -199,13 +213,21 @@ class FileGraphProvider:
     def __init__(self, path: Path | None = None) -> None:
         self._path = path
 
+    @classmethod
+    def for_deck(cls, directory: Path, deck_filename: str) -> "FileGraphProvider":
+        """Provider for the per-lecture graph ``<deck stem>.graph.json`` in ``directory``."""
+        return cls(curated_graph_path(directory, deck_filename))
+
     def build(self, materials: MaterialsDoc) -> GraphContext:
         ref = self._path or resources.files("edusync_c2.difficulty").joinpath(*_SAMPLE_RESOURCE)
         try:
             response = C1GraphResponse.model_validate_json(ref.read_text(encoding="utf-8"))
         except (OSError, ValueError):  # ValidationError and JSON/Unicode errors are ValueErrors
             raise GraphProviderError(500, "graph file could not be loaded") from None
-        return GraphContext(
-            response=response,
-            source=InputSource(name="c1_graph", kind="mock", detail=f"graph file: {ref.name}"),
-        )
+        if is_curated(response):
+            source = InputSource(
+                name="c1_graph", kind="curated", detail=f"graph file: {ref.name} (curated)"
+            )
+        else:
+            source = InputSource(name="c1_graph", kind="mock", detail=f"graph file: {ref.name}")
+        return GraphContext(response=response, source=source)

@@ -43,13 +43,11 @@ packages/c2/
   pyproject.toml
   scripts/make_synthetic_data.py      # CLI: seeded synthetic decks, C1 graphs, labels
   scripts/validate_c1_graph.py        # CLI: check a C1 graph file against the contract
+  scripts/make_curated_graph.py       # CLI: draft a curated C1 v1 graph JSON from a deck's slide titles
   scripts/feature_report.py           # CLI: per-feature report; regenerates the registry snapshot
   scripts/make_sample_graph.py        # CLI: rewrites the bundled sample C1 graph (synthetic)
   scripts/write_feature_schema.py     # CLI: writes/checks feature_schema.json for a trained model package
-  scripts/export_label_sheet.py       # CLI: label sheet (CSV) of the concepts C2 finds in one lecture
-  scripts/validate_labels.py          # CLI: checks a filled label CSV; optional rater agreement
-  data/labels/labels_template.csv     # template label CSV (synthetic example rows); real labels are git-ignored
-  data/synthetic/                     # generated; .pptx/.pdf git-ignored; labels are circular
+  data/synthetic/                     # generated test fixtures; .pptx/.pdf git-ignored
   src/edusync_c2/
     router.py                         # HTTP routes
     comprehension.py, schemas.py      # later live stage (rule-based placeholder)
@@ -88,7 +86,6 @@ Method and limits: [design document](../../../docs/edusync/c2-difficulty.md), se
 - [C2 model interface, artifact spec and blueprint assessment](../../../docs/edusync/c2-model-and-blueprint.md)
 - [C1 -> C2 graph contract](../../../docs/edusync/c1-c2-graph-contract.md)
 - [Architecture](../../../docs/edusync/architecture.md)
-- [Label collection protocol (Phase 3)](../../../docs/edusync/c2-label-collection.md)
 
 ## Settings
 
@@ -146,14 +143,14 @@ Check a C1 graph JSON file against the contract (exit code 0 ok, 1 contract erro
 uv run python packages/c2/scripts/validate_c1_graph.py --file path/to/graph.json   # optional: --expected v0|v1, --json
 ```
 
-## Label collection and the model schema file (Phase 3 preparation)
+## Phase 3 (in progress): label-free difficulty scoring
 
-Protocol, rubric and CSV schema: [c2-label-collection.md](../../../docs/edusync/c2-label-collection.md). From `edusync/`:
+Phase 3 builds trained difficulty models from public graded-text data and label-free reference scoring; no lecturer labelling is
+needed. The earlier label-collection tools (label sheet exporter and validator, label template and protocol) were removed. The model
+schema file for a model package is written or checked with (from `edusync/`):
 
 ```bash
-uv run python packages/c2/scripts/export_label_sheet.py --file lecture.pptx --lecture-id L001 --out packages/c2/data/labels/real/L001_sheet.csv   # optional: --graph, --rubric-version, --force
-uv run python packages/c2/scripts/validate_labels.py --file packages/c2/data/labels/real/all_labels.csv --agreement                             # optional: --sheet, --json
-uv run python packages/c2/scripts/write_feature_schema.py --out <model_dir>/feature_schema.json                                                 # or --check <path>
+uv run python packages/c2/scripts/write_feature_schema.py --out <model_dir>/feature_schema.json   # or --check <path>
 ```
 
-Real labels stay in the git-ignored `data/labels/real/`; never commit them. Exit codes: 0 ok, 1 findings (validators, `--check`), 2 bad arguments or unreadable input.
+Exit codes: 0 ok, 1 findings (`--check`), 2 bad arguments or unreadable input.

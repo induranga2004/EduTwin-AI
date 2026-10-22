@@ -9,10 +9,11 @@ from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from edusync_c2.difficulty.models import LABEL_ORDER
 from edusync_c2.difficulty.registry import FEATURE_NAMES
-from edusync_c2_model.labels import LABEL_ID, LABEL_ORDER
 
 N_FEATURES = len(FEATURE_NAMES)
+LABEL_ID = {name: i for i, name in enumerate(LABEL_ORDER)}
 
 
 def _check_vectors(values: tuple, missing: tuple, statuses: tuple) -> None:
@@ -34,6 +35,8 @@ class FeatureRow:
     values: tuple[float, ...]
     missing: tuple[int, ...]
     statuses: tuple[str, ...]
+    slide_indexes: tuple[int, ...] = ()
+    graph_kind: str = ""  # "real", "mock", "curated" or "none": where the graph came from
 
     def __post_init__(self) -> None:
         _check_vectors(self.values, self.missing, self.statuses)
@@ -57,7 +60,13 @@ class FeatureRow:
             values=tuple(float(v) for v in data["values"]),
             missing=tuple(int(m) for m in data["missing"]),
             statuses=tuple(data["statuses"]),
+            slide_indexes=tuple(int(i) for i in data.get("slide_indexes", ())),
+            graph_kind=str(data.get("graph_kind", "")),
         )
+
+
+# The label-free record used for reference scoring: same fields, no label.
+ConceptFeatures = FeatureRow
 
 
 @dataclass(frozen=True)

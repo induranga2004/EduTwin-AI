@@ -75,6 +75,8 @@ source = [
     "packages/c2_difficulty_model/src",
     "apps/api/src",
 ]
+# The torch/onnxruntime layer only runs inside the training container (ml-marked tests there).
+omit = ["packages/c2_difficulty_model/src/edusync_c2_model/t1/torch_impl.py"]
 
 [tool.coverage.report]
 fail_under = 90

@@ -1,8 +1,8 @@
 """The lecture manifest: which files make up a dataset and which course each lecture belongs to.
 
 CSV columns: ``lecture_id, course_id, file`` and optionally ``graph`` (a C1 graph JSON). Relative
-paths are resolved against the manifest's folder. Ids use the same pseudonym rule as
-``export_label_sheet.py --lecture-id`` (letters, digits, ``-`` and ``_``, at most 32 characters).
+paths are resolved against the manifest's folder. Ids are pseudonyms: letters, digits, ``-`` and
+``_``, at most 32 characters.
 """
 
 import csv

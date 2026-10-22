@@ -1,4 +1,4 @@
-"""Pseudonymous id rule shared with ``scripts/export_label_sheet.py --lecture-id``."""
+"""Pseudonymous lecture id rule (letters, digits, ``-`` and ``_``, at most 32 characters)."""
 
 import re
 

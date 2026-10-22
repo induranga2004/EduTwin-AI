@@ -9,8 +9,8 @@ module `edusync_c2.difficulty`. Related: [architecture](architecture.md), [C1 ->
 
 ## Phase 2 summary
 
-Phase 2 is complete as engineering work: all 35 features are real, the feature schema is frozen as `1.0`, and the label-collection
-pack for Phase 3 exists. The pipeline version is `0.2.0-phase2`. Nothing is trained and no accuracy is claimed; the baseline is still a
+Phase 2 is complete as engineering work: all 35 features are real, the feature schema is frozen as `1.0`.
+The pipeline version is `0.2.0-phase2`. Nothing is trained and no accuracy is claimed; the baseline is still a
 rule baseline and its thresholds are unvalidated. The rest of this document describes the end state; sections titled Phase 1 record
 how the pipeline started.
 
@@ -23,7 +23,7 @@ how the pipeline started.
 | M3 | `feature/c2-density-structure` | Group D slide geometry, fonts, diagrams, tables and `dens.visual_complexity`; `--vary-layout` for synthetic decks |
 | M5b | `feature/c2-c1-graph-provider` | `C1ApiGraphProvider`, `FileGraphProvider`, bundled sample graph, error mapping |
 | M4 | `feature/c2-semantic-explanation` | Opt-in numpy MiniLM semantic scorer for the three `expl.semantic_*` features |
-| M6 | `feature/c2-schema-freeze` | Integration test over all 35 features and setups, schema frozen at `1.0`, new `pipeline_version` and disclaimer, label-collection pack, docs sweep |
+| M6 | `feature/c2-schema-freeze` | Integration test over all 35 features and setups, schema frozen at `1.0`, new `pipeline_version` and disclaimer, docs sweep |
 
 **Settings added in Phase 2** (all `EDUSYNC_C2_*`; defaults keep the Phase 1 behaviour; the full table is in the
 [package README](../../edusync/packages/c2/README.md#settings)):
@@ -44,12 +44,10 @@ slower per sentence; see "Feature C method").
 | `feature_report.py` | Per-feature status and distinct-value report over the seeded synthetic decks; `--write-snapshot` regenerates the registry snapshot |
 | `make_sample_graph.py` | Rewrites the bundled synthetic sample C1 graph used by the `file` provider |
 | `write_feature_schema.py` | Writes `feature_schema.json` (version, names, hash) from the registry for a trained model package; `--check PATH` compares an existing file |
-| `export_label_sheet.py` | Exports a CSV label sheet (concept ids as C2 emits them) for one lecture |
-| `validate_labels.py` | Checks a filled label CSV against the protocol; `--agreement` reports rater agreement |
 | `validate_c1_graph.py` | Checks a C1 graph file against the contract (v0 or v1) |
-| `make_synthetic_data.py` | Seeded synthetic decks, graphs and circular labels; `--vary-layout` varies geometry, fonts, diagrams and tables |
+| `make_synthetic_data.py` | Seeded synthetic decks and graphs (test fixtures); `--vary-layout` varies geometry, fonts, diagrams and tables |
 
-Labelling protocol and the label tools: [c2-label-collection.md](c2-label-collection.md). Open items of Phase 2 are listed in
+Open items of Phase 2 are listed in
 section 11 and "Unverified" (section 12).
 
 ## 1. Purpose and scope
@@ -161,7 +159,7 @@ All paths are under `edusync/packages/c2/src/edusync_c2/`.
 | `difficulty/features/density.py` | Group D processor (text, structure and the six geometry/visual features; `_VC_WEIGHTS`, `_VC_SATURATION`) |
 | `difficulty/features/__init__.py` | `compute_all_features`: all 35 in registry order |
 | `difficulty/fusion.py` | `build_fusion_input`, `to_vector`, `summarize_features` |
-| `difficulty/models.py` | `DifficultyModel` protocol, `RuleBaselineModel`, `MiniLMFusionModel` (TODO) |
+| `difficulty/models.py` | `DifficultyModel` protocol, `RuleBaselineModel` |
 | `difficulty/pipeline.py` | `DifficultyPipeline`: orchestration, stage statuses, warnings |
 | `difficulty/synthetic.py` | Seeded synthetic decks (PPTX/PDF), C1 graphs (v0/v1), rule labels |
 | `difficulty/ids.py` | The two concept-id conventions: `casefold_id` (v0, mock, fallback) and `slug_id` (v1 hyphen slugs) |
@@ -339,7 +337,7 @@ counted twice. The step centroid is scored but no feature counts steps semantica
 
 **Thresholds are unvalidated.** An earlier feasibility check used 65 hand-written sentences (12 prototypes per class, centroid
 cosine). It gave AUC 0.96 for definitions, 0.97 for steps and 0.81 for examples, with useful thresholds around 0.21 to 0.25.
-That is a feasibility signal, not a benchmark: the sentences were hand-written for the check, no lecturer labels were involved,
+That is a feasibility signal, not a benchmark: the sentences were hand-written for the check, no human difficulty ratings were involved,
 and example detection is the weakest class. 0.23 is a heuristic default for both thresholds, and both are settings so they can
 be changed without code.
 
@@ -596,8 +594,7 @@ versioned: `FEATURE_SCHEMA_VERSION` in `difficulty/registry.py` (currently `1.0`
   pre-registered (as `planned`) in 0.3 so that later milestones only flipped statuses. From now on any change to names,
   groups, order or the meaning of a feature requires a version bump (mandatory) and retraining of every trained model (or a
   new version with a migration). Flipping `maturity`, editing descriptions or fixing a bug toward the documented meaning does
-  not. A trained package must carry a `feature_schema.json` written by `scripts/write_feature_schema.py` (see
-  [c2-label-collection.md](c2-label-collection.md), section 10).
+  not. A trained package must carry a `feature_schema.json` written by `scripts/write_feature_schema.py`.
 
 ### Other M0 changes (parser, ids, test helpers)
 
@@ -664,7 +661,6 @@ Steps:
 The `explanation` list of a prediction states each normalised component, the credit and the final thresholds.
 Group B components therefore only count when the graph is real: from a mock graph they are `mocked`, hence missing.
 
-`MiniLMFusionModel` is a **TODO placeholder** (Phase 3, kind `todo`); `predict` raises `NotImplementedError`.
 
 ## 7. API
 
@@ -949,6 +945,17 @@ graphs too: "C1 graph is a mock, not C1 output for this lecture (see inputs): ..
 in the deck are `not_found_in_materials`, so the sample fits its own synthetic deck, not arbitrary uploads. The sample is
 synthetic (6 concepts, contract v1) and is regenerated byte for byte by `scripts/make_sample_graph.py`.
 
+**Curated graphs.** A graph file written or corrected by people (one per lecture) is marked with a top-level
+`"curated": true` (a top-level `"note": "curated"` is also accepted). `FileGraphProvider` then reports
+`inputs[1].kind = "curated"` with detail `graph file: <name> (curated)` instead of `mock`. Features treat `curated` like
+`real`: group B and `dens.concept_frequency` are `computed`, no mock warning is added, and the response carries
+`CURATED_GRAPH_WARNING` ("C1 graph is hand-made (curated JSON), not C1 output: prerequisite values are only as good as the
+curation"). `FileGraphProvider.for_deck(dir, deck_filename)` maps a deck to `<dir>/<deck stem>.graph.json` for batch runs.
+`scripts/make_curated_graph.py --deck D --out O [--min-frequency N] [--prereq-map M.json] [--force]` drafts such a file from
+the slide titles (generic titles skipped, mention-based `inferred` edges: A to B when A's title appears on slides where B is discussed and A's first slide is earlier, confidence 0.5 to 0.8, at most 5 per concept, concepts with none are roots, no slide-order chain; a prereq map adds
+`curriculum_defined` edges at 0.9), validates it with the contract checker, refuses to overwrite without `--force`, and
+writes `"curated": false`. The team corrects it and flips the flag to true.
+
 **c1_api.** Built per request, because `build` receives the parsed deck and the provider needs the raw bytes. It posts the
 upload as multipart (field `file`) to `{EDUSYNC_C2_C1_BASE_URL}/lectures/graph` with stdlib `urllib` (`difficulty/c1_client.py`,
 `UrllibTransport`); no C1 code is imported and no dependency was added. The answer must validate as `C1GraphResponse`.
@@ -990,10 +997,10 @@ contract validator, regeneration, id derivation), `test_graph_provider_selection
 
 1. "Real C1 v1 graph and sample: C1ApiGraphProvider exists but is off by default, and no real v1 graph has been checked yet." `C1ApiGraphProvider` is implemented behind `EDUSYNC_C2_GRAPH_PROVIDER=c1_api` (see "Graph providers"), but this item stays open because C1 still emits only v0 graphs: the real v1 sample and its fields (descriptions, prerequisite edges, direction, confidence, source type) have never been seen, so group B has not run on real C1 output.
 2. "Concept filter: the heuristic stays opt-in until it is validated on real C1 output." The heuristic filter exists behind `EDUSYNC_C2_CONCEPT_FILTER=heuristic` (see "Concept filter"); the default is still the mock `mock_keep_all` until the heuristic has been reviewed on real C1 output.
-3. "MiniLMFusionModel and learned feature fusion (Phase 3, trained on lecturer labels)."
+3. "Trained difficulty models (public graded-text data + label-free reference scoring) - in progress."
 4. Calibrated confidence and probabilities (never invented before a trained, evaluated model).
 5. Prediction persistence for Phase 5 comparison with live comprehension.
-6. Validation of the thresholds (unfamiliar vocabulary, semantic scorer, visual complexity). **Status:** the three heuristics are implemented and documented with their limits, but no lecturer labels exist to validate them against.
+6. Validation of the thresholds (unfamiliar vocabulary, semantic scorer, visual complexity). **Status:** the three heuristics are implemented and documented with their limits, but no human difficulty ratings exist to validate them against.
 
 The former item "Feature A: unfamiliar-vocabulary score from a domain word list" was removed when Feature A became real (Phase 2, M1), "Feature D: visual/diagram complexity analysis" when the six geometry features became real (Phase 2, M3), and "Feature C: semantic definition/example detection" when the semantic scorer was built (Phase 2, M4; it is opt-in and its thresholds are unvalidated, see "Feature C method").
 
@@ -1012,7 +1019,6 @@ Per-module mocks and TODOs found in the code:
 | `features/prerequisites.py` | All seven group B features are implemented; a mock graph gives `mocked` values, a v0 graph (no prerequisite edges) gives `unavailable` |
 | `features/density.py` | No mock or planned feature left in group D. Limits: the `dens.visual_complexity` weights and saturation points are unvalidated guesses; only explicit font sizes are read; areas are lower bounds when shapes are unreadable; PDF gives `unavailable` (see "Feature D method") |
 | `features/_common.assemble` | Any planned feature a processor does not produce is filled as unavailable, source `todo:<name>`, note "not yet implemented" (no planned feature is left) |
-| `models.MiniLMFusionModel` | Not implemented (Phase 3) |
 | `models.RuleBaselineModel` | Weights and thresholds are untuned guesses |
 | `pipeline.DifficultyPipeline` | `use_mocked_features` is off; mocked features never feed the baseline |
 | API | Predictions are not stored; the C1 -> C2 runtime hand-off is not implemented |
@@ -1075,7 +1081,7 @@ Paths are relative to `edusync/packages/c2/` unless they start with `docs/`. Tes
 | 1 | End-to-end pre-lecture difficulty pipeline implemented | Done | `src/edusync_c2/difficulty/pipeline.py`; `POST /api/c2/difficulty` in `router.py`; `test_pipeline.py` (`test_v1_payload`, `test_v0_payload_group_b_unavailable`, `test_mock_provider`, `test_deterministic_and_roundtrip`), `test_router.py` (`test_with_graph`, `test_without_graph`, `test_pdf`) | The model is a rule baseline, not trained |
 | 2 | Four feature modules have defined inputs, outputs and test coverage | Done | `difficulty/features/{language,prerequisites,explanation,density}.py`; registry in `difficulty/registry.py`; `test_features_language.py`, `test_features_prerequisites.py`, `test_features_explanation.py`, `test_features_density.py`, `test_features_registry.py` (`test_names_and_order`, `test_statuses_real_deck`); group A vocabulary features: `test_vocab.py`, `test_wordpiece.py`, `test_lexicon.py`, `test_vocab_resources.py`, `test_baseline_golden.py` | Some features are mocked or unavailable by design (see the register in section 8) |
 | 3 | C1 knowledge-graph integration has a documented interface and can be tested with sample data | Partially done / pending C1 | Interface and contract: `docs/edusync/c1-c2-graph-contract.md`; `difficulty/graph.py`, `providers.py`; validator `difficulty/contract_check.py` and `scripts/validate_c1_graph.py`; synthetic v0/v1 graphs from `scripts/make_synthetic_data.py`; tests `test_contract_check.py`, `test_validate_script.py`, `test_providers.py`, `test_graph.py`, `test_synthetic.py` | C1's real v1 sample file is not on GitHub, so the contract has never been checked against real C1 output. `C1ApiGraphProvider` is implemented (off by default) but has only met C1's v0 output |
-| 4 | Feature fusion and the MiniLM prediction interface are defined and connected | Partially done | Fusion: `difficulty/fusion.py`, `test_fusion.py`. Interface, factory and artifact spec: `difficulty/models.py` (`create_model`, `OnnxFusionModel.from_artifacts`, `MiniLMFusionModel`), `docs/edusync/c2-model-and-blueprint.md`; `test_model_contract.py` (reusable contract checks), `test_model_artifacts.py`, `test_models.py`; HTTP 501 selection in `test_router.py` (`test_minilm_is_501_and_not_cached`, `test_artifact_error_is_501`, `test_model_not_implemented_at_inference_is_501`) | Only the rule baseline can predict. `OnnxFusionModel` validates its artifacts but does not run inference, and `MiniLMFusionModel` is a TODO marker; both wait for Phase 3 |
+| 4 | Feature fusion and the MiniLM prediction interface are defined and connected | Partially done | Fusion: `difficulty/fusion.py`, `test_fusion.py`. Interface, factory and artifact spec: `difficulty/models.py` (`create_model`, `OnnxFusionModel.from_artifacts`), `docs/edusync/c2-model-and-blueprint.md`; `test_model_contract.py` (reusable contract checks), `test_model_artifacts.py`, `test_models.py`; HTTP 501 selection in `test_router.py` (`test_minilm_is_501_and_not_cached`, `test_artifact_error_is_501`, `test_model_not_implemented_at_inference_is_501`) | Only the rule baseline can predict. `OnnxFusionModel` validates its artifacts but does not run inference; inference waits for Phase 3 |
 | 5 | The existing MiniLM blueprint has been located and assessed for reuse | Done | Assessment and the copy-in-Phase-3 decision in `docs/edusync/c2-model-and-blueprint.md`, section 5 | The assessment is documentation only; no blueprint code has been copied or run |
 | 6 | The pipeline returns structured concept-level results | Done | `DifficultyResponse` and `ConceptPrediction` in `difficulty/schemas.py` (label, raw `score`, feature statuses, provenance); `test_schemas.py`, `test_pipeline.py::test_deterministic_and_roundtrip`, `test_router.py::test_info_shows_model_fields` | `score` is a raw baseline value, not a probability; no probabilities exist yet |
 | 7 | Mocked and unavailable functionality is explicitly identified | Done | Per-feature status (computed / mocked / unavailable) and `source` in every response; mock graph warning; `PHASE1_TODO` in the registry; `GET /difficulty/info`; section 8 of this document; `test_features_registry.py`, `test_fusion.py::test_use_mocked`, `test_pipeline.py::test_mock_provider` | The register must be kept current as features are replaced (see the checklist below) |
@@ -1087,7 +1093,7 @@ What remained before Phase 1 could be called fully closed was to obtain C1's rea
 ## Phase 2 Definition of Done - evidence
 
 Paths are relative to `edusync/packages/c2/`. Tests live in `tests/difficulty/`. "Done" means built and tested on synthetic data;
-none of it is validated on real lectures, real C1 output or lecturer labels.
+none of it is validated on real lectures, real C1 output or human difficulty ratings.
 
 | # | Item | Status | Evidence | Remaining gap |
 |---|------|--------|----------|---------------|
@@ -1100,11 +1106,11 @@ none of it is validated on real lectures, real C1 output or lecturer labels.
 | 7 | Semantic scorer for group C | Done, opt-in | "Feature C method"; `test_minilm.py`, `test_semantic_loader.py`, `test_semantic.py`, `test_semantic_wiring.py`, `test_semantic_reporting.py` | Thresholds unvalidated; latency and memory with Whisper loaded were not measured |
 | 8 | Slide-geometry features for group D | Done | "Feature D method"; `test_features_density.py`, `test_features_density_geometry.py` | Weights and saturation points of `dens.visual_complexity` unvalidated; real decks not checked |
 | 9 | Vocabulary features for group A | Done | "Feature A method"; `test_vocab.py`, `test_wordpiece.py`, `test_lexicon.py`, `test_vocab_resources.py` | Thresholds and lexicon unvalidated against real lectures |
-| 10 | Phase 3 readiness: model artifact spec, schema writer, label pack | Done | [c2-model-and-blueprint.md](c2-model-and-blueprint.md) section 4; `scripts/write_feature_schema.py` (`test_write_feature_schema.py`); [c2-label-collection.md](c2-label-collection.md), `scripts/export_label_sheet.py`, `scripts/validate_labels.py` (`test_export_label_sheet.py`, `test_validate_labels.py`), `data/labels/labels_template.csv` | No real labels exist; the rubric, anchors and the 0.6 agreement bar are untested proposals |
+| 10 | Phase 3 readiness: model artifact spec, schema writer | Done | [c2-model-and-blueprint.md](c2-model-and-blueprint.md) section 4; `scripts/write_feature_schema.py` (`test_write_feature_schema.py`) | The earlier label pack (sheet exporter, validator, protocol) was removed with the move to label-free scoring |
 
 What remains open after Phase 2 (none of it can be closed from this repository alone): C1's real v1 sample and fields; the decision on
-the concept filter default after review on real C1 output; validation of the thresholds and weights against lecturer labels; lecturer
-labels; Phase 3 training; the Phase 5 mapping from difficulty labels to the live stage (next section).
+the concept filter default after review on real C1 output; validation of the thresholds and weights against human difficulty judgements;
+Phase 3 label-free scoring; the Phase 5 mapping from difficulty labels to the live stage (next section).
 
 ## Phase 5 hand-off: difficulty labels versus the 0-1 input
 
@@ -1179,19 +1185,17 @@ labels; Phase 3 training; the Phase 5 mapping from difficulty labels to the live
 2. Feature A, M1: `lang.unfamiliar_vocab_ratio` is real (MiniLM word pieces), with `lang.subword_fragmentation` and `lang.domain_term_ratio` added (section 4, "Feature A method"). Done. Open: validate the thresholds and the lexicon against real lectures.
 3. Concept filter, M2: a heuristic filter (alias merging, generic phrases) behind `EDUSYNC_C2_CONCEPT_FILTER=heuristic` (section "Concept filter"). Done, opt-in. Open: review it on real C1 output, then decide whether to make it the default; C1 aliases could replace parts of it.
 4. Feature B graph metrics: `prereq.weighted_depth` and `prereq.dependents_count` are built (no schema change). Done. Open: run all of group B on a real C1 v1 graph (needs the v1 contract to exist; see the contract doc and its contract tests).
-5. Feature D, M3: the six slide-geometry features are real (section 4, "Feature D method"). Done. Open: validate the `dens.visual_complexity` weights and saturation points against lecturer labels, and check the parser on real decks (inherited font sizes, SmartArt, grouped shapes).
+5. Feature D, M3: the six slide-geometry features are real (section 4, "Feature D method"). Done. Open: validate the `dens.visual_complexity` weights and saturation points against human difficulty judgements, and check the parser on real decks (inherited font sizes, SmartArt, grouped shapes).
 6. `C1ApiGraphProvider`, M5b: done (section "Graph providers"), with a bundled sample graph behind a `file` provider. Both are off by default. Open: run it against a real C1 v1 graph (C1 still returns v0), then decide whether to make it the default.
-7. Feature C, M4: the three semantic features are real but opt-in (`EDUSYNC_C2_SEMANTIC=minilm`; section 4, "Feature C method"). Done. Open: validate the thresholds against lecturer labels, improve example detection, and re-measure latency and memory in the full container.
-8. M6: integration test, schema frozen as `1.0`, `pipeline_version` `0.2.0-phase2` with the new disclaimer, label-collection pack, docs sweep. Done.
+7. Feature C, M4: the three semantic features are real but opt-in (`EDUSYNC_C2_SEMANTIC=minilm`; section 4, "Feature C method"). Done. Open: validate the thresholds against human difficulty judgements, improve example detection, and re-measure latency and memory in the full container.
+8. M6: integration test, schema frozen as `1.0`, `pipeline_version` `0.2.0-phase2` with the new disclaimer, docs sweep. Done.
 
-Still open from Phase 2: C1's real v1 sample and fields; the heuristic concept filter default (after review on real C1 output); validation of the unfamiliar-word, semantic and visual-complexity thresholds and weights and of the lexicon; lecturer labels.
+Still open from Phase 2: C1's real v1 sample and fields; the heuristic concept filter default (after review on real C1 output); validation of the unfamiliar-word, semantic and visual-complexity thresholds and weights and of the lexicon.
 
-**Phase 3 - dataset and model.**
+**Phase 3 (in progress) - label-free difficulty scoring.**
 
-- Labelling protocol, sheet exporter and validator: [c2-label-collection.md](c2-label-collection.md).
-- Labelling rubric that states **"difficult for which student level"** explicitly (the label is meaningless without it).
-- Two raters per lecture and agreement measured before training.
-- Lecturer labels are private data and are never committed (datasets are never committed; see architecture).
+- Training signal: public graded-text data plus label-free reference scoring over unlabelled decks (percentile scorers and combiner); no lecturer labelling is needed. The label-collection tools (sheet exporter, validator, protocol) were removed.
+- Spot-check ratings by teammates are used only to evaluate domain transfer, never to train.
 - Copy the blueprint `edusync/packages/blueprint_model` into a new `packages/c2_difficulty_model` and add a
   feature-fusion head (text embedding + the registry-ordered features and mask).
 - Write `feature_schema.json` from the frozen registry with `scripts/write_feature_schema.py` next to the exported model, and check it with `--check` (the loader rejects a mismatch); the schema is `1.0`, so a trained model is valid only for it.
@@ -1221,13 +1225,12 @@ based, not validated).
   GitHub yet. C2 handles v1 only against its own synthetic graphs and a bundled synthetic sample; `C1ApiGraphProvider` has only met C1's v0 output and fake servers.
 - Group B behaviour against real C1 output has not been run.
 - The heuristic concept filter has only been run on hand-written label lists and synthetic decks, never on real C1 output. Its recall figures are optimistic (the rules were tuned on similar lists). It stays off by default until it has been reviewed on real C1 output.
-- No claim is made about how well the baseline matches real lecturer judgements; no real labelled data exists. The baseline weights and thresholds are untuned guesses.
+- No claim is made about how well the baseline matches real human difficulty judgements; no real labelled data exists. The baseline weights and thresholds are untuned guesses.
 - The thresholds and weights of the heuristic features are unvalidated: the unfamiliar-word measure and the domain lexicon (group A), the semantic thresholds (0.23) and prototypes (group C), and the `dens.visual_complexity` weights and saturation points (group D).
 - The regex cues (definition, example, step, formula, code) have been tested on synthetic and unit-test text only.
-- The semantic thresholds and prototypes have only a 65-sentence feasibility check behind them (AUC 0.96, 0.97, 0.81 for definition, step, example); no lecturer labels exist, and latency and memory with Whisper loaded in the same container were not measured.
+- The semantic thresholds and prototypes have only a 65-sentence feasibility check behind them (AUC 0.96, 0.97, 0.81 for definition, step, example); no human difficulty ratings exist for them, and latency and memory with Whisper loaded in the same container were not measured.
 - The group D geometry parser has not been run on real decks (inherited font sizes, SmartArt, grouped shapes).
-- The label-collection protocol (rubric, anchors, the 0.6 agreement bar, sample-size targets) is an untested proposal, and the label tools have only been exercised on synthetic and template rows.
-- The frozen schema `1.0` has no trained model behind it yet; whether 35 features and this grouping suit the real labels is untested.
+- The frozen schema `1.0` has no trained model behind it yet; whether 35 features and this grouping suit real lectures is untested.
 - The Windows/Docker route to the API is documented elsewhere as unverified; the commands above were not checked
   against a running BBB.
 - Upload limits at the route use `EDUSYNC_MAX_UPLOAD_MB` (default 200 in core settings) capped at 100 MB.

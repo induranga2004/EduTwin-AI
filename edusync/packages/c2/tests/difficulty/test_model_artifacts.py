@@ -82,8 +82,8 @@ def test_int8_preferred_when_both(tmp_path):
 
 
 def test_trained_on_is_read(tmp_path):
-    root = make_artifacts(tmp_path, trained_on="lecturer labels 2026")
-    assert OnnxFusionModel.from_artifacts(root).info.trained_on == "lecturer labels 2026"
+    root = make_artifacts(tmp_path, trained_on="public graded text 2026")
+    assert OnnxFusionModel.from_artifacts(root).info.trained_on == "public graded text 2026"
 
 
 def test_predict_not_implemented(model_dir):

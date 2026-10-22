@@ -9,7 +9,7 @@ Companion to [c2-difficulty.md](c2-difficulty.md). Code: `edusync/packages/c2/sr
 
 - **Phase 1 and 2 (now):** the only working model is `RuleBaselineModel`, a transparent, untrained rule. Nothing here is a
   trained model and no accuracy is claimed.
-- **Phase 3 (later):** a MiniLM text encoder fused with the structured features (feature schema frozen at `1.0`), trained on lecturer labels, exported
+- **Phase 3 (in progress): label-free difficulty scoring.** Trained models use public graded-text data and label-free reference scoring (no manual labelling needed; see the plan). Planned artifacts: a MiniLM text encoder fused with the structured features (feature schema frozen at `1.0`), exported
   as an artifact folder and selected with `EDUSYNC_C2_MODEL=minilm`.
 - What Phase 1 already delivers for Phase 3: the model interface, the artifact folder spec with validation
   (`OnnxFusionModel.from_artifacts`, no onnxruntime or torch needed), the feature schema hash and the contract test
@@ -98,9 +98,9 @@ wrongly: it holds `schema_version`, `names` (registry order) and `hash`. Write i
 
 `--check` exits 1 and names the differing field when the file no longer matches the registry.
 
-Label collection protocol, the label sheet exporter and validator, and the hand-off checklist for the labels:
-[c2-label-collection.md](c2-label-collection.md). The training package consumes the validated lecturer labels (one row per lecture and
-concept id as C2 emits it) and must not use the circular synthetic labels for any quality claim.
+
+The label-collection tools and protocol were removed with the move to label-free scoring. The training package works from public graded-text data and a label-free reference set (one row per lecture and
+concept id as C2 emits it) and must not use synthetic labels for any quality claim.
 
 Phase 3 hand-off checklist: the trained package must export
 1. the ONNX graph (int8 and/or fp32) whose inputs include the feature vector in registry order;
@@ -114,7 +114,7 @@ Phase 3 hand-off checklist: the trained package must export
 6. evaluation results (see section 5.4) kept next to the artifacts for the report, not required by the loader.
 
 Also part of the hand-off, in the code and not in the folder: switch `OnnxFusionModel` from `ModelKind.TODO` to `ModelKind.TRAINED`
-when real inference is implemented, and not before the labels are validated (see section 10 of [c2-label-collection.md](c2-label-collection.md)).
+when real inference is implemented, and not before the model has been evaluated.
 
 ## 5. Blueprint reuse assessment
 
@@ -175,7 +175,7 @@ Reviewed: `edusync/packages/blueprint_model` (`src/edusync_blueprint_model/*.py`
   blueprint reports accuracy and macro-F1 (`metrics.py`).
 - Baselines to beat: the rule baseline, majority class, and a feature-only model.
 - Calibration of probabilities before any confidence is exposed.
-- Small-data risk: lecturer labels will be few; full fine-tuning of all weights (`train.py`) overfits easily. Consider
+- Small-data risk: labelled data will be limited; full fine-tuning of all weights (`train.py`) overfits easily. Consider
   a frozen encoder by default (blueprint has no freeze option; none found with a search for `requires_grad`) with only
   the head trained, and unfreezing only if validation supports it.
 
@@ -196,9 +196,9 @@ must pass.
 - Whether normalisation statistics live inside the ONNX graph or in an extra file is undecided.
 - Real latency of a 256-token pair input on the target CPU is not measured.
 - Whether int8 quantization is acceptable for the fusion head is unmeasured.
-- The minimum number of lecturer labels needed for the fusion model to beat the rule baseline is unknown.
+- How much graded data the fusion model needs to beat the rule baseline is unknown.
 - Reminder: `ModelKind.TODO` is reported by `OnnxFusionModel` because it cannot predict yet; Phase 3 must switch it to
-  `ModelKind.TRAINED` when real inference lands, and only once the labels are collected and validated, agreement is at or above the bar,
+  `ModelKind.TRAINED` when real inference lands, and only once the model is evaluated against the baselines
   and `feature_schema.json` was written from the same registry the features were extracted with.
 - Copy the blueprint (`edusync/packages/blueprint_model`) into a new `packages/c2_difficulty_model` for training (section 5); do not train in place.
 - The blueprint line numbers will drift as that package changes.
@@ -230,7 +230,7 @@ and storage; the live layer reads the stored predictions.
 ### 7.2 Group experts
 
 Each expert predicts the same target, the concept's overall difficulty (Low < Medium < High), from its own inputs.
-Lecturers label one difficulty per concept, so a per-group target would need extra per-aspect ratings.
+There is one overall difficulty target per concept, so a per-group target would need extra per-aspect ratings.
 
 | Group | Features | Inputs | Model type |
 |---|---|---|---|
@@ -262,13 +262,13 @@ The Phase 1 validator (`OnnxFusionModel.from_artifacts`) requires the schema ver
 1. Fusion difficulty model (Phase 3), or group experts plus combiner.
 2. Unfamiliar-vocabulary score (word-list rule or small learned model).
 3. Semantic definition and example detection: a prototype-centroid heuristic exists (opt-in, unvalidated thresholds); a trained text classifier would replace it.
-4. Visual and diagram complexity (needs slide images and labels).
+4. Visual and diagram complexity (needs slide images).
 5. Calibration of probabilities (a calibration step, not a separate network).
 6. Live comprehension validation (Phase 5; needs real poll data).
 
 Not models but open: the real C1 connection (`C1ApiGraphProvider` exists behind `EDUSYNC_C2_GRAPH_PROVIDER=c1_api`, off by default, but has only met C1's v0 output), validating the heuristic concept filter on real C1 output
 (it exists behind `EDUSYNC_C2_CONCEPT_FILTER=heuristic`, default still the mock, see "Concept filter" in `c2-difficulty.md`) and prediction
-persistence. Every trained model is blocked on real lecturer labels, so a label-collection tool is a prerequisite.
+persistence. Trained models now follow the label-free plan (public graded-text data plus a reference set).
 
 ### 7.5 Where artifacts live
 

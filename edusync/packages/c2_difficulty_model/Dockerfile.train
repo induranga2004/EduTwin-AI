@@ -1,0 +1,24 @@
+# T1 training container (CPU only). Torch lives here and nowhere else: the host and CI stay torch-free.
+#
+# Build (context is only this folder, so the image holds no data and no repo code):
+#   docker build -f packages/c2_difficulty_model/Dockerfile.train -t edusync-c2-t1-train packages/c2_difficulty_model
+#
+# Run (from the edusync/ directory; the repo is mounted read-only, runs/ is writable):
+#   docker run --rm --cpus 16 -e T1_THREADS=16 \
+#     -v "$PWD:/src:ro" \
+#     -v "$PWD/packages/c2_difficulty_model/runs:/runs" \
+#     edusync-c2-t1-train bash /src/packages/c2_difficulty_model/scripts/docker_train_t1.sh --epochs 3
+#
+# Smoke run: append "--limit-rows 64 --epochs 1". Run the ml tests: replace the last line with
+#   bash /src/packages/c2_difficulty_model/scripts/docker_train_t1.sh --pytest
+FROM python:3.12-slim
+
+ENV PIP_NO_CACHE_DIR=1 PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 TOKENIZERS_PARALLELISM=false
+
+RUN pip install --extra-index-url https://download.pytorch.org/whl/cpu torch \
+ && pip install transformers tokenizers onnx onnxruntime numpy \
+ && pip install pydantic fastapi python-multipart pypdf python-pptx httpx pytest pytest-asyncio pytest-cov
+
+RUN pip install pydantic-settings
+
+WORKDIR /work

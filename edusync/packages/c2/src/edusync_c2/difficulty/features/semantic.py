@@ -9,7 +9,7 @@ Counting rule (``count_semantic``): a sentence counts toward a class when its co
 class is at least the class threshold AND higher than its cosine to the other class; a tie counts
 for neither, so no sentence is counted twice.
 
-The thresholds (default 0.23 for both) are heuristic and NOT validated against lecturer labels. A
+The thresholds (default 0.23 for both) are heuristic and NOT validated against human ratings. A
 small earlier check (65 hand-written sentences) put useful thresholds around 0.21-0.25, with the
 example class the weakest. They are settings, not facts.
 

@@ -283,7 +283,8 @@ PHASE1_TODO: tuple[str, ...] = (
     "Real C1 v1 graph and sample: C1ApiGraphProvider exists but is off by default, "
     "and no real v1 graph has been checked yet.",
     "Concept filter: the heuristic stays opt-in until it is validated on real C1 output.",
-    "MiniLMFusionModel and learned feature fusion (Phase 3, trained on lecturer labels).",
+    "Trained difficulty models (public graded-text data + label-free reference scoring) - "
+    "in progress.",
     "Calibrated confidence and probabilities (never invented before a trained, evaluated model).",
     "Prediction persistence for Phase 5 comparison with live comprehension.",
     "Validation of the thresholds (unfamiliar vocabulary, semantic scorer, visual complexity).",

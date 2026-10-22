@@ -58,6 +58,10 @@ MOCK_GRAPH_WARNING = (
     "C1 graph is a mock, not C1 output for this lecture (see inputs): "
     "group B and frequency features are mocked"
 )
+CURATED_GRAPH_WARNING = (
+    "C1 graph is hand-made (curated JSON), not C1 output: "
+    "prerequisite values are only as good as the curation"
+)
 
 
 class DifficultyPipeline:
@@ -268,6 +272,8 @@ class DifficultyPipeline:
         warnings += [w for w in view.warnings if w not in raw_view.warnings]
         if mock_graph:
             warnings.append(MOCK_GRAPH_WARNING)
+        if ctx.source.kind == "curated":
+            warnings.append(CURATED_GRAPH_WARNING)
         if not view.has_prerequisite_edges:
             warnings.append(NO_PREREQ_WARNING)
         if cyclic_ids:

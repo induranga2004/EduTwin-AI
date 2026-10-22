@@ -8,7 +8,7 @@ from collections.abc import Sequence
 
 import numpy as np
 
-from edusync_c2_model.labels import LABEL_ORDER
+from edusync_c2.difficulty.models import LABEL_ORDER
 
 N_CLASSES = len(LABEL_ORDER)
 METRIC_NAMES = ("qwk", "mae", "accuracy", "adjacent_accuracy", "balanced_accuracy")

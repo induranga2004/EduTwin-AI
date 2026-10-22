@@ -1,4 +1,4 @@
-"""Feature extraction through the frozen pipeline, its cache, and the label join."""
+"""Feature extraction through the frozen pipeline and its cache."""
 
 import json
 
@@ -12,9 +12,7 @@ from edusync_c2_model.extract import (
     RecordingModel,
     extract_all,
     extract_lecture,
-    join_examples,
 )
-from edusync_c2_model.labels import LabelSet, ResolvedLabel, resolve_labels
 from edusync_c2_model.manifest import ManifestEntry
 
 
@@ -127,47 +125,3 @@ def test_extraction_is_independent_of_manifest_order(make_entry, tmp_path):
     forward, _ = extract_all(entries, tmp_path / "c1")
     backward, _ = extract_all(list(reversed(entries)), tmp_path / "c2")
     assert sorted(forward, key=lambda r: r.key) == sorted(backward, key=lambda r: r.key)
-
-
-def label(lecture, concept, text="Low", n=2, synthetic=False):
-    return ResolvedLabel(
-        lecture, concept, text, ["Low", "Medium", "High"].index(text), n, (), "median", synthetic
-    )
-
-
-def test_join_reports_unmatched_and_unlabelled(make_entry):
-    rows = extract_lecture(make_entry())
-    keep, spare = rows[0], rows[1]
-    labels = LabelSet(
-        labels={
-            keep.key: label(keep.lecture_id, keep.concept_id, "High", 3, True),
-            ("L001", "no-such-concept"): label("L001", "no-such-concept"),
-        }
-    )
-    result = join_examples(rows, labels)
-    assert [e.concept_id for e in result.examples] == [keep.concept_id]
-    assert (result.examples[0].label, result.examples[0].n_raters) == ("High", 3)
-    assert result.examples[0].synthetic is True
-    assert result.unmatched_labels == [("L001", "no-such-concept")]
-    assert spare.key in result.unlabelled
-    assert result.examples[0].values == keep.values
-
-
-def test_join_is_order_independent_and_rejects_duplicates(make_entry):
-    rows = extract_lecture(make_entry())
-    labels = resolve_labels(
-        {
-            "lecture_id": r.lecture_id,
-            "concept_id": r.concept_id,
-            "difficulty_label": "Medium",
-            "rater_id": "R1",
-            "synthetic": "false",
-        }
-        for r in rows
-    )
-    forward = join_examples(rows, labels)
-    backward = join_examples(list(reversed(rows)), labels)
-    assert forward.examples == backward.examples
-    assert [e.to_json() for e in forward.examples] == [e.to_json() for e in backward.examples]
-    with pytest.raises(ExtractError, match="duplicate"):
-        join_examples([*rows, rows[0]], labels)

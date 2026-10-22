@@ -22,11 +22,12 @@ from edusync_c2_model.manifest import (
 )
 
 
-def test_id_rule_matches_the_export_label_sheet_script(c2_script):
-    script = c2_script("export_label_sheet")
-    assert ID_PATTERN.pattern == script.LECTURE_ID_PATTERN.pattern
-    for value in ("L001", "a_b-c", "x" * 32, "", "x" * 33, "a b", "../x", "-a"):
-        assert is_valid_id(value) == bool(script.LECTURE_ID_PATTERN.match(value))
+def test_id_rule():
+    for value in ("L001", "a_b-c", "x" * 32):
+        assert is_valid_id(value)
+        assert ID_PATTERN.match(value)
+    for value in ("", "x" * 33, "a b", "../x", "-a"):
+        assert not is_valid_id(value)
 
 
 def write_manifest_text(folder: Path, body: str) -> Path:

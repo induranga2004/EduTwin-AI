@@ -20,6 +20,7 @@ from edusync_c2.difficulty import DifficultyPipeline, RuleBaselineModel
 from edusync_c2.difficulty.concepts import create_concept_filter
 from edusync_c2.difficulty.fusion import to_vector
 from edusync_c2.difficulty.materials import MaterialsError
+from edusync_c2.difficulty.providers import FileGraphProvider, is_curated
 from edusync_c2.difficulty.registry import FEATURE_SCHEMA_VERSION, feature_schema_hash
 from edusync_c2.difficulty.schemas import (
     C1GraphResponse,
@@ -27,11 +28,11 @@ from edusync_c2.difficulty.schemas import (
     FusionInput,
     ModelOutput,
 )
-from edusync_c2_model.examples import Example, FeatureRow
-from edusync_c2_model.labels import LabelSet
+from edusync_c2_model.examples import FeatureRow
 from edusync_c2_model.manifest import ManifestEntry
 
-DEFAULT_CONCEPT_FILTER = "mock_keep_all"  # what export_label_sheet.py uses by default
+DEFAULT_CONCEPT_FILTER = "mock_keep_all"
+ROW_FORMAT = "2"  # bump when the cached row fields change
 PIPELINE_VERSION: str = DifficultyResponse.model_fields["pipeline_version"].default
 
 
@@ -75,14 +76,24 @@ def extract_lecture(
                 f"{entry.lecture_id}: graph is not a C1 graph ({type(exc).__name__})"
             ) from exc
     recorder = RecordingModel()
+    factory = None
+    if graph is not None and entry.graph is not None and is_curated(graph):
+        # a hand-made graph goes through the file provider, so the pipeline labels it "curated"
+        graph_path = entry.graph
+        factory = lambda _data, _name: FileGraphProvider(graph_path)  # noqa: E731
+        graph = None
     pipeline = DifficultyPipeline(
-        model=recorder, concept_filter=create_concept_filter(concept_filter)
+        model=recorder,
+        concept_filter=create_concept_filter(concept_filter),
+        graph_provider_factory=factory,
     )
     try:
         response = pipeline.run(data, entry.file.name, graph)
     except MaterialsError as exc:
         raise ExtractError(f"{entry.lecture_id}: lecture file rejected: {exc.message}") from exc
     labels = {p.concept_id: p.label for p in response.predictions}
+    slides = {p.concept_id: tuple(p.slide_indexes) for p in response.predictions}
+    graph_kind = next((i.kind for i in response.inputs if i.name == "c1_graph"), "none")
     rows = []
     for fusion in recorder.captured:
         values, mask = to_vector(fusion)
@@ -96,6 +107,8 @@ def extract_lecture(
                 values=tuple(values),
                 missing=tuple(mask),
                 statuses=tuple(f.status.value for f in fusion.features),
+                slide_indexes=slides[fusion.concept_id],
+                graph_kind=graph_kind,
             )
         )
     return rows
@@ -113,6 +126,7 @@ def cache_key(
         "feature_schema_hash": feature_schema_hash(),
         "pipeline_version": PIPELINE_VERSION,
         "concept_filter": concept_filter,
+        "row_format": ROW_FORMAT,
     }
 
 
@@ -171,28 +185,3 @@ def extract_all(
             stats.hits += 1
         rows.extend(cached)
     return rows, stats
-
-
-@dataclass
-class JoinResult:
-    examples: list[Example]
-    unmatched_labels: list[tuple[str, str]]  # labelled, but no such concept was extracted
-    unlabelled: list[tuple[str, str]]  # extracted, but no usable label
-
-
-def join_examples(features: Iterable[FeatureRow], labels: LabelSet) -> JoinResult:
-    """Join feature rows to resolved labels on ``(lecture_id, concept_id)``."""
-    by_key: dict[tuple[str, str], FeatureRow] = {}
-    for row in features:
-        if row.key in by_key:
-            raise ExtractError(f"duplicate feature row for {row.key}")
-        by_key[row.key] = row
-    examples = []
-    for key in sorted(by_key.keys() & labels.labels.keys()):
-        label = labels.labels[key]
-        examples.append(Example.from_row(by_key[key], label.label, label.n_raters, label.synthetic))
-    return JoinResult(
-        examples=examples,
-        unmatched_labels=sorted(labels.labels.keys() - by_key.keys()),
-        unlabelled=sorted(by_key.keys() - labels.labels.keys()),
-    )
