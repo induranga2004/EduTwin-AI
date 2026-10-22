@@ -560,6 +560,8 @@
     let currentGraph = null;
     let stagedFile = null;
     let isRecording = false;
+    let isManualStop = false;
+    let micRestartTimer = null;
     let recognition = null;
     let panX = 40;
     let panY = 30;
@@ -1496,21 +1498,63 @@
       `;
     }
 
-    // Live Web Speech Recognition
-    // Live Web Speech Recognition (Chrome/Edge API)
-    function toggleMicrophone() {
+    // Persistent Continuous Live Web Speech Recognition (Auto-Keepalive)
+    function stopMicrophoneSession() {
+      isManualStop = true;
+      isRecording = false;
+      if (micRestartTimer) {
+        clearTimeout(micRestartTimer);
+        micRestartTimer = null;
+      }
+      if (recognition) {
+        try {
+          recognition.onend = null;
+          recognition.onerror = null;
+          recognition.stop();
+        } catch (e) {}
+      }
       const btn = document.getElementById("mic-btn");
       const indicator = document.getElementById("live-mic-indicator");
-      if (!isRecording) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-          alert("Web Speech API not supported in this browser. Please use Google Chrome or Microsoft Edge, or type in the speech bar below!");
-          return;
+      if (btn) {
+        btn.innerText = "🎙️ Start Live Mic";
+        btn.classList.remove("btn-danger");
+      }
+      if (indicator) indicator.classList.remove("active");
+    }
+
+    function startMicrophoneSession() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("Web Speech API not supported in this browser. Please use Google Chrome or Microsoft Edge, or type in the speech bar below!");
+        return;
+      }
+
+      isManualStop = false;
+      isRecording = true;
+
+      const btn = document.getElementById("mic-btn");
+      const indicator = document.getElementById("live-mic-indicator");
+      if (btn) {
+        btn.innerText = "⏹️ Stop Mic (Live Active)";
+        btn.classList.add("btn-danger");
+      }
+      if (indicator) indicator.classList.add("active");
+
+      function createAndStartRecognition() {
+        if (isManualStop || !isRecording) return;
+
+        if (recognition) {
+          try {
+            recognition.onend = null;
+            recognition.onerror = null;
+            recognition.abort();
+          } catch (e) {}
         }
 
         recognition = new SpeechRecognition();
         recognition.continuous = true;
         recognition.interimResults = true;
+        recognition.maxAlternatives = 1;
         recognition.lang = "en-US";
 
         recognition.onresult = function(event) {
@@ -1529,29 +1573,55 @@
             showInterimTranscript(interimTranscript);
           }
 
-          if (finalTranscript) {
+          if (finalTranscript && finalTranscript.trim()) {
             processLiveConversationUtterance(finalTranscript.trim(), "Speaker (Live Mic)");
           }
         };
 
-        recognition.onerror = function() {
-          btn.innerText = "🎙️ Start Live Mic";
-          btn.classList.remove("btn-danger");
-          if (indicator) indicator.classList.remove("active");
-          isRecording = false;
+        // Handle silence or transient network events - DO NOT STOP THE MIC!
+        recognition.onerror = function(event) {
+          console.warn("[SpeechRecognition event]:", event.error);
+          if (event.error === "no-speech" || event.error === "network" || event.error === "aborted") {
+            // Natural pause between slides or temporary silence - keep listening!
+            return;
+          }
+          if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+            alert("Microphone permission was denied. Please allow microphone permissions in browser settings.");
+            stopMicrophoneSession();
+          }
         };
 
-        recognition.start();
-        btn.innerText = "⏹️ Stop Mic";
-        btn.classList.add("btn-danger");
-        if (indicator) indicator.classList.add("active");
-        isRecording = true;
+        // When browser ends the session (after speech pause or internal buffer timeout), auto-restart immediately!
+        recognition.onend = function() {
+          if (!isManualStop && isRecording) {
+            if (micRestartTimer) clearTimeout(micRestartTimer);
+            micRestartTimer = setTimeout(() => {
+              createAndStartRecognition();
+            }, 250);
+          }
+        };
+
+        try {
+          recognition.start();
+        } catch (err) {
+          console.warn("[SpeechRecognition start notice]:", err);
+          if (!isManualStop && isRecording) {
+            if (micRestartTimer) clearTimeout(micRestartTimer);
+            micRestartTimer = setTimeout(() => {
+              createAndStartRecognition();
+            }, 400);
+          }
+        }
+      }
+
+      createAndStartRecognition();
+    }
+
+    function toggleMicrophone() {
+      if (!isRecording) {
+        startMicrophoneSession();
       } else {
-        if (recognition) recognition.stop();
-        btn.innerText = "🎙️ Start Live Mic";
-        btn.classList.remove("btn-danger");
-        if (indicator) indicator.classList.remove("active");
-        isRecording = false;
+        stopMicrophoneSession();
       }
     }
 
