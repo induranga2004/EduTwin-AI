@@ -557,10 +557,12 @@ def _meaning_title(a: GroupAnalysis) -> str:
         return "Diagram: " + ctx.diagram_sentences[0]
     if ctx.native_text:
         return ctx.native_text if len(ctx.native_text) <= 70 else ctx.native_text[:69] + "\u2026"
-    labels = [marking_label(mk) for mk in a.recognized.markings]
-    labels = [lb for lb in labels if lb]
-    if labels:
-        return "; ".join(labels)
+    counts: dict[str, int] = {}  # label -> times, in first-drawn order
+    for mk in a.recognized.markings:
+        if lb := marking_label(mk):
+            counts[lb] = counts.get(lb, 0) + 1
+    if counts:
+        return "; ".join(lb if n == 1 else f"{lb} \u00d7{n}" for lb, n in counts.items())
     return {
         "unrecognized_freehand": "Freehand drawing",
         "shapes_only": "Shapes",

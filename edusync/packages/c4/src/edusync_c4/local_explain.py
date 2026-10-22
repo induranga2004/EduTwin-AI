@@ -149,15 +149,21 @@ def _joined(parts: list[str]) -> str:
 
 def _marking_parts(recognized: RecognizedContent) -> tuple[list[str], int]:
     """Phrases for recognised marks, and how many strokes remain unexplained."""
-    parts: list[str] = []
+    counts: dict[str, int] = {}  # phrase -> times, in first-drawn order
     explained = 0
     for mk in recognized.markings:
         if mk.action and mk.target_text:
-            parts.append(f"{mk.action} \u201c{_trim(mk.target_text, 120)}\u201d")
-            explained += 1
+            phrase = f"{mk.action} \u201c{_trim(mk.target_text, 120)}\u201d"
         elif mk.kind in _KIND_PHRASE:
-            parts.append(f"drew {_KIND_PHRASE[mk.kind]} (no slide text was found there)")
-            explained += 1
+            phrase = f"drew {_KIND_PHRASE[mk.kind]} (no slide text was found there)"
+        else:
+            continue
+        counts[phrase] = counts.get(phrase, 0) + 1
+        explained += 1
+    parts = [
+        phrase if n == 1 else f"{phrase} {'twice' if n == 2 else f'{n} times'}"
+        for phrase, n in counts.items()
+    ]
     return parts, recognized.freehand_stroke_count - explained
 
 

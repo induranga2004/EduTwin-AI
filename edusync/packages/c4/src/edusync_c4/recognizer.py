@@ -43,7 +43,11 @@ class HeuristicRecognizer:
     def recognize(
         self, group: AnnotationGroup, members: list[NormalizedAnnotation]
     ) -> RecognizedContent:
-        freehand = [m for m in members if m.shape_type in FREEHAND]
+        # in the order they were drawn, so sentences read in time order
+        freehand = sorted(
+            (m for m in members if m.shape_type in FREEHAND),
+            key=lambda m: (m.timestamp_seconds, m.shape_id),
+        )
         strokes = len(freehand)
         markings = [
             mk

@@ -379,6 +379,22 @@ def test_report_names_the_underline_and_the_circle(client):
     assert "not recognised" not in html
 
 
+def test_repeated_circle_is_one_phrase_in_time_order(client):
+    events = [
+        stroke_event("circle2", 188, ellipse(260, 277, 106, 38, loops=1.05)),
+        stroke_event("circle1", 180, ellipse(260, 277, 106, 38, loops=1.05)),
+        stroke_event("under", 172, line(163, 225, 314, 225, n=93)),
+    ]
+    body = {"lecture_id": L, "slide_id": S, "events": events}
+    assert client.post(f"{BASE}/events/import", json=body).status_code == 200
+    client.put(f"{BASE}/lectures/{L}/slides/{S}/words", json={"words": WORD_JSON})
+    html = client.get(f"{BASE}/lectures/{L}/report").text
+    assert "underlined “Throughput” and circled “Response Time” twice" in html
+    assert html.count("circled “Response Time”") == 1
+    times_two = "\N{MULTIPLICATION SIGN}2"
+    assert f"Underline under “Throughput”; Circle around “Response Time” {times_two}" in html
+
+
 def test_report_without_words_still_recognises_the_kind(client):
     load(client, with_words=False)
     html = client.get(f"{BASE}/lectures/{L}/report").text

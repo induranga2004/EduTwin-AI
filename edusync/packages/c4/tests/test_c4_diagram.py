@@ -142,16 +142,66 @@ def test_two_diagrams_are_separate_and_ordered_by_time():
     assert [d.diagram_id for d in diagrams(events)] == [first.diagram_id, second.diagram_id]
 
 
-def test_chain_of_three_is_one_diagram_with_two_sentences():
-    events = [
+def chain_boxes():
+    return [
         box("a", 1, 0, 0, w=100, h=60, text="A"),
         box("b", 2, 300, 0, w=100, h=60, text="B"),
         box("c", 3, 600, 0, w=100, h=60, text="C"),
+    ]
+
+
+def test_chain_of_three_is_one_diagram_written_on_one_line():
+    events = [
+        *chain_boxes(),
         arrow("r1", 4, 0, 0, bound("a"), bound("b")),
         arrow("r2", 5, 0, 0, bound("b"), bound("c")),
     ]
     (d,) = diagrams(events)
-    assert d.sentences == ["A → B", "B → C"]
+    assert d.sentences == ["A → B → C"]
+    assert len(d.edges) == 2  # the data behind it is unchanged
+
+
+def test_chain_follows_arrows_even_when_drawn_out_of_order():
+    events = [
+        *chain_boxes(),
+        arrow("r2", 4, 0, 0, bound("b"), bound("c")),
+        arrow("r1", 5, 0, 0, bound("a"), bound("b")),
+    ]
+    (d,) = diagrams(events)
+    assert d.sentences == ["A → B → C"]
+
+
+def test_branch_keeps_a_second_line():
+    events = [
+        *chain_boxes(),
+        box("d", 4, 300, 300, w=100, h=60, text="D"),
+        arrow("r1", 5, 0, 0, bound("a"), bound("b")),
+        arrow("r2", 6, 0, 0, bound("b"), bound("c")),
+        arrow("r3", 7, 0, 0, bound("b"), bound("d")),
+    ]
+    (d,) = diagrams(events)
+    assert d.sentences == ["A → B → C", "B → D"]
+
+
+def test_labelled_and_two_way_arrows_are_not_chained():
+    events = [
+        *chain_boxes(),
+        arrow("r1", 4, 0, 0, bound("a"), bound("b"), text="sends"),
+        arrow("r2", 5, 0, 0, bound("b"), bound("c"), arrowheadStart="arrow"),
+    ]
+    (d,) = diagrams(events)
+    assert d.sentences == ["A → B (sends)", "B ↔ C"]
+
+
+def test_a_loop_terminates_and_lists_every_arrow_once():
+    events = [
+        *chain_boxes(),
+        arrow("r1", 4, 0, 0, bound("a"), bound("b")),
+        arrow("r2", 5, 0, 0, bound("b"), bound("c")),
+        arrow("r3", 6, 0, 0, bound("c"), bound("a")),
+    ]
+    (d,) = diagrams(events)
+    assert d.sentences == ["A → B → C → A"]
 
 
 def test_lone_boxes_and_empty_input_are_not_diagrams():

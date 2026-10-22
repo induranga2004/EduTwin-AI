@@ -8,6 +8,9 @@ Geometry only, no machine learning. Rules (all limits are documented constants):
   * Direction comes from the arrowheads: head at the end means start -> end, head only at the
     start means end -> start, both means a two-way link, none means a plain line.
   * A diagram is a set of nodes connected by arrows; a lone box is not a diagram.
+  * Plain one-way arrows that follow each other are written as one chain
+    (A -> B -> C). A branch, a labelled arrow, a two-way link or a plain line keeps its
+    own sentence.
 
 Known limits: curved arrows and lines (not arrows) are not followed; rotated shapes use their
 unrotated box; a very large box (more than `MAX_CONTAINER_AREA`) is not treated as a container so
@@ -164,6 +167,55 @@ def structural_links(annotations: list[NormalizedAnnotation]) -> list[tuple[str,
     return links
 
 
+def _chain_sentences(edges: list[DiagramEdge]) -> list[str]:
+    """One sentence per chain of plain one-way arrows, one per other edge (in drawing order)."""
+
+    def plain(e: DiagramEdge) -> bool:
+        return e.relation == "directed" and not e.label
+
+    used: set[int] = set()
+    sentences: list[str] = []
+    has_incoming = {e.target_id for e in edges if plain(e)}
+
+    def extend(first: int) -> None:
+        used.add(first)
+        names = [edges[first].source_name, edges[first].target_name]
+        node = edges[first].target_id
+        while True:
+            nxt = next(
+                (
+                    i
+                    for i, e in enumerate(edges)
+                    if i not in used and plain(e) and e.source_id == node
+                ),
+                None,
+            )
+            if nxt is None:
+                break
+            used.add(nxt)
+            names.append(edges[nxt].target_name)
+            node = edges[nxt].target_id
+        sentences.append(" \u2192 ".join(names))
+
+    def other(i: int) -> None:
+        e = edges[i]
+        used.add(i)
+        arrow = {"directed": "\u2192", "both": "\u2194", "undirected": "\u2014"}[e.relation]
+        text = f"{e.source_name} {arrow} {e.target_name}"
+        sentences.append(text + (f" ({e.label})" if e.label else ""))
+
+    # chains start where nothing arrives; what is left (branches, loops) starts its own line
+    for starts_only in (True, False):
+        for i, e in enumerate(edges):
+            if i in used:
+                continue
+            if not plain(e):
+                other(i)
+            elif not starts_only or e.source_id not in has_incoming:
+                extend(i)
+    return sentences
+
+
 def build_diagrams(annotations: list[NormalizedAnnotation]) -> list[Diagram]:
     """Diagrams among the given annotations (use the shapes visible at one moment)."""
     s = _analyse(annotations)
@@ -224,11 +276,7 @@ def build_diagrams(annotations: list[NormalizedAnnotation]) -> list[Diagram]:
             member_ids |= {t.shape_id for t in s.labels.get(node_id, [])}
         times = [by_id[m].timestamp_seconds for m in member_ids if m in by_id]
         comp_edges.sort(key=lambda e: (by_id[e.arrow_shape_id].timestamp_seconds, e.arrow_shape_id))
-        sentences = []
-        for e in comp_edges:
-            arrow = {"directed": "→", "both": "↔", "undirected": "—"}[e.relation]
-            text = f"{e.source_name} {arrow} {e.target_name}"
-            sentences.append(text + (f" ({e.label})" if e.label else ""))
+        sentences = _chain_sentences(comp_edges)
         digest = hashlib.sha1("|".join(node_ids).encode("utf-8")).hexdigest()[:10]
         diagrams.append(
             Diagram(
