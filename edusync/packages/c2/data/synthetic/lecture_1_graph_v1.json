@@ -1,0 +1,389 @@
+{
+  "lecture_id": "synthetic-lecture-1",
+  "filename": "synthetic-lecture-1.pptx",
+  "page_count": 10,
+  "concept_count": 8,
+  "concepts": [
+    {
+      "name": "Linear Encoder",
+      "frequency": 8
+    },
+    {
+      "name": "Modular Filter",
+      "frequency": 1
+    },
+    {
+      "name": "Dense Signal",
+      "frequency": 7
+    },
+    {
+      "name": "Layered Scheduler",
+      "frequency": 5
+    },
+    {
+      "name": "Nested Scheduler",
+      "frequency": 4
+    },
+    {
+      "name": "Sparse Signal",
+      "frequency": 5
+    },
+    {
+      "name": "Layered Sampler",
+      "frequency": 8
+    },
+    {
+      "name": "Bounded Router",
+      "frequency": 5
+    }
+  ],
+  "graph": {
+    "node_count": 8,
+    "edge_count": 22,
+    "nodes": [
+      {
+        "id": "linear-encoder",
+        "label": "Linear Encoder",
+        "description": "Linear Encoder: synthetic concept used for pipeline testing.",
+        "frequency": 8
+      },
+      {
+        "id": "modular-filter",
+        "label": "Modular Filter",
+        "description": "Modular Filter: synthetic concept used for pipeline testing.",
+        "frequency": 1
+      },
+      {
+        "id": "dense-signal",
+        "label": "Dense Signal",
+        "description": "Dense Signal: synthetic concept used for pipeline testing.",
+        "frequency": 7
+      },
+      {
+        "id": "layered-scheduler",
+        "label": "Layered Scheduler",
+        "description": "Layered Scheduler: synthetic concept used for pipeline testing.",
+        "frequency": 5
+      },
+      {
+        "id": "nested-scheduler",
+        "label": "Nested Scheduler",
+        "description": "Nested Scheduler: synthetic concept used for pipeline testing.",
+        "frequency": 4
+      },
+      {
+        "id": "sparse-signal",
+        "label": "Sparse Signal",
+        "description": "Sparse Signal: synthetic concept used for pipeline testing.",
+        "frequency": 5
+      },
+      {
+        "id": "layered-sampler",
+        "label": "Layered Sampler",
+        "description": "Layered Sampler: synthetic concept used for pipeline testing.",
+        "frequency": 8
+      },
+      {
+        "id": "bounded-router",
+        "label": "Bounded Router",
+        "description": "Bounded Router: synthetic concept used for pipeline testing.",
+        "frequency": 5
+      }
+    ],
+    "edges": [
+      {
+        "source": "bounded-router",
+        "target": "layered-sampler",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 9,
+            "sentence": "Bounded Router and Layered Sampler appear together."
+          }
+        ]
+      },
+      {
+        "source": "bounded-router",
+        "target": "linear-encoder",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 9,
+            "sentence": "Bounded Router and Linear Encoder appear together."
+          }
+        ]
+      },
+      {
+        "source": "bounded-router",
+        "target": "modular-filter",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 9,
+            "sentence": "Bounded Router and Modular Filter appear together."
+          }
+        ]
+      },
+      {
+        "source": "bounded-router",
+        "target": "sparse-signal",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 9,
+            "sentence": "Bounded Router and Sparse Signal appear together."
+          }
+        ]
+      },
+      {
+        "source": "dense-signal",
+        "target": "layered-scheduler",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 5,
+            "sentence": "Dense Signal and Layered Scheduler appear together."
+          }
+        ]
+      },
+      {
+        "source": "dense-signal",
+        "target": "linear-encoder",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 4,
+            "sentence": "Dense Signal and Linear Encoder appear together."
+          }
+        ]
+      },
+      {
+        "source": "dense-signal",
+        "target": "modular-filter",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 4,
+            "sentence": "Dense Signal and Modular Filter appear together."
+          }
+        ]
+      },
+      {
+        "source": "dense-signal",
+        "target": "nested-scheduler",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 6,
+            "sentence": "Dense Signal and Nested Scheduler appear together."
+          }
+        ]
+      },
+      {
+        "source": "layered-sampler",
+        "target": "sparse-signal",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 8,
+            "sentence": "Layered Sampler and Sparse Signal appear together."
+          }
+        ]
+      },
+      {
+        "source": "layered-scheduler",
+        "target": "nested-scheduler",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 6,
+            "sentence": "Layered Scheduler and Nested Scheduler appear together."
+          }
+        ]
+      },
+      {
+        "source": "layered-scheduler",
+        "target": "sparse-signal",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 7,
+            "sentence": "Layered Scheduler and Sparse Signal appear together."
+          }
+        ]
+      },
+      {
+        "source": "linear-encoder",
+        "target": "modular-filter",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 3,
+            "sentence": "Linear Encoder and Modular Filter appear together."
+          }
+        ]
+      },
+      {
+        "source": "nested-scheduler",
+        "target": "sparse-signal",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 7,
+            "sentence": "Nested Scheduler and Sparse Signal appear together."
+          }
+        ]
+      },
+      {
+        "source": "linear-encoder",
+        "target": "modular-filter",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 0.88,
+        "source_type": "curriculum_defined",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 3,
+            "sentence": "Linear Encoder comes before Modular Filter."
+          }
+        ]
+      },
+      {
+        "source": "linear-encoder",
+        "target": "dense-signal",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 0.83,
+        "source_type": "inferred",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 4,
+            "sentence": "Linear Encoder comes before Dense Signal."
+          }
+        ]
+      },
+      {
+        "source": "modular-filter",
+        "target": "dense-signal",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 0.95,
+        "source_type": "curriculum_defined",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 4,
+            "sentence": "Modular Filter comes before Dense Signal."
+          }
+        ]
+      },
+      {
+        "source": "dense-signal",
+        "target": "layered-scheduler",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 0.68,
+        "source_type": "inferred",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 5,
+            "sentence": "Dense Signal comes before Layered Scheduler."
+          }
+        ]
+      },
+      {
+        "source": "dense-signal",
+        "target": "nested-scheduler",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 0.55,
+        "source_type": "inferred",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 6,
+            "sentence": "Dense Signal comes before Nested Scheduler."
+          }
+        ]
+      },
+      {
+        "source": "layered-scheduler",
+        "target": "sparse-signal",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 0.92,
+        "source_type": "inferred",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 7,
+            "sentence": "Layered Scheduler comes before Sparse Signal."
+          }
+        ]
+      },
+      {
+        "source": "modular-filter",
+        "target": "bounded-router",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 0.64,
+        "source_type": "inferred",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 9,
+            "sentence": "Modular Filter comes before Bounded Router."
+          }
+        ]
+      },
+      {
+        "source": "sparse-signal",
+        "target": "bounded-router",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 0.74,
+        "source_type": "curriculum_defined",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 9,
+            "sentence": "Sparse Signal comes before Bounded Router."
+          }
+        ]
+      },
+      {
+        "source": "linear-encoder",
+        "target": "bounded-router",
+        "relation_type": "prerequisite",
+        "direction": "source_is_prerequisite_of_target",
+        "confidence": 0.72,
+        "source_type": "curriculum_defined",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 9,
+            "sentence": "Linear Encoder comes before Bounded Router."
+          }
+        ]
+      }
+    ],
+    "note": "Synthetic prerequisite graph."
+  },
+  "message": "Candidate knowledge graph generated successfully."
+}

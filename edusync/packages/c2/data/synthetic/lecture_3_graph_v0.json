@@ -1,0 +1,258 @@
+{
+  "lecture_id": "synthetic-lecture-3",
+  "filename": "synthetic-lecture-3.pptx",
+  "page_count": 10,
+  "concept_count": 8,
+  "concepts": [
+    {
+      "name": "Dynamic Encoder",
+      "frequency": 3
+    },
+    {
+      "name": "Stable Scheduler",
+      "frequency": 3
+    },
+    {
+      "name": "Bounded Matrix",
+      "frequency": 4
+    },
+    {
+      "name": "Dynamic Queue",
+      "frequency": 5
+    },
+    {
+      "name": "Cyclic Sampler",
+      "frequency": 6
+    },
+    {
+      "name": "Modular Queue",
+      "frequency": 4
+    },
+    {
+      "name": "Nested Buffer",
+      "frequency": 2
+    },
+    {
+      "name": "Linear Queue",
+      "frequency": 6
+    }
+  ],
+  "graph": {
+    "node_count": 8,
+    "edge_count": 14,
+    "nodes": [
+      {
+        "id": "dynamic encoder",
+        "label": "Dynamic Encoder",
+        "frequency": 3
+      },
+      {
+        "id": "stable scheduler",
+        "label": "Stable Scheduler",
+        "frequency": 3
+      },
+      {
+        "id": "bounded matrix",
+        "label": "Bounded Matrix",
+        "frequency": 4
+      },
+      {
+        "id": "dynamic queue",
+        "label": "Dynamic Queue",
+        "frequency": 5
+      },
+      {
+        "id": "cyclic sampler",
+        "label": "Cyclic Sampler",
+        "frequency": 6
+      },
+      {
+        "id": "modular queue",
+        "label": "Modular Queue",
+        "frequency": 4
+      },
+      {
+        "id": "nested buffer",
+        "label": "Nested Buffer",
+        "frequency": 2
+      },
+      {
+        "id": "linear queue",
+        "label": "Linear Queue",
+        "frequency": 6
+      }
+    ],
+    "edges": [
+      {
+        "source": "bounded matrix",
+        "target": "dynamic queue",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 5,
+            "sentence": "Bounded Matrix and Dynamic Queue appear together."
+          }
+        ]
+      },
+      {
+        "source": "bounded matrix",
+        "target": "modular queue",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 7,
+            "sentence": "Bounded Matrix and Modular Queue appear together."
+          }
+        ]
+      },
+      {
+        "source": "bounded matrix",
+        "target": "stable scheduler",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 4,
+            "sentence": "Bounded Matrix and Stable Scheduler appear together."
+          }
+        ]
+      },
+      {
+        "source": "cyclic sampler",
+        "target": "dynamic encoder",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 6,
+            "sentence": "Cyclic Sampler and Dynamic Encoder appear together."
+          }
+        ]
+      },
+      {
+        "source": "cyclic sampler",
+        "target": "dynamic queue",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 6,
+            "sentence": "Cyclic Sampler and Dynamic Queue appear together."
+          }
+        ]
+      },
+      {
+        "source": "cyclic sampler",
+        "target": "modular queue",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 7,
+            "sentence": "Cyclic Sampler and Modular Queue appear together."
+          }
+        ]
+      },
+      {
+        "source": "cyclic sampler",
+        "target": "nested buffer",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 8,
+            "sentence": "Cyclic Sampler and Nested Buffer appear together."
+          }
+        ]
+      },
+      {
+        "source": "cyclic sampler",
+        "target": "stable scheduler",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 6,
+            "sentence": "Cyclic Sampler and Stable Scheduler appear together."
+          }
+        ]
+      },
+      {
+        "source": "dynamic encoder",
+        "target": "linear queue",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 9,
+            "sentence": "Dynamic Encoder and Linear Queue appear together."
+          }
+        ]
+      },
+      {
+        "source": "dynamic encoder",
+        "target": "stable scheduler",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 3,
+            "sentence": "Dynamic Encoder and Stable Scheduler appear together."
+          }
+        ]
+      },
+      {
+        "source": "dynamic queue",
+        "target": "linear queue",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 9,
+            "sentence": "Dynamic Queue and Linear Queue appear together."
+          }
+        ]
+      },
+      {
+        "source": "linear queue",
+        "target": "nested buffer",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 9,
+            "sentence": "Linear Queue and Nested Buffer appear together."
+          }
+        ]
+      },
+      {
+        "source": "linear queue",
+        "target": "stable scheduler",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 9,
+            "sentence": "Linear Queue and Stable Scheduler appear together."
+          }
+        ]
+      },
+      {
+        "source": "modular queue",
+        "target": "nested buffer",
+        "relation_type": "co_mentioned",
+        "evidence_count": 1,
+        "evidence": [
+          {
+            "page": 8,
+            "sentence": "Modular Queue and Nested Buffer appear together."
+          }
+        ]
+      }
+    ],
+    "note": "Synthetic co-mention graph."
+  },
+  "message": "Candidate knowledge graph generated successfully."
+}
