@@ -157,3 +157,124 @@ Goal: fail loudly if C1's real output drifts from what C2 reads.
 5. When `C1ApiGraphProvider` is built, add a test with a fake C1 response and, in an integration environment, one
    against the running C1.
 6. Version the contract: record the C1 version or a `schema_version` field in the fixture so a change is visible.
+
+## 9. Self-check: validate a C1 graph file
+
+C2 ships a small validator that checks a C1 graph JSON file against this contract (v0 and v1). It reads the file only;
+it never calls C1 or changes anything. Run it before sending a sample or pushing a change.
+
+From `edusync/`:
+
+```
+uv run --no-sync python packages/c2/scripts/validate_c1_graph.py --file graph.json
+```
+
+Options: `--expected auto|v0|v1` (default `auto`: the version is detected from the data; `v1` applies the v1
+expectations such as slug ids and descriptions even to v0 data) and `--json` (machine-readable report).
+
+On machines where Windows Smart App Control blocks the virtual-environment launcher (`uv run` then fails with
+"os error 4551"), run the same script with the base Python 3.12 and put the project's `site-packages` on the path.
+
+Exit codes: `0` ok (warnings allowed), `1` contract errors, `2` unreadable file or invalid JSON.
+
+### Rules
+
+The table is generated from the `RULES` constant in `edusync_c2/difficulty/contract_check.py`.
+
+| Rule | Severity | Description |
+| --- | --- | --- |
+| C1-001 | error | The payload is a JSON object. |
+| C1-002 | error | The payload has a `graph` object with `nodes` and `edges` lists. |
+| C1-003 | error | Every node is an object with a string `id` and a string `label`. |
+| C1-004 | error | Node ids are unique. |
+| C1-005 | warning | `node_count` and `edge_count` match the list lengths. |
+| C1-006 | error | Every edge is an object with a string `source` and a string `target`. |
+| C1-007 | error | Every edge `source` and `target` is the id of a node. |
+| C1-008 | error | No edge points from a node to itself. |
+| C1-009 | error | No two edges share the same source, target and relation_type. |
+| C1-010 | error | `relation_type` is `prerequisite` or `co_mentioned`. |
+| C1-011 | error | A prerequisite edge `direction`, when present, is `source_is_prerequisite_of_target`. |
+| C1-012 | error | A prerequisite edge `confidence`, when present, is a number from 0 to 1. |
+| C1-013 | warning | A prerequisite edge has a `confidence`. |
+| C1-014 | error | A prerequisite edge `source_type`, when present, is `curriculum_defined` or `inferred`. |
+| C1-015 | warning | A prerequisite edge has a `source_type`. |
+| C1-016 | error | Edge `evidence`, when present, is a list of objects with an integer `page` and a string `sentence`. |
+| C1-017 | warning | The prerequisite edges contain no cycle. |
+| C1-018 | error | v1: node ids are slugs (lowercase letters, digits and hyphens). |
+| C1-019 | warning | v1: every node has a non-empty `description`. |
+| C1-020 | warning | v0: node ids are casefolded. |
+| C1-021 | warning | The graph does not mix v0 and v1 shapes (prerequisite edges without node descriptions, or slug ids with no v1 field). |
+
+Version detection: any `prerequisite` edge or any node `description` means v1; only `co_mentioned` edges and no
+descriptions means v0; a mix of the two shapes is reported as `mixed` (C1-021); an unparsable payload is `unknown`.
+
+### Example output
+
+Synthetic v0 file (co-mention edges only):
+
+```
+C1 graph check: v0.json
+Detected version: v0   Result: ok
+Nodes: 4   Edges: 5 (prerequisite 0, co_mentioned 5)
+Summary: 0 error(s), 0 warning(s) - ok
+```
+
+Synthetic v1 file (prerequisite edges, descriptions, slug ids):
+
+```
+C1 graph check: v1.json
+Detected version: v1   Result: ok
+Nodes: 4   Edges: 8 (prerequisite 3, co_mentioned 5)
+Summary: 0 error(s), 0 warning(s) - ok
+```
+
+The same v1 file, deliberately broken (one unknown relation, one confidence above 1, one empty description):
+
+```
+C1 graph check: broken.json
+Detected version: v1   Result: FAILED
+Nodes: 4   Edges: 8 (prerequisite 3, co_mentioned 4)
+  ERROR C1-010 [graph.edges[0]]: relation_type 'similar' is not one of ('prerequisite', 'co_mentioned').
+  ERROR C1-012 [graph.edges[7]]: confidence 1.7 is not a number in [0, 1].
+  WARNING C1-019 [graph.nodes[0]]: Node has no description.
+Summary: 2 error(s), 1 warning(s) - FAILED
+```
+
+Note: the generator in `difficulty/synthetic.py` and the `graph_v1` test fixture still use ids with spaces (for example
+`gradient descent`) for v1 graphs, which C1-018 reports as errors; the examples above use hyphenated slugs.
+
+## 10. Message for the C1 developer
+
+Paste-ready:
+
+> Hi! I'm working on C2 (difficulty prediction), which reads the knowledge graph that C1 returns from
+> `POST /api/c1/lectures/graph`. Here is what C2 needs from it, and a request.
+>
+> **Required (C2 cannot use the edge without these)**
+> - Nodes: `id` (unique, lowercase slug such as `gradient-descent`), `label`, `frequency`.
+> - Edges: `source`, `target` (both must be node ids), `relation_type` (`prerequisite` or `co_mentioned`).
+> - For `prerequisite` edges: `source` is the concept that must be learned first and `target` is the concept that
+>   depends on it, i.e. `direction: "source_is_prerequisite_of_target"`.
+>
+> **Nice to have (C2 works without them, but the features are weaker)**
+> - Node `description`.
+> - Prerequisite edges: `confidence` (0.0 to 1.0), `source_type` (`curriculum_defined` or `inferred`) and `evidence`
+>   (`page` + `sentence`).
+>
+> **Request**
+> 1. Please push your sample file `edusync/packages/c1/data/samples/sample_lecture_graph.json`, together with the new
+>    v1 fields, to GitHub. C2 verified its side only against its own synthetic fixtures, because the real sample is not
+>    on GitHub yet, so nothing is confirmed against your real output.
+> 2. Before pushing, please run the validator on it:
+>    `uv run --no-sync python packages/c2/scripts/validate_c1_graph.py --file <your file>` (from `edusync/`). It
+>    exits 0 when the file is fine and prints the rule id for anything that is not.
+>
+> **Open questions** (details in `docs/edusync/c1-c2-graph-contract.md`)
+> 1. Stable ids across lectures: can the same concept keep the same id (and can lectures have stable ids)?
+> 2. Aliases such as TDE = Transparent Data Encryption: one node, or an `aliases` list?
+> 3. Generic concepts such as "Best Practices": will C1 filter or flag them, or should C2?
+> 4. Pages per node: can each node carry `pages: [int]`?
+> 5. Curriculum-level graph: do `curriculum_defined` edges come from a graph over the whole curriculum?
+> 6. Will any `direction` value other than `source_is_prerequisite_of_target` exist?
+>
+> Thanks!
