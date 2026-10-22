@@ -249,11 +249,11 @@ def load(client, with_speech=True):
         client.put(f"{BASE}/lectures/{L}/speech", json={"segments": segs, "offset_seconds": 0})
 
 
-def test_report_has_what_it_means_with_badge_and_evidence(client):
+def test_report_has_what_it_means_with_evidence(client):
     load(client)
     html = client.get(f"{BASE}/lectures/{L}/report").text
     assert "<h3>What it means</h3>" in html
-    assert "Rule-based summary (not AI)" in html
+    assert "(not AI)" not in html
     assert "latency is the delay of a request" in html
     assert "<summary>Evidence</summary>" in html
     assert "Said at 01:38" in html
@@ -315,8 +315,8 @@ def test_stored_ai_style_explanation_wins_over_the_live_one(client, tmp_path):
     repo.save_analyses(L, [GroupAnalysis(**fake.model_dump())])
     html = client.get(f"{BASE}/lectures/{L}/report").text
     assert "A model-written sentence." in html
-    assert "AI-generated (test-model)" in html
-    assert "Rule-based summary (not AI)" in html  # the other group still uses the live one
+    assert "AI-generated" not in html
+    assert "(not AI)" not in html
 
 
 def test_weak_one_word_matches_are_dropped_when_a_better_sentence_exists():

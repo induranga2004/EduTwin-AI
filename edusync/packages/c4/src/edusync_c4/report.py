@@ -551,12 +551,6 @@ def _diagram_rows(diagrams: list[Diagram], speech: list[SpeechSegment] | None = 
     return '<ul class="groups">' + "".join(items) + "</ul>" if items else ""
 
 
-def _badge(method: str) -> str:
-    if method.startswith("llm:"):
-        return f"AI-generated ({escape(method[4:])})"
-    return "Rule-based summary (not AI)"
-
-
 def _meaning_title(a: GroupAnalysis) -> str:
     ctx = a.context
     if ctx.diagram_sentences:
@@ -612,8 +606,7 @@ def _meaning_html(view: SlideView) -> str:
         span = f"{clock(group.start_seconds)}&ndash;{clock(group.end_seconds)}"
         blocks.append(
             f'<div class="mean"><div><span class="t">{span}</span> '
-            f"<b>{escape(_meaning_title(a))}</b> "
-            f'<span class="badge">{_badge(a.interpretation.method)}</span></div>'
+            f"<b>{escape(_meaning_title(a))}</b></div>"
             f"<p>{escape(a.interpretation.summary)}</p>{_evidence_html(a)}</div>"
         )
     return "".join(blocks)
@@ -644,8 +637,6 @@ svg.board{width:100%;height:auto;display:block;border:1px solid #d1d5db}
 .dg{display:inline-block;vertical-align:top}
 .mean{border-left:3px solid #6b7280;background:#f9fafb;padding:8px 12px;margin:0 0 10px}
 .mean p{margin:6px 0}
-.badge{font-size:12px;color:#92400e;background:#fef3c7;border-radius:4px;
-  padding:1px 6px;margin-left:6px}
 .mean ul{margin:4px 0 0 18px;padding:0;font-size:13px}
 .said{margin:4px 0 0 64px;color:#374151;font-size:14px}
 figure{margin:0 0 14px}figcaption{font-size:13px;color:#374151;margin:0 0 4px}
