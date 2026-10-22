@@ -16,6 +16,8 @@ class C2Settings(BaseSettings):
     log_level: str = "INFO"
     model: Literal["baseline", "minilm"] = "baseline"
     model_dir: Path | None = None
+    concept_filter: Literal["mock_keep_all", "heuristic"] = "mock_keep_all"
+    concept_filter_extras: bool = False
 
     @field_validator("model_dir", mode="before")
     @classmethod

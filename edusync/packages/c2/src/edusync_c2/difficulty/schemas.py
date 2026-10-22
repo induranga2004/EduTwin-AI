@@ -173,6 +173,8 @@ class ConceptRecord(BaseModel):
     alignment_status: AlignmentStatus
     filter_status: Literal["kept", "dropped"] = "kept"
     filter_note: str = ""
+    merged_from: list[str] = Field(default_factory=list)  # sorted ids of absorbed alias records
+    alias_labels: list[str] = Field(default_factory=list)
 
 
 class GraphContext(BaseModel):
@@ -256,6 +258,7 @@ class ConceptPrediction(BaseModel):
     confidence: float | None = None  # always None in Phase 1: no calibrated confidence exists
     alignment_status: AlignmentStatus
     slide_indexes: list[int] = Field(default_factory=list)
+    merged_from: list[str] = Field(default_factory=list)  # ids of aliases merged into this concept
     features: list[FeatureValue]
     feature_summary: dict[FeatureGroup, GroupSummary]
     status: Literal["ok", "partial", "failed"]  # partial = some features mocked/unavailable

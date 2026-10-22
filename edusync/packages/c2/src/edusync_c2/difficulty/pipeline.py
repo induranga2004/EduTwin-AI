@@ -5,7 +5,12 @@ Deterministic: no timings, ids or clocks in the response.
 
 import time
 
-from edusync_c2.difficulty.concepts import ConceptFilter, MockConceptFilter, build_concepts
+from edusync_c2.difficulty.concepts import (
+    ConceptFilter,
+    ContextualConceptFilter,
+    MockConceptFilter,
+    build_concepts,
+)
 from edusync_c2.difficulty.features import compute_all_features
 from edusync_c2.difficulty.features.vocab import VocabularyAnalyzer
 from edusync_c2.difficulty.fusion import build_fusion_input, summarize_features
@@ -51,7 +56,7 @@ class DifficultyPipeline:
         self,
         *,
         model: DifficultyModel | None = None,
-        concept_filter: ConceptFilter | None = None,
+        concept_filter: ConceptFilter | ContextualConceptFilter | None = None,
         mock_provider: GraphProvider | None = None,
         max_mb: int = 100,
         use_mocked_features: bool = False,
@@ -61,7 +66,9 @@ class DifficultyPipeline:
         self.selected_model = selected_model
         self.vocab = vocab
         self.model: DifficultyModel = model or RuleBaselineModel()
-        self.concept_filter: ConceptFilter = concept_filter or MockConceptFilter()
+        self.concept_filter: ConceptFilter | ContextualConceptFilter = (
+            concept_filter or MockConceptFilter()
+        )
         self.mock_provider: GraphProvider = mock_provider or MockC1GraphProvider()
         self.max_mb = max_mb
         self.use_mocked_features = use_mocked_features
@@ -205,6 +212,7 @@ class DifficultyPipeline:
                     confidence=None,
                     alignment_status=c.alignment_status,
                     slide_indexes=list(c.slide_indexes),
+                    merged_from=list(c.merged_from),
                     features=features,
                     feature_summary=summarize_features(features),
                     status=status,
@@ -266,7 +274,7 @@ class DifficultyPipeline:
         aligned = sum(1 for c in concepts if c.alignment_status is AlignmentStatus.ALIGNED)
         concept_detail = f"{len(concepts)} concepts, {aligned} aligned, "
         concept_detail += f"{len(concepts) - aligned} not found in materials"
-        mock_filter = isinstance(self.concept_filter, MockConceptFilter)
+        mock_filter = bool(getattr(self.concept_filter, "is_mock", False))
         degraded = any(f.status is not FeatureStatus.COMPUTED for fs in all_features for f in fs)
         n_failed = sum(1 for p in predictions if p.status == "failed")
         kind = self.model.info.kind

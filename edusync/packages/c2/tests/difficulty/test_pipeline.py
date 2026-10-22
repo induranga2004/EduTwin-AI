@@ -189,3 +189,35 @@ def test_info():
     assert info.concept_filter == "mock_keep_all"
     assert len(info.features) == len(FEATURE_NAMES)
     assert info.todo
+
+
+def test_contextual_filter_merged_from_reaches_prediction_and_json(pptx):
+    from edusync_c2.difficulty.concepts import FilterContext
+
+    seen = []
+
+    class Merger:
+        name = "fake_contextual"
+        is_mock = False
+
+        def resolve(self, concepts, ctx):
+            seen.append(ctx)
+            a, b, *rest = concepts
+            return [a.model_copy(update={"merged_from": [b.id]}), *rest]
+
+    resp = DifficultyPipeline(concept_filter=Merger()).run(pptx, "deck.pptx", graph("v1"))
+    assert isinstance(seen[0], FilterContext)
+    assert seen[0].graph_source.kind == "real"
+    assert len(resp.predictions) == 5
+    assert resp.predictions[0].merged_from != []
+    assert all(p.merged_from == [] for p in resp.predictions[1:])
+    assert stages(resp)["concepts"].status == "ok"
+    body = resp.model_dump(mode="json")
+    assert body["predictions"][0]["merged_from"] == resp.predictions[0].merged_from
+    assert DifficultyResponse.model_validate_json(resp.model_dump_json()) == resp
+
+
+def test_default_pipeline_output_has_empty_merged_from(pptx):
+    resp = DifficultyPipeline().run(pptx, "deck.pptx", graph("v1"))
+    assert all(p.merged_from == [] for p in resp.predictions)
+    assert all(p["merged_from"] == [] for p in resp.model_dump(mode="json")["predictions"])

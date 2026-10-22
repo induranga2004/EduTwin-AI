@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
 from edusync_c2.comprehension import flag_for_clarification
+from edusync_c2.difficulty.concepts import create_concept_filter
 from edusync_c2.difficulty.errors import ModelArtifactError, ModelNotAvailableError
 from edusync_c2.difficulty.materials import MaterialsError
 from edusync_c2.difficulty.models import create_model
@@ -44,8 +45,17 @@ def get_pipeline() -> DifficultyPipeline:
     except (ModelNotAvailableError, ModelArtifactError) as exc:
         logger.warning("model_unavailable name=%s", settings.model)
         raise HTTPException(501, str(exc)) from exc
+    try:
+        concept_filter = create_concept_filter(
+            settings.concept_filter, settings.concept_filter_extras
+        )
+    except NotImplementedError as exc:
+        logger.warning("concept_filter_unavailable name=%s", settings.concept_filter)
+        raise HTTPException(501, str(exc)) from exc
     logger.info("pipeline_ready model=%s", settings.model)
-    return DifficultyPipeline(model=model, selected_model=settings.model)
+    return DifficultyPipeline(
+        model=model, concept_filter=concept_filter, selected_model=settings.model
+    )
 
 
 PipelineDep = Annotated[DifficultyPipeline, Depends(get_pipeline)]
