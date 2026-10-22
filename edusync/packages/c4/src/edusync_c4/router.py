@@ -100,7 +100,7 @@ def list_events(
     return out
 
 
-@router.get("/lectures/{lecture_id}/slides/{slide_id}/snapshot")
+@router.get("/lectures/{lecture_id}/slides/{slide_id:path}/snapshot")
 def snapshot(
     lecture_id: str,
     slide_id: str,
@@ -113,7 +113,7 @@ def snapshot(
     return snap
 
 
-@router.post("/lectures/{lecture_id}/slides/{slide_id}/group")
+@router.post("/lectures/{lecture_id}/slides/{slide_id:path}/group")
 def compute_groups(
     lecture_id: str,
     slide_id: str,
@@ -135,7 +135,7 @@ def list_groups(
     return repo.load_groups(lecture_id, slide_id)
 
 
-@router.post("/lectures/{lecture_id}/slides/{slide_id}/analyze")
+@router.post("/lectures/{lecture_id}/slides/{slide_id:path}/analyze")
 def analyze(
     lecture_id: str,
     slide_id: str,

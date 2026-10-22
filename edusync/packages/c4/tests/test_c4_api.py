@@ -256,3 +256,22 @@ def test_sqlite_schema_version_and_foreign_keys(repo):
         assert conn.execute("PRAGMA user_version").fetchone()[0] == 1
         tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert {"events", "groups", "analyses"} <= tables
+
+
+def test_slide_ids_containing_slashes_work_in_paths(client):
+    # Real BBB page ids look like "<presentationId>-<timestamp>/<pageNumber>" (found in a live test)
+    slide = "2240cd5f-1792662963830/2"
+    events = [
+        {**_txt("a", 1, "hello"), "pageId": slide},
+        {**_txt("b", 2, "world"), "pageId": slide},
+    ]
+    assert _import(client, events).json()["imported_count"] == 2
+    for form in (slide, slide.replace("/", "%2F")):
+        base = f"{BASE}/lectures/{L}/slides/{form}"
+        snap = client.get(f"{base}/snapshot", params={"timestamp": 5})
+        assert snap.status_code == 200
+        assert snap.json()["slide_id"] == slide
+        assert snap.json()["active_shape_count"] == 2
+        assert len(client.post(f"{base}/group").json()) == 1
+        assert client.post(f"{base}/analyze").status_code == 200
+    assert client.get(f"{BASE}/lectures/{L}/slides/other/2/snapshot?timestamp=1").status_code == 404
