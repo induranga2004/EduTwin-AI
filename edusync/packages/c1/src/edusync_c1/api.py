@@ -3,18 +3,21 @@
 import json
 import logging
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from starlette.concurrency import run_in_threadpool
 
+from edusync_c1.catchup import LateJoinerCatchupEngine, LateJoinerCatchupPack
+from edusync_c1.comparison import DualGraphComparator, LectureComparisonReport
 from edusync_c1.concepts import extract_concepts
 from edusync_c1.documents import combine_page_text, extract_document_pages
 from edusync_c1.graph import build_knowledge_graph
 from edusync_c1.schemas import (
     GraphResponse,
     HealthResponse,
+    KnowledgeGraph,
     Page,
     TranscribeResponse,
     UploadResponse,
@@ -182,3 +185,104 @@ async def transcribe_lecture(
     finally:
         await file.close()
         await document_file.close()
+
+
+def _load_processed_recording(settings: CoreSettings, recording_id: str) -> dict[str, Any]:
+    """Load previously transcribed session data from disk."""
+    file_path = processed_dir(settings) / f"{recording_id}_transcript.json"
+    if not file_path.is_file():
+        raise HTTPException(404, f"Recording '{recording_id}' was not found.")
+    try:
+        return json.loads(file_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise HTTPException(500, f"Could not load recording data for '{recording_id}'.") from exc
+
+
+@router.get("/lectures/{recording_id}/alerts", response_model=LectureComparisonReport)
+def get_lecture_alerts(recording_id: str, settings: SettingsDep) -> LectureComparisonReport:
+    """Retrieve real-time prerequisite skip alerts and pedagogical alignment for a recording."""
+    data = _load_processed_recording(settings, recording_id)
+    kg = KnowledgeGraph(**data["graph"])
+    comparator = DualGraphComparator(kg)
+
+    label_to_id = {n.label.casefold(): n.id for n in kg.nodes} | {n.id.casefold(): n.id for n in kg.nodes}
+    timeline_data = data.get("graph_timeline", {}).get("timeline", [])
+    step_mentions = [
+        (
+            float(step.get("start_seconds", 0)),
+            [label_to_id.get(c.casefold(), c.casefold()) for c in step.get("matched_concepts", [])],
+        )
+        for step in timeline_data
+    ]
+    return comparator.compare_timeline_steps(step_mentions, lecture_id=recording_id)
+
+
+@router.get("/lectures/{recording_id}/catchup", response_model=LateJoinerCatchupPack)
+def get_lecture_catchup(
+    recording_id: str,
+    settings: SettingsDep,
+    join_seconds: Annotated[float, Query(ge=0.0)] = 300.0,
+) -> LateJoinerCatchupPack:
+    """Generate a 5-minute topologically ordered catch-up pack for a late-joining student."""
+    data = _load_processed_recording(settings, recording_id)
+    kg = KnowledgeGraph(**data["graph"])
+    engine = LateJoinerCatchupEngine(kg)
+
+    label_to_id = {n.label.casefold(): n.id for n in kg.nodes} | {n.id.casefold(): n.id for n in kg.nodes}
+    timeline_data = data.get("graph_timeline", {}).get("timeline", [])
+    delivered_mentions = [
+        (
+            float(step.get("start_seconds", 0)),
+            [label_to_id.get(c.casefold(), c.casefold()) for c in step.get("matched_concepts", [])],
+            step.get("transcript_text", ""),
+        )
+        for step in timeline_data
+    ]
+    return engine.generate_catchup_pack(delivered_mentions, join_seconds, lecture_id=recording_id)
+
+
+@router.post("/lectures/alerts", response_model=LectureComparisonReport)
+async def evaluate_lecture_alerts(
+    settings: SettingsDep,
+    matcher: MatcherDep,
+    transcriber: TranscriberDep,
+    file: FileDep,
+    document_file: FileDep,
+    language: Annotated[str, Query(min_length=2, max_length=10)] = "en",
+) -> LectureComparisonReport:
+    """Directly evaluate skip alerts from an uploaded document and recording."""
+    transcribe_res = await transcribe_lecture(
+        settings, transcriber, matcher, file, document_file, language
+    )
+    comparator = DualGraphComparator(transcribe_res.graph)
+    step_mentions = [
+        (step.start_seconds, [c.casefold() for c in step.matched_concepts])
+        for step in transcribe_res.graph_timeline.timeline
+    ]
+    return comparator.compare_timeline_steps(
+        step_mentions, lecture_id=transcribe_res.recording_id
+    )
+
+
+@router.post("/lectures/catchup", response_model=LateJoinerCatchupPack)
+async def generate_lecture_catchup(
+    settings: SettingsDep,
+    matcher: MatcherDep,
+    transcriber: TranscriberDep,
+    file: FileDep,
+    document_file: FileDep,
+    join_seconds: Annotated[float, Query(ge=0.0)] = 300.0,
+    language: Annotated[str, Query(min_length=2, max_length=10)] = "en",
+) -> LateJoinerCatchupPack:
+    """Directly generate a 5-minute catch-up pack from an uploaded document and recording."""
+    transcribe_res = await transcribe_lecture(
+        settings, transcriber, matcher, file, document_file, language
+    )
+    engine = LateJoinerCatchupEngine(transcribe_res.graph)
+    delivered_mentions = [
+        (step.start_seconds, [c.casefold() for c in step.matched_concepts], step.transcript_text)
+        for step in transcribe_res.graph_timeline.timeline
+    ]
+    return engine.generate_catchup_pack(
+        delivered_mentions, join_seconds, lecture_id=transcribe_res.recording_id
+    )
