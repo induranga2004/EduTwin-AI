@@ -8,11 +8,12 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('help', 'setup', 'up', 'first-run', 'secret', 'status', 'logs', 'down', 'html5', 'meeting')]
+    [ValidateSet('help', 'setup', 'up', 'first-run', 'secret', 'status', 'logs', 'down', 'html5', 'meeting', 'end')]
     [string]$Command = 'help',
     [switch]$PythonOnly,
     [switch]$Lite,
     [switch]$NoOpen,
+    [switch]$Record,
     [string]$Name = 'Lecturer',
     [ValidateSet('MODERATOR', 'VIEWER')]
     [string]$Role = 'MODERATOR',
@@ -516,8 +517,11 @@ function Invoke-Meeting {
     if ([string]::IsNullOrWhiteSpace($secret)) {
         throw 'EDUSYNC_BBB_SECRET is empty in .env. Run: .\scripts\dev.ps1 first-run'
     }
-    $createQuery = 'allowStartStopRecording=false&attendeePW=ap&autoStartRecording=false' +
-        '&meetingID=edusync-demo&moderatorPW=mp&name=EduSync+Demo&record=false'
+    # -Record turns on BBB's own recording: a Record button appears for the moderator.
+    $recording = if ($Record) { 'true' } else { 'false' }
+    # Recording starts with the meeting, so BBB also records microphones that join afterwards.
+    $createQuery = "allowStartStopRecording=$recording&attendeePW=ap&autoStartRecording=$recording" +
+        "&meetingID=edusync-demo&moderatorPW=mp&name=EduSync+Demo&record=$recording"
     $password = if ($Role -eq 'MODERATOR') { 'mp' } else { 'ap' }
     $joinQuery = "fullName=$([uri]::EscapeDataString($Name))&meetingID=edusync-demo&password=$password&redirect=true"
     Write-Step "Create meeting 'EduSync Demo' (id edusync-demo) and join as $Name ($Role)"
@@ -530,6 +534,33 @@ function Invoke-Meeting {
     Write-Ok "Meeting ready. Join link (valid while the meeting runs, roughly 5 minutes if nobody joins):"
     Write-Info $joinUrl
     if (-not $NoOpen) { Start-Process $joinUrl }
+}
+
+# Ends the demo meeting (BBB's own End button is not shown in this setup) so BBB saves the recording.
+function Invoke-End {
+    if ($PythonOnly) { throw 'end needs BigBlueButton; do not use -PythonOnly.' }
+    $secret = Get-EnvValue 'EDUSYNC_BBB_SECRET'
+    if ([string]::IsNullOrWhiteSpace($secret)) {
+        throw 'EDUSYNC_BBB_SECRET is empty in .env. Run: .\scripts\dev.ps1 first-run'
+    }
+    Write-Step "End meeting 'EduSync Demo' (id edusync-demo)"
+    if ($DryRun) { return }
+    $infoQuery = 'meetingID=edusync-demo'
+    try { $info = Invoke-RestMethod -Uri (Get-BbbApiUrl 'getMeetingInfo' $infoQuery $secret) -TimeoutSec 30 }
+    catch { throw "BigBlueButton API not reachable ($($_.Exception.Message)). Is it running? Try: .\scripts\dev.ps1 status" }
+    if ([string]$info.response.returncode -ne 'SUCCESS') {
+        Write-Info 'No meeting is running, nothing to end.'
+        return
+    }
+    $internalId = [string]$info.response.internalMeetingID
+    $isRecording = [string]$info.response.recording
+    $ended = Invoke-RestMethod -Uri (Get-BbbApiUrl 'end' 'meetingID=edusync-demo&password=mp' $secret) -TimeoutSec 30
+    if ([string]$ended.response.returncode -ne 'SUCCESS') { throw "end failed: $($ended.response.messageKey) $($ended.response.message)" }
+    Write-Ok 'Meeting ended.'
+    if ($isRecording -eq 'true') {
+        Write-Info 'BBB is now saving the recording. The replay is ready in about a minute at:'
+        Write-Info "https://$(Get-Hostname)/playback/presentation/2.3/$internalId"
+    }
 }
 
 function Invoke-Html5 {
@@ -553,6 +584,7 @@ Commands:
   down        docker compose down
   html5       Start the BBB HTML5 dev server (run-dev.sh) in the bbb container
   meeting     Create a demo meeting and open the join link in your browser (BBB has no login page)
+  end         End the demo meeting so BBB saves its recording (use after `meeting -Record`)
 
 Options:
   -PythonOnly Run only the Python API (profile edusync), no BBB
@@ -560,6 +592,7 @@ Options:
   -Name <n>   With `meeting`: your display name (default Lecturer)
   -Role <r>   With `meeting`: MODERATOR (default) or VIEWER
   -NoOpen     With `meeting`: only print the join link
+  -Record     With `meeting`: enable BBB recording (a Record button for the moderator)
   -DryRun     Print what would happen without changing anything
   -Yes        Skip confirmation prompts
 
@@ -589,6 +622,7 @@ try {
         'down' { Invoke-Down }
         'html5' { Invoke-Html5 }
         'meeting' { Invoke-Meeting }
+        'end' { Invoke-End }
     }
 }
 catch {

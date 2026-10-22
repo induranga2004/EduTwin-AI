@@ -35,22 +35,28 @@ def http_json(method, url, body=None, headers=None):
         return exc.code, exc.read().decode("utf-8", "replace")[:500]
 
 
+def fail(message):
+    """Print the reason on normal output (the PowerShell wrapper shows it) and stop."""
+    print("ERROR: " + message)
+    sys.exit(1)
+
+
 def hasura(gql, variables=None):
     url = os.environ.get("EDUSYNC_HASURA_URL", "")
     secret = os.environ.get("EDUSYNC_HASURA_ADMIN_SECRET", "")
     if not url or not secret:
-        sys.exit("EDUSYNC_HASURA_URL / EDUSYNC_HASURA_ADMIN_SECRET are not set in the container")
+        fail("EDUSYNC_HASURA_URL / EDUSYNC_HASURA_ADMIN_SECRET are not set in the container")
     payload = {"query": gql, "variables": variables or {}}
     status, body = http_json("POST", url, payload, {"x-hasura-admin-secret": secret})
     if status != 200 or (isinstance(body, dict) and body.get("errors")):
-        sys.exit("Hasura query failed (%s): %s" % (status, str(body)[:300]))
+        fail("Hasura query failed (%s): %s" % (status, str(body)[:300]))
     return body["data"]
 
 
 def current_meeting():
     meetings = hasura("query { meeting { meetingId extId name } }")["meeting"]
     if not meetings:
-        sys.exit("No running meeting found. Start one with .\\scripts\\dev.ps1 meeting")
+        fail("No running meeting found. Start one with .\\scripts\\dev.ps1 meeting")
     # newest meeting: its id ends with the creation time in epoch milliseconds
     return max(meetings, key=lambda m: int(m["meetingId"].rsplit("-", 1)[-1] or 0))
 
@@ -80,7 +86,7 @@ def cmd_info():
     meeting = current_meeting()
     rows = pages(meeting["meetingId"])
     if not rows:
-        sys.exit("No slides found. Upload your PDF in the meeting, wait until it has finished "
+        fail("No slides found. Upload your PDF in the meeting, wait until it has finished "
                  "converting, then run this again.")
     print(
         json.dumps(
