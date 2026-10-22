@@ -2,6 +2,7 @@
 
 from edusync_c4.annotations import parse_annotation_text
 from edusync_c4.evidence import merge_evidence, reconcile
+from edusync_c4.grouping import Clusterer, SpatioTemporalClusterer, group_timeline
 from edusync_c4.normalizer import (
     apply_delta,
     compute_bounds,
@@ -11,10 +12,12 @@ from edusync_c4.normalizer import (
 )
 from edusync_c4.router import router
 from edusync_c4.schemas import (
+    AnnotationGroup,
     AnnotationTimeline,
     BoundingBox,
     EventImportRequest,
     EventImportResponse,
+    GroupingConfig,
     NormalizedAnnotation,
     ReconcileRequest,
     ReconcileResponse,
@@ -39,21 +42,26 @@ COMPONENT = Component(
 
 __all__ = [
     "COMPONENT",
+    "AnnotationGroup",
     "AnnotationTimeline",
     "BoundingBox",
+    "Clusterer",
     "EventImportRequest",
     "EventImportResponse",
+    "GroupingConfig",
     "NormalizedAnnotation",
     "ReconcileRequest",
     "ReconcileResponse",
     "ShapeType",
     "SlideSnapshot",
+    "SpatioTemporalClusterer",
     "StrokePoint",
     "apply_delta",
     "build_timeline",
     "build_timelines",
     "compute_bounds",
     "extract_stroke_points",
+    "group_timeline",
     "merge_evidence",
     "normalize_event",
     "normalize_events",
