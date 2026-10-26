@@ -24,7 +24,7 @@ COPY apps apps
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable --package edusync-api --extra ml
 
-FROM python:3.12-slim-bookworm AS runtime
+FROM python:3.15-slim-bookworm AS runtime
 RUN useradd --system --uid 10001 --create-home --home-dir /home/edusync edusync \
     && mkdir -p /data && chown edusync:edusync /data
 COPY --from=builder /app/.venv /app/.venv
